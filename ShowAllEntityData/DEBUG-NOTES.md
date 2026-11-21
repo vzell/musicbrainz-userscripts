@@ -30909,3 +30909,26 @@ Tampermonkey (GM stubs)
     tiers bypassed, foreground) at 10:37:54.939 — "waits 60 s (MusicBrainz asked every script to wait)" at
     10:37:54.946, and the stored `cool` then read 57,459 ms out. The write clamp works in the browser.
   - For a future gate check: force a request (the ⟳ of a loaded cell), never rely on a render's Relationships pass.
+
+## 2026-11-21 — A standalone Event Horizon's data-mbu-eh for the keys marks (feat/eh-version-mark, WIP.1)
+
+Env: 2026-11-21T14:14+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no
+Tampermonkey (GM stubs)
+
+- *Why*: majkinetor's answer on #938 (milic-bot, 2026-11-21 13:48 CET, comment 7062818955; `main` `d8c0030`): a
+  standalone Event Horizon writes `<html data-mbu-eh="<its @version>">` at its start (EH:134: only when
+  `GM_info.script.name` starts with "Event Horizon", not in its settings-only copy), first in 2026.11.22.184100;
+  inside String Theory it writes none. Read from GitHub's raw files at `d8c0030` (the clone is at `a1e8f54`); the
+  keys-off/keep check is unchanged (EH:18325).
+- *Before*: `_ehKeysKeepHonoured()` read only `data-mbu-st`, so with a standalone EH our table kept the letter
+  guard: Ctrl+P and the player keys acted on the table, a toggle rebound to a listed letter was swallowed. And the
+  `<html>` observer watched only `data-mbu-dock`/`data-mbu-page`: a version mark written after our render was seen
+  only at the next render.
+- *Fix*: `_mbuVersionMarkAtLeast(attr, min)` (the old compare, now shared); `_ehKeysKeepHonoured()` is true for
+  `data-mbu-st` ≥ 2026.11.20.165956 or `data-mbu-eh` ≥ 2026.11.22.184100 (`_EH_KEYS_KEEP_EH_MIN`); the observer's
+  `attributeFilter` adds `data-mbu-st` and `data-mbu-eh`. Simulator `__EH_SIM_EH__`.
+- *Specs* (eh-single-keys.spec.js, C3 describe, 4 new): a standalone EH with a current mark (marks up, rebound `h`
+  toggles), a mark below the floor (no marks, V works), EH's mark set after the render and String Theory's mark set
+  after the render (the marks follow without a render). Before the fix 3 failed (the floor test passes on old code:
+  it pins what must not happen); after, eh-single-keys + eh-interop-markers 42/42. Mutations
+  `scripts/mutations/eh-keys-off.json` +4, 17/17 caught; one find updated (the compare's `min` is `want` now).

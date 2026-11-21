@@ -60,6 +60,9 @@
  *   and String Theory 2026.11.20.164048, where keys-off suspends V too.
  * - `window.__EH_SIM_ST__ = '<version>'`: String Theory's mark,
  *   `<html data-mbu-st="<version>">`, set at once (ST:792 sets it at start).
+ * - `window.__EH_SIM_EH__ = '<version>'`: a standalone Event Horizon's mark,
+ *   `<html data-mbu-eh="<version>">` (EH:134 at `d8c0030`, from
+ *   2026.11.22.184100; none inside String Theory), set like the one above.
  * - `window.__EH_SIM_REBIND__ = { view: 'h' }`: keys rebound in EH's Ctrl+/
  *   palette (`S.keys`); a key taken from another command unbinds that one,
  *   as EH's palette does. `sim.fired` records the KEY pressed.
@@ -84,6 +87,7 @@
     const C3 = window.__EH_SIM_C3__ || '';
     // No documentElement yet at init-script time in this harness; set again at DOMContentLoaded below.
     if (window.__EH_SIM_ST__ && document.documentElement) document.documentElement.setAttribute('data-mbu-st', String(window.__EH_SIM_ST__));
+    if (window.__EH_SIM_EH__ && document.documentElement) document.documentElement.setAttribute('data-mbu-eh', String(window.__EH_SIM_EH__));
 
     /**
      * Event Horizon's keyCombo() (EH 2026.11.08.131500), verbatim in effect.
@@ -225,8 +229,9 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         // An init script's attribute on <html> does not survive the parser in
-        // this harness: String Theory's mark again, before the userscript starts.
+        // this harness: the version marks again, before the userscript starts.
         if (window.__EH_SIM_ST__) document.documentElement.setAttribute('data-mbu-st', String(window.__EH_SIM_ST__));
+        if (window.__EH_SIM_EH__) document.documentElement.setAttribute('data-mbu-eh', String(window.__EH_SIM_EH__));
         sim.mbBody = document.body;
         if (window.__EH_SIM_NO_LAUNCHER__ !== true) {
             sim.launcher = document.createElement('button');

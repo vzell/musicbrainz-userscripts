@@ -1862,12 +1862,13 @@ page, even with Event Horizon switched off, and one stray key would leave the
 page and a rendered table with it.
 
 - **While a table of ours shows**, with *String Theory* 2026.11.20.165956 or
-  newer, the page asks Event Horizon to leave all its keys alone except its
+  newer, or a standalone *Event Horizon* 2026.11.22.184100 or newer, the page
+  asks Event Horizon to leave all its keys alone except its
   on/off switch: its single letters, `U` (your profile), its player's keys,
   and `Ctrl+P`, which prints again. If you rebound the on/off switch in Event
   Horizon, the new key works here too.
-- **Before you press a button**, or with a standalone or older Event
-  Horizon, its single keys `H` (editing history), `E`, `R`, `O`, `C`, `T`,
+- **Before you press a button**, or with an older Event Horizon or String
+  Theory, its single keys `H` (editing history), `E`, `R`, `O`, `C`, `T`,
   `D`, `A`, `S`, `P`, `U`, `.` and `,` are ignored. Its player's keys work
   there, and keys you rebound in Event Horizon are not known.
 

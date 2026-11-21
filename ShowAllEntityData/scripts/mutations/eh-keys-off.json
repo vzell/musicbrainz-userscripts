@@ -69,8 +69,8 @@
     "why": "A compare that returns true on the first differing number lets 2026.11.20.164048 through: marks under an EH without keys-keep.",
     "edits": [
       {
-        "find": "            if (n !== min[i]) return n > min[i];",
-        "replace": "            if (n !== min[i]) return true;"
+        "find": "            if (n !== want[i]) return n > want[i];",
+        "replace": "            if (n !== want[i]) return true;"
       }
     ],
     "spec": "tests/fixtures/eh-single-keys.spec.js",
@@ -166,6 +166,58 @@
     ],
     "spec": "tests/fixtures/eh-single-keys.spec.js",
     "grep": "sa_block_eh_single_keys off: no marks",
+    "expect": "fail"
+  },
+  {
+    "name": "a standalone Event Horizon's data-mbu-eh is not read",
+    "why": "Only String Theory's mark counts: a standalone Event Horizon keeps the letter guard, so u is guarded but Ctrl+P and its player keys act on our table, and a toggle rebound to a listed letter is swallowed.",
+    "edits": [
+      {
+        "find": "        return _mbuVersionMarkAtLeast('data-mbu-st', _EH_KEYS_KEEP_ST_MIN) ||\n            _mbuVersionMarkAtLeast('data-mbu-eh', _EH_KEYS_KEEP_EH_MIN);",
+        "replace": "        return _mbuVersionMarkAtLeast('data-mbu-st', _EH_KEYS_KEEP_ST_MIN);"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "standalone Event Horizon with its version mark",
+    "expect": "fail"
+  },
+  {
+    "name": "any data-mbu-eh counts, whatever its version",
+    "why": "The floor keeps out an Event Horizon whose keys-off would take V; a mere presence check sets the marks over it.",
+    "edits": [
+      {
+        "find": "            _mbuVersionMarkAtLeast('data-mbu-eh', _EH_KEYS_KEEP_EH_MIN);",
+        "replace": "            document.documentElement.hasAttribute('data-mbu-eh');"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "mark below 2026.11.22.184100",
+    "expect": "fail"
+  },
+  {
+    "name": "the <html> observer does not watch data-mbu-eh",
+    "why": "Event Horizon writes its mark at its own start, which can come after our render; then the marks would wait for the next render.",
+    "edits": [
+      {
+        "find": "attributeFilter: ['data-mbu-dock', 'data-mbu-page', 'data-mbu-st', 'data-mbu-eh']",
+        "replace": "attributeFilter: ['data-mbu-dock', 'data-mbu-page', 'data-mbu-st']"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "Event Horizon.s mark set after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "the <html> observer does not watch data-mbu-st",
+    "why": "String Theory writes its mark at its start too; a late one would wait for the next render.",
+    "edits": [
+      {
+        "find": "attributeFilter: ['data-mbu-dock', 'data-mbu-page', 'data-mbu-st', 'data-mbu-eh']",
+        "replace": "attributeFilter: ['data-mbu-dock', 'data-mbu-page', 'data-mbu-eh']"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "String Theory.s mark set after the render",
     "expect": "fail"
   }
 ]

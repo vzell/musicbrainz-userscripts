@@ -40,16 +40,18 @@ const TRACKS_BTN = 'button[data-label="Show all Tracks for Release"]';
  * (MusicBrainz's page showing), as after the user switched it off once.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ settings?: Object, noLauncher?: boolean, c3?: string, st?: string, rebind?: Object }} [opts]
- *   `c3`, `st`, `rebind`: the simulator's `__EH_SIM_C3__` ('keep' / 'off'),
- *   String Theory's version mark and EH's rebound keys (eh-body-swap.js).
+ * @param {{ settings?: Object, noLauncher?: boolean, c3?: string, st?: string, eh?: string, rebind?: Object }} [opts]
+ *   `c3`, `st`, `eh`, `rebind`: the simulator's `__EH_SIM_C3__` ('keep' /
+ *   'off'), String Theory's version mark, a standalone Event Horizon's
+ *   version mark and EH's rebound keys (eh-body-swap.js).
  * @returns {Promise<void>}
  */
-async function openRelease(page, { settings = {}, noLauncher = false, c3 = '', st = '', rebind = null } = {}) {
+async function openRelease(page, { settings = {}, noLauncher = false, c3 = '', st = '', eh = '', rebind = null } = {}) {
     const flags = [`window.__EH_SIM_START_ON__ = false;`];
     if (noLauncher) flags.push('window.__EH_SIM_NO_LAUNCHER__ = true;');
     if (c3) flags.push(`window.__EH_SIM_C3__ = ${JSON.stringify(c3)};`);
     if (st) flags.push(`window.__EH_SIM_ST__ = ${JSON.stringify(st)};`);
+    if (eh) flags.push(`window.__EH_SIM_EH__ = ${JSON.stringify(eh)};`);
     if (rebind) flags.push(`window.__EH_SIM_REBIND__ = ${JSON.stringify(rebind)};`);
     await page.context().addInitScript({ content: flags.join(' ') });
     await page.context().addInitScript({ content: SIM });
@@ -144,11 +146,18 @@ test.describe('Event Horizon\'s single-letter keys on MusicBrainz\'s page', () =
 // be swallowed. The marks need an EH that honours keys-keep, known only from
 // String Theory's <html data-mbu-st> version (≥ 2026.11.20.165956, upstream
 // 352510c; 2026.11.20.164048 has keys-off without keep, where the marks would
-// take V). Elsewhere, and on the initial page (vzell, 2026-11-21), the letter
+// take V) or a standalone Event Horizon's <html data-mbu-eh> (≥
+// 2026.11.22.184100, d8c0030). Elsewhere, and on the initial page (vzell, 2026-11-21), the letter
 // guard stays, now with `u`.
 
 const ST_KEEP = '2026.11.20.165956';
 const ST_OLD = '2026.11.20.164048';
+// A standalone Event Horizon marks <html data-mbu-eh> with its version since
+// 2026.11.22.184100 (EH:134 at d8c0030, #938 answer 2026-11-21), a build that
+// honours keys-keep; none inside String Theory. A lower value never shipped:
+// it stands for a build the floor must keep out.
+const EH_KEEP = '2026.11.22.184100';
+const EH_OLD = '2026.11.21.190000';
 
 /**
  * @param {import('@playwright/test').Page} page
@@ -240,6 +249,46 @@ test.describe('C3: data-mbu-keys-off + data-mbu-keys-keep while our table shows'
         expect(await keysMarks(page)).toEqual({ off: null, keep: null });
         expect(await pressOnPage(page, ['u', 'h'])).toEqual([]);
         await expect(page.locator('#mb-filter-container')).toBeVisible();
+    });
+
+    test('a standalone Event Horizon with its version mark: the marks go up, a toggle rebound to "h" works', async ({ page }) => {
+        await openRelease(page, { c3: 'keep', eh: EH_KEEP, rebind: { view: 'h' } });
+        expect(await keysMarks(page)).toEqual({ off: null, keep: null });
+        await renderTracks(page);
+        // Guarantee: data-mbu-eh counts like String Theory's mark.
+        expect(await keysMarks(page)).toEqual({ off: 'saed', keep: 'toggle' });
+        expect(await pressOnPage(page, ['u'])).toEqual([]);
+        expect(await pressOnPage(page, ['h'])).toEqual(['h']);
+        expect(await page.evaluate(() => window.__ehSim.isOn())).toBe(true);
+        await expect.poll(() => keysMarks(page)).toEqual({ off: null, keep: null });
+        expect(await pressOnPage(page, ['h'])).toEqual(['h']);
+        await expect.poll(() => keysMarks(page)).toEqual({ off: 'saed', keep: 'toggle' });
+    });
+
+    test('a standalone Event Horizon mark below 2026.11.22.184100: no marks, V works, u is guarded', async ({ page }) => {
+        await openRelease(page, { c3: 'off', eh: EH_OLD });
+        await renderTracks(page);
+        // Guarantee: the floor applies to data-mbu-eh too (keys-off would take V here).
+        expect(await keysMarks(page)).toEqual({ off: null, keep: null });
+        expect(await pressOnPage(page, ['u', 'h'])).toEqual([]);
+        expect(await pressOnPage(page, ['v'])).toEqual(['v']);
+    });
+
+    test('Event Horizon\'s mark set after the render: the marks follow without another render', async ({ page }) => {
+        await openRelease(page, { c3: 'keep' });
+        await renderTracks(page);
+        expect(await keysMarks(page)).toEqual({ off: null, keep: null });
+        // Guarantee: EH can start after us; the <html> observer sees its mark.
+        await page.evaluate((v) => document.documentElement.setAttribute('data-mbu-eh', v), EH_KEEP);
+        await expect.poll(() => keysMarks(page)).toEqual({ off: 'saed', keep: 'toggle' });
+    });
+
+    test('String Theory\'s mark set after the render: the marks follow without another render', async ({ page }) => {
+        await openRelease(page, { c3: 'keep' });
+        await renderTracks(page);
+        expect(await keysMarks(page)).toEqual({ off: null, keep: null });
+        await page.evaluate((v) => document.documentElement.setAttribute('data-mbu-st', v), ST_KEEP);
+        await expect.poll(() => keysMarks(page)).toEqual({ off: 'saed', keep: 'toggle' });
     });
 
     test('another script\'s keys-off is never overwritten or removed, and gets no keys-keep', async ({ page }) => {

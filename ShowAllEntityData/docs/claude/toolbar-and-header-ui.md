@@ -828,8 +828,13 @@ key it is bound to. Rules:
 - Only when EH is known to honour keys-keep (`_ehKeysKeepHonoured()`):
   String Theory's `<html data-mbu-st>` version ≥ `_EH_KEYS_KEEP_ST_MIN`
   (2026.11.20.165956, upstream `352510c`; 2026.11.20.164048 has keys-off
-  without keep, where the marks take V). A standalone EH publishes no
-  version, so it keeps the letter guard.
+  without keep, where the marks take V), or a standalone EH's
+  `<html data-mbu-eh>` ≥ `_EH_KEYS_KEEP_EH_MIN` (2026.11.22.184100, EH:134
+  at `d8c0030`, #938 answer 2026-11-21; inside String Theory EH sets none).
+  Both through `_mbuVersionMarkAtLeast()`. An older standalone EH has no
+  mark and keeps the letter guard. Either mark can come after our render
+  (each script writes it at its own start), so the <html> observer watches
+  `data-mbu-st` and `data-mbu-eh` too.
 - Ownership: keys-off set only when absent, removed only while `saed`;
   keys-keep set only beside our keys-off, removed only when ours
   (`_mbuInterop.keysKeepOurs`) and still `toggle`; a keys-keep already there
@@ -895,7 +900,8 @@ init code (no TDZ). One `MutationObserver` on `<html>` attributes
 - **Keys marks** (`_mbuKeysSync()`, `sa_block_eh_single_keys`):
   `<html data-mbu-keys-off="saed" data-mbu-keys-keep="toggle">` while a table
   shows, under the same observer and render-tail call as the quiet mark, but
-  only with String Theory ≥ 2026.11.20.165956; the rules are in "Event
+  only with String Theory ≥ 2026.11.20.165956 or a standalone Event Horizon
+  ≥ 2026.11.22.184100 (`data-mbu-eh`); the rules are in "Event
   Horizon's single keys are ignored on MusicBrainz's page" above. Its way
   back is the setting (no ☰ row: V still switches EH on).
 - **Menu launchers** (`_ehMenuSync()`): hidden `button[data-mbu-menu-item]`

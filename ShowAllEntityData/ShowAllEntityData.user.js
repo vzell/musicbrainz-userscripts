@@ -864,7 +864,7 @@
             label: "Keep Event Horizon's keys off MusicBrainz's page",
             type: 'checkbox',
             default: true,
-            description: "With majkinetor's Event Horizon (or String Theory) installed, its keys also work on MusicBrainz's own page, where one stray key press leaves the page, and a rendered table with it. On: while a table of ours shows and String Theory is 2026.11.20.165956 or newer, the page asks Event Horizon to leave all its keys alone except its on/off switch (also its player's keys, U and Ctrl+P, which then prints again); before a button is pressed, or with a standalone or older Event Horizon, its single-letter keys (H editing history, E edit, R relationships, O, C, T, D, A, S, P, U, the full stop and the comma) are ignored. V (switch Event Horizon on or off) and every key inside Event Horizon's own view keep working. Keys you rebound in Event Horizon are not known here, except that its on/off switch keeps working on a table under the newer String Theory."
+            description: "With majkinetor's Event Horizon (or String Theory) installed, its keys also work on MusicBrainz's own page, where one stray key press leaves the page, and a rendered table with it. On: while a table of ours shows and String Theory is 2026.11.20.165956 or newer (or a standalone Event Horizon 2026.11.22.184100 or newer), the page asks Event Horizon to leave all its keys alone except its on/off switch (also its player's keys, U and Ctrl+P, which then prints again); before a button is pressed, or with an older Event Horizon or String Theory, its single-letter keys (H editing history, E edit, R relationships, O, C, T, D, A, S, P, U, the full stop and the comma) are ignored. V (switch Event Horizon on or off) and every key inside Event Horizon's own view keep working. Keys you rebound in Event Horizon are not known here, except that its on/off switch keeps working on a table under those newer versions."
         },
 
         sa_keyboard_shortcut_prefix: {
@@ -112418,7 +112418,7 @@ ${sections.join('\n')}
      * palette live in its own GM storage and cannot be known here. Ctrl+P
      * (its player) is not taken: that would take the browser's print dialog.
      * Used only where the C3 marks are not up (`_mbuKeysSync()`): the
-     * initial page, a standalone Event Horizon, an older String Theory.
+     * initial page, an older Event Horizon or String Theory.
      */
     const _EH_SINGLE_KEYS = new Set(['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 's', 'p', 'u', '.', ',']);
 
@@ -112427,29 +112427,51 @@ ${sections.join('\n')}
      * `<html data-mbu-keys-keep="toggle">` (upstream `352510c`, #938 answer
      * 2026-11-20; checked 2026-11-21: 2026.11.20.164048 honours keys-off
      * without keys-keep, so the marks there would take V). String Theory
-     * writes its version to `<html data-mbu-st>`; a standalone Event Horizon
-     * publishes none.
+     * writes its version to `<html data-mbu-st>`.
      */
     const _EH_KEYS_KEEP_ST_MIN = '2026.11.20.165956';
 
     /**
+     * The first standalone Event Horizon that writes its version to
+     * `<html data-mbu-eh>` (EH:134 at `d8c0030`, #938 answer 2026-11-21;
+     * inside String Theory it writes none). It honours `data-mbu-keys-keep`,
+     * and no earlier build carries the mark, so the floor only keeps out a
+     * value that should not exist.
+     */
+    const _EH_KEYS_KEEP_EH_MIN = '2026.11.22.184100';
+
+    /**
+     * Whether a version mark on `<html>` reads at least `min`, compared
+     * number by number. A missing or unreadable mark is false.
+     *
+     * @param {string} attr - the `<html>` attribute (`data-mbu-st`, `data-mbu-eh`)
+     * @param {string} min - the lowest version that counts, dot-separated
+     * @returns {boolean}
+     */
+    function _mbuVersionMarkAtLeast(attr, min) {
+        const have = (document.documentElement.getAttribute(attr) || '').match(/\d+/g);
+        const want = min.split('.').map(Number);
+        if (!have || have.length < want.length) return false;
+        for (let i = 0; i < want.length; i++) {
+            const n = Number(have[i]);
+            if (n !== want[i]) return n > want[i];
+        }
+        return true;
+    }
+
+    /**
      * Whether the Event Horizon on this page is known to honour
-     * `data-mbu-keys-keep`: String Theory's `<html data-mbu-st>` version is
-     * at least `_EH_KEYS_KEEP_ST_MIN`, compared number by number. A missing
-     * or unreadable mark is false (a standalone Event Horizon, an older
-     * String Theory): the marks would suspend its V too there.
+     * `data-mbu-keys-keep`: String Theory's `<html data-mbu-st>` is at least
+     * `_EH_KEYS_KEEP_ST_MIN`, or a standalone Event Horizon's
+     * `<html data-mbu-eh>` at least `_EH_KEYS_KEEP_EH_MIN`. Neither mark
+     * (an older standalone Event Horizon, an older String Theory) is false:
+     * the marks would suspend its V too there.
      *
      * @returns {boolean}
      */
     function _ehKeysKeepHonoured() {
-        const have = (document.documentElement.getAttribute('data-mbu-st') || '').match(/\d+/g);
-        const min = _EH_KEYS_KEEP_ST_MIN.split('.').map(Number);
-        if (!have || have.length < min.length) return false;
-        for (let i = 0; i < min.length; i++) {
-            const n = Number(have[i]);
-            if (n !== min[i]) return n > min[i];
-        }
-        return true;
+        return _mbuVersionMarkAtLeast('data-mbu-st', _EH_KEYS_KEEP_ST_MIN) ||
+            _mbuVersionMarkAtLeast('data-mbu-eh', _EH_KEYS_KEEP_EH_MIN);
     }
 
     /**
@@ -112479,8 +112501,8 @@ ${sections.join('\n')}
      * Installed once, at page init, MusicBrainz only: it covers the initial
      * page and every render after it.
      *
-     * While our C3 marks are up (`_mbuKeysSync()`: a table shows, and String
-     * Theory's Event Horizon honours `data-mbu-keys-keep`), it takes nothing:
+     * While our C3 marks are up (`_mbuKeysSync()`: a table shows, and the
+     * Event Horizon on the page honours `data-mbu-keys-keep`), it takes nothing:
      * Event Horizon itself then leaves every command but its on/off one, and
      * exempts that one by COMMAND, whatever key it is rebound to. A letter
      * list here would swallow a toggle rebound to, say, `h`.
@@ -112557,9 +112579,12 @@ ${sections.join('\n')}
      * Installs, once, the `<html>` attribute observer behind the #938
      * conventions: Event Horizon toggles `data-mbu-dock` (its view shows) and
      * writes `data-mbu-page` (the path it shows) on `<html>`, which survives
-     * its body swaps. Every change re-derives the menu launchers and the quiet
-     * mark. Only those two attributes are observed, so our own
-     * `data-mbu-quiet` write cannot loop back here.
+     * its body swaps; String Theory and a standalone Event Horizon write
+     * their version marks (`data-mbu-st`, `data-mbu-eh`) at their start,
+     * which can come after ours, so a table already shown gets the keys marks
+     * then. Every change re-derives the menu launchers, the quiet mark and
+     * the keys marks. Only those four attributes are observed, so our own
+     * `data-mbu-quiet` and `data-mbu-keys-*` writes cannot loop back here.
      *
      * @returns {void}
      */
@@ -112567,7 +112592,7 @@ ${sections.join('\n')}
         if (_mbuInterop.observing || _foreignHost) return;
         _mbuInterop.observing = true;
         new MutationObserver(() => { _ehMenuSync(); _mbuQuietSync(); _mbuKeysSync(); })
-            .observe(document.documentElement, { attributes: true, attributeFilter: ['data-mbu-dock', 'data-mbu-page'] });
+            .observe(document.documentElement, { attributes: true, attributeFilter: ['data-mbu-dock', 'data-mbu-page', 'data-mbu-st', 'data-mbu-eh'] });
     }
 
     /**
@@ -112606,8 +112631,9 @@ ${sections.join('\n')}
      * user rebound it to): its single letters, `u`, Ctrl+P, Ctrl+L and its
      * player's keys stay off our table. Up while a table of ours shows on
      * MusicBrainz's page (as `data-mbu-quiet`), `sa_block_eh_single_keys` is
-     * on and String Theory's Event Horizon is known to honour keys-keep
-     * (`_ehKeysKeepHonoured()`); down while Event Horizon's view shows. The
+     * on and the Event Horizon on the page is known to honour keys-keep
+     * (`_ehKeysKeepHonoured()`: String Theory's or a standalone Event
+     * Horizon's version mark); down while Event Horizon's view shows. The
      * initial page keeps the letter guard (`_ehKeyGuardInstall()`; vzell,
      * 2026-11-21: marks there would take Event Horizon's player keys on
      * every page this script runs on).

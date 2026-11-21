@@ -138,7 +138,7 @@ function snapshotState(page) {
             bodies: bodies.length,
             documentBodyIsMb: document.body === mbBody,
             mbBodyHidden: mbBody ? mbBody.hidden : null,
-            htmlMarks: ['data-mbu-page', 'data-mbu-release', 'data-mbu-dock', 'data-mbu-st', 'data-mbu-quiet', 'data-mbu-keys-off', 'data-mbu-keys-keep'].filter((a) => document.documentElement.hasAttribute(a)).map((a) => `${a}=${document.documentElement.getAttribute(a)}`),
+            htmlMarks: ['data-mbu-page', 'data-mbu-release', 'data-mbu-dock', 'data-mbu-st', 'data-mbu-eh', 'data-mbu-quiet', 'data-mbu-keys-off', 'data-mbu-keys-keep'].filter((a) => document.documentElement.hasAttribute(a)).map((a) => `${a}=${document.documentElement.getAttribute(a)}`),
             saBar: bar ? { inBody: bodyIdx(bar), visible: seen(bar), h1: (bar.closest('h1') || {}).textContent ? bar.closest('h1').textContent.trim().slice(0, 60) : null, inApp: !!bar.closest('#app') } : null,
             saButtons: buttons.map((b) => ({ label: b.getAttribute('data-label'), inBody: bodyIdx(b), visible: seen(b) })),
             saFloatingPerBody: floating,
