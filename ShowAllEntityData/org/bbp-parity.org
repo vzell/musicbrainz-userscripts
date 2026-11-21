@@ -12,41 +12,41 @@ Env: 2026-11-14 · petri · reading BBP's doc/*.md and code · n/a
 
 State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 
-| BBP feature or check                                                         | BBP source                                      | SAED counterpart                                                                      | State | Batch |
-|------------------------------------------------------------------------------+-------------------------------------------------+---------------------------------------------------------------------------------------+-------+-------|
-| Onstage page's tags merged                                                   | =fetchOnstageCompanionTags=                     | =_bbTagPagesStart()= (9.99.1625), with -N siblings and -1, which BBP lacks            | DONE  |     — |
-| Save / Load a processed page                                                 | doc/CACHE.md                                    | Save to disk / Load from disk                                                         | DONE  |     — |
-| SmartTable (YEAR, LIST, HOME, Recent changes)                                | doc/SMARTTABLE.md                               | bb-year, bb-year-list, bb-home, bb-recent-changes                                     | DONE  |     — |
-| Keyboard shortcuts                                                           | doc/KEYBOARD.md (a port FROM SAED)              | SAED's own                                                                            | DONE  |     — |
-| Lightbox, icons and panels per tab                                           | doc/ICONS_PANELS.md                             | the art viewer, the window's sections, the bb-event head                              | DONE  |     — |
-| Scheduled / start time blocks                                                | =extractTimingBlocks=                           | the Start column (=_bbEvpView=), the Event card                                       | DONE  |     — |
-| Tour name annotation                                                         | =checkEventTourTags= (display half)             | the Event card's Tour, from the tour tags                                             | DONE  |     — |
-| Filter with highlighting                                                     | doc/FILTERING.md                                | the table engine's filters                                                            | DONE  |     — |
-| YEAR vs DETAIL event name (✅/❌, early/late as info)                        | =extractDetailEventName=, =normalizeDetailName= | finding on the year table's Event cell, once ▶ Pages has read the row                 | DONE  |     1 |
-| Anchor: the year page's anchor = the DETAIL page's "Info & Setlist" fragment | doc/ANCHORS.md check 1                          | finding                                                                               | DONE  |     1 |
-| Anchor: it starts with =dateToAnchor(date)= (DDMMYY)                         | ANCHORS check 2                                 | finding, no request: the row has both                                                 | DONE  |     1 |
-| Anchor: the "Info & Setlist" href's year = the event's year (1949-64 slug)   | ANCHORS check 3                                 | finding                                                                               | DONE  |     1 |
-| LIST page event title vs YEAR page                                           | doc/LIST_PAGE.md                                | finding on bb-year-list (needs the YEAR page: one request per year)                   | DONE  |     2 |
-| Setlist YEAR vs DETAIL (LCS diff, char diffs)                                | doc/SETLIST.md                                  | finding + a diff card on the year row (the window's setlist is the DETAIL one)        | DONE  |     2 |
-| Venue name: DETAIL title's venue part vs the venue page's title              | =findVenueLink=, =renderVenueInfo=              | finding; one more request per row (the venue page), on ▶ Pages only                   | DONE  |     2 |
-| Expected tags: date parts, day suffix, event type                            | =computeExpectedTags=                           | =bb-tag-missing= / =bb-tag-spurious=: the Tags card, the window, the year table's Tags | DONE  |     3 |
-| Expected tags: content: setlist, handwr., printed, storyteller, eyewitness   | =computeExpectedTags= table                     | the content family (=…_content=, off): 154 shows; ticket from a ticket image          | DONE  |    3b |
-| Expected tags: content: news, memorabilia, bootleg, livedl, soundcheck, …    | =computeExpectedTags= table                     | not ported: the wiki does not tag them by a rule the page shows (probe)               | NOT   |    3b |
-| Expected tags: tour premiere count + prem                                    | =countTourPremiereSongs=                        | same two findings                                                                     | DONE  |     3 |
-| Expected tags: tour association                                              | =checkEventTourTags=, =TOUR_DEFINITIONS=        | the tour family (=sa_bb_tag_family_tour=, off), the table in the feed: 49 shows       | DONE  |    3b |
-| Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | the place family (=…_place=, off): city, state, country, regions, venue (feed map)    | DONE  |    3b |
-| Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | the cast family (=…_cast=, off): onstage, names; studio and guest not checked         | DONE  |    3b |
-| Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | the songs family (=…_songs=, off): the feed's song map, the link's title; 465 shows   | DONE  |    3b |
-| Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious=: batch 3, tour; content: storyteller, eyewitness                    | DONE  |  3/3b |
-| Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | NOT (vzell, 2026-11-19): each finding says its reason in words, in the cell and card  | NOT   |    3b |
-| VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | Tags card + window: kind, letter, banner, song title; dates/place/names left out      | PART  |     4 |
-| Help-icon tag check                                                          | =hasHelpIcon=                                   | the icon family of =bb-tag-missing= / =bb-tag-spurious= (Help Us and Featured)        | DONE  |     4 |
-| HOME page: fetch every year, mismatch filter                                 | doc/HOME_PAGE.md                                | bb-home; /YYYY-list "all years"; All errors (9.99.1655); Read every row (9.99.1658)   | DONE  |     — |
-| ⇄ Original Page toggle                                                       | every page                                      | the wiki's page folded under "Brucebase page"                                         | DONE  |     — |
-| The sticky bar, Ctrl+B                                                       | =toggleStickyBar=                               | SAED's toolbar                                                                        | DONE  |     — |
-| Running beside SAED on one page (Track A idea 6)                             | every page it changes                           | SAED stands aside with a notice (=_bbBbpPresent()=), never a broken table             | DONE  |     — |
-| Dependent page named differently from its show (Track A idea 4)              | =dependent-names.awk= (0.24.0), feed 1.6        | =bb-feed-name= ⚠️ ⇋ on the page and its show (rows, head, window): 36 pages           | DONE  | feed  |
-| URL shortened differently from the title                                     | =checkURLandTitles.sh= (=URL-shortening=)       | NOT (2026-11-20): nearly all 4,304 rows are its derivation's variants, not errors     | NOT   | feed  |
+| BBP feature or check                                                         | BBP source                                      | SAED counterpart                                                                       | State | Batch |
+|------------------------------------------------------------------------------+-------------------------------------------------+----------------------------------------------------------------------------------------+-------+-------|
+| Onstage page's tags merged                                                   | =fetchOnstageCompanionTags=                     | =_bbTagPagesStart()= (9.99.1625), with -N siblings and -1, which BBP lacks             | DONE  | —     |
+| Save / Load a processed page                                                 | doc/CACHE.md                                    | Save to disk / Load from disk                                                          | DONE  | —     |
+| SmartTable (YEAR, LIST, HOME, Recent changes)                                | doc/SMARTTABLE.md                               | bb-year, bb-year-list, bb-home, bb-recent-changes                                      | DONE  | —     |
+| Keyboard shortcuts                                                           | doc/KEYBOARD.md (a port FROM SAED)              | SAED's own                                                                             | DONE  | —     |
+| Lightbox, icons and panels per tab                                           | doc/ICONS_PANELS.md                             | the art viewer, the window's sections, the bb-event head                               | DONE  | —     |
+| Scheduled / start time blocks                                                | =extractTimingBlocks=                           | the Start column (=_bbEvpView=), the Event card                                        | DONE  | —     |
+| Tour name annotation                                                         | =checkEventTourTags= (display half)             | the Event card's Tour, from the tour tags                                              | DONE  | —     |
+| Filter with highlighting                                                     | doc/FILTERING.md                                | the table engine's filters                                                             | DONE  | —     |
+| YEAR vs DETAIL event name (✅/❌, early/late as info)                        | =extractDetailEventName=, =normalizeDetailName= | finding on the year table's Event cell, once ▶ Pages has read the row                  | DONE  | 1     |
+| Anchor: the year page's anchor = the DETAIL page's "Info & Setlist" fragment | doc/ANCHORS.md check 1                          | finding                                                                                | DONE  | 1     |
+| Anchor: it starts with =dateToAnchor(date)= (DDMMYY)                         | ANCHORS check 2                                 | finding, no request: the row has both                                                  | DONE  | 1     |
+| Anchor: the "Info & Setlist" href's year = the event's year (1949-64 slug)   | ANCHORS check 3                                 | finding                                                                                | DONE  | 1     |
+| LIST page event title vs YEAR page                                           | doc/LIST_PAGE.md                                | finding on bb-year-list (needs the YEAR page: one request per year)                    | DONE  | 2     |
+| Setlist YEAR vs DETAIL (LCS diff, char diffs)                                | doc/SETLIST.md                                  | finding + a diff card on the year row (the window's setlist is the DETAIL one)         | DONE  | 2     |
+| Venue name: DETAIL title's venue part vs the venue page's title              | =findVenueLink=, =renderVenueInfo=              | finding; one more request per row (the venue page), on ▶ Pages only                    | DONE  | 2     |
+| Expected tags: date parts, day suffix, event type                            | =computeExpectedTags=                           | =bb-tag-missing= / =bb-tag-spurious=: the Tags card, the window, the year table's Tags | DONE  | 3     |
+| Expected tags: content: setlist, handwr., printed, storyteller, eyewitness   | =computeExpectedTags= table                     | the content family (=…_content=, off): 154 shows; ticket from a ticket image           | DONE  | 3b    |
+| Expected tags: content: news, memorabilia, bootleg, livedl, soundcheck, …    | =computeExpectedTags= table                     | not ported: the wiki does not tag them by a rule the page shows (probe)                | NOT   | 3b    |
+| Expected tags: tour premiere count + prem                                    | =countTourPremiereSongs=                        | same two findings                                                                      | DONE  | 3     |
+| Expected tags: tour association                                              | =checkEventTourTags=, =TOUR_DEFINITIONS=        | the tour family (=sa_bb_tag_family_tour=, off), the table in the feed: 49 shows        | DONE  | 3b    |
+| Expected tags: location (title / venue)                                      | =checkEventNameLocationTags= …                  | the place family (=…_place=, off): city, state, country, regions, venue (feed map)     | DONE  | 3b    |
+| Expected tags: relations of the cast tab                                     | =checkOnStageRelationTags=                      | the cast family (=…_cast=, off): onstage, names; studio and guest not checked          | DONE  | 3b    |
+| Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | the songs family (=…_songs=, off): the feed's song map, the link's title; 465 shows    | DONE  | 3b    |
+| Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious=: batch 3, tour; content: storyteller, eyewitness                     | DONE  | 3/3b  |
+| Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | NOT (vzell, 2026-11-19): each finding says its reason in words, in the cell and card   | NOT   | 3b    |
+| VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | Tags card + window: kind, letter, banner, song title; dates/place/names left out       | PART  | 4     |
+| Help-icon tag check                                                          | =hasHelpIcon=                                   | the icon family of =bb-tag-missing= / =bb-tag-spurious= (Help Us and Featured)         | DONE  | 4     |
+| HOME page: fetch every year, mismatch filter                                 | doc/HOME_PAGE.md                                | bb-home; /YYYY-list "all years"; All errors (9.99.1655); Read every row (9.99.1658)    | DONE  | —     |
+| ⇄ Original Page toggle                                                       | every page                                      | the wiki's page folded under "Brucebase page"                                          | DONE  | —     |
+| The sticky bar, Ctrl+B                                                       | =toggleStickyBar=                               | SAED's toolbar                                                                         | DONE  | —     |
+| Running beside SAED on one page (Track A idea 6)                             | every page it changes                           | SAED stands aside with a notice (=_bbBbpPresent()=), never a broken table              | DONE  | —     |
+| Dependent page named differently from its show (Track A idea 4)              | =dependent-names.awk= (0.24.0), feed 1.6        | =bb-feed-name= ⚠️ ⇋ on the page and its show (rows, head, window): 36 pages             | DONE  | feed  |
+| URL shortened differently from the title                                     | =checkURLandTitles.sh= (=URL-shortening=)       | NOT (2026-11-20): nearly all 4,304 rows are its derivation's variants, not errors      | NOT   | feed  |
 
 * Batch 1: the year table's name and anchor findings (next)
 
@@ -136,20 +136,20 @@ vzell checked the pages live (2026-11-14: "all tested live") and the branch is m
 
 On each page press *Show all events*. "With the table" needs nothing more. "After ▶ Pages" needs the ▶ Pages button in the On stage header and the row scrolled into view (one page a second).
 
-| Page                                | Step             | Expected                                                                                                                                             |
-|-------------------------------------+------------------+------------------------------------------------------------------------------------------------------------------------------------------------------|
-| https://brucebase.wikidot.com/1972  | with the table   | ⚠️ menu: "anchor with another date" 1 (1972-05-00 Mediasound, yellow Event cell), "anchor letter differs" 41; no request is made                      |
-| https://brucebase.wikidot.com/1972  | after ▶ Pages    | 1972-05-00 Mediasound turns red: ❌ "links another entry" (its page links /1972#000572b, the anchor is 000472b)                                        |
-| https://brucebase.wikidot.com/1972  | after ▶ Pages    | 1972-12-29 Dayton Hara Arena and 1972-06-00 Point Pleasant: ❌ "named differently"; hover: both names, above "As written on the site"                  |
-| https://brucebase.wikidot.com/1972  | after ▶ Pages    | 1972-02-12 Sunshine In (two rows): ⚠️ "adds (Early), (Late), …"; 1972-01-21 The Captain's Garter: nothing ("(The)" is moved)                          |
-| https://brucebase.wikidot.com/1973  | after ▶ Pages    | 1973-04-28 Cole Field House: ❌ named differently AND ⚠️ two blanks (the hover shows ␣␣ before "College Park")                                         |
-| https://brucebase.wikidot.com/1967  | after ▶ Pages    | 1967-08-00 Private Property, Howell: ❌ named differently ("Unknown Location" on its page)                                                            |
-| https://brucebase.wikidot.com/2026  | after ▶ Pages    | 2026-08-28 The Stone Pony, Summer Stage: ❌ named differently AND ⚠️ two blanks                                                                        |
-| any of them                         | a menu row       | a click leaves exactly the flagged rows, a second click brings all back; ⚙️ → ⚠️ Findings has the six switches and three tints                         |
-| https://brucebase.wikidot.com/1972  | Save / Load disk | after ▶ Pages, Save to Disk, reload, Load from Disk: the same cells are flagged, with no request                                                     |
-| https://brucebase.wikidot.com/1972  | with the table   | NEW: ❌ menu: "anchor used by two entries" 2 (1972-04-00 and 1972-05-00 Mediasound, both red; hover: "000472b" is on 2 entries)                       |
-| https://brucebase.wikidot.com/1972  | Save / Load disk | NEW: the ❌ and ⚠️ counts are the same before and after (39 and 68 became 41 and 68 with the two rows above); ▼ MB and ▶ Pages are in the headers       |
-| https://brucebase.wikidot.com/1972  | Save to Disk     | NEW: the dialog's title "Save Table Data" is one line at the left, also with the table wider than the window                                         |
+| Page                               | Step             | Expected                                                                                                                                         |
+|------------------------------------+------------------+--------------------------------------------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1972 | with the table   | ⚠️ menu: "anchor with another date" 1 (1972-05-00 Mediasound, yellow Event cell), "anchor letter differs" 41; no request is made                  |
+| https://brucebase.wikidot.com/1972 | after ▶ Pages    | 1972-05-00 Mediasound turns red: ❌ "links another entry" (its page links /1972#000572b, the anchor is 000472b)                                  |
+| https://brucebase.wikidot.com/1972 | after ▶ Pages    | 1972-12-29 Dayton Hara Arena and 1972-06-00 Point Pleasant: ❌ "named differently"; hover: both names, above "As written on the site"            |
+| https://brucebase.wikidot.com/1972 | after ▶ Pages    | 1972-02-12 Sunshine In (two rows): ⚠️ "adds (Early), (Late), …"; 1972-01-21 The Captain's Garter: nothing ("(The)" is moved)                      |
+| https://brucebase.wikidot.com/1973 | after ▶ Pages    | 1973-04-28 Cole Field House: ❌ named differently AND ⚠️ two blanks (the hover shows ␣␣ before "College Park")                                    |
+| https://brucebase.wikidot.com/1967 | after ▶ Pages    | 1967-08-00 Private Property, Howell: ❌ named differently ("Unknown Location" on its page)                                                       |
+| https://brucebase.wikidot.com/2026 | after ▶ Pages    | 2026-08-28 The Stone Pony, Summer Stage: ❌ named differently AND ⚠️ two blanks                                                                   |
+| any of them                        | a menu row       | a click leaves exactly the flagged rows, a second click brings all back; ⚙️ → ⚠️ Findings has the six switches and three tints                     |
+| https://brucebase.wikidot.com/1972 | Save / Load disk | after ▶ Pages, Save to Disk, reload, Load from Disk: the same cells are flagged, with no request                                                 |
+| https://brucebase.wikidot.com/1972 | with the table   | NEW: ❌ menu: "anchor used by two entries" 2 (1972-04-00 and 1972-05-00 Mediasound, both red; hover: "000472b" is on 2 entries)                  |
+| https://brucebase.wikidot.com/1972 | Save / Load disk | NEW: the ❌ and ⚠️ counts are the same before and after (39 and 68 became 41 and 68 with the two rows above); ▼ MB and ▶ Pages are in the headers |
+| https://brucebase.wikidot.com/1972 | Save to Disk     | NEW: the dialog's title "Save Table Data" is one line at the left, also with the table wider than the window                                     |
 
 Unverified: all of it on the live site (the fixtures are the mirror's pages; Claude made no request to the wiki). A page read before this update is asked once more (the stored records are from the older reader).
 
@@ -202,25 +202,25 @@ https://claude.ai/artifact/T1D2ghbx9zHHCh8jgfr5g7
 |-----------------------------------------+------------------------------+-------------------------------------------------------------------------------------------------------|
 | https://brucebase.wikidot.com/1966-list | Show this year's events      | nothing flagged, no request                                                                           |
 | https://brucebase.wikidot.com/1966-list | ▶ Pages (On stage header)    | ❌ 2: 1966-07-25 and 1966-07-26 "Business District"; hover: the year page says "UNKNOWN LOCATION"     |
-| https://brucebase.wikidot.com/2011-list | Show this year's events      | ⚠️ 1 at once: "2011-02-15 - Stone Hill Studio" (its link is /2011#000211)                             |
+| https://brucebase.wikidot.com/2011-list | Show this year's events      | ⚠️ 1 at once: "2011-02-15 - Stone Hill Studio" (its link is /2011#000211)                              |
 | https://brucebase.wikidot.com/2011-list | ▶ Pages                      | that row turns ❌ too (the year page has 2011-02-00 there); the 2011-02-00 row beside it stays clean  |
 | https://brucebase.wikidot.com/1973-list | ▶ Pages                      | ❌ 6, e.g. 1973-02-14 "New Gymnasium" (year page "VCU NEW GYM"), 1973-04-23 "Shaboo"                  |
 | https://brucebase.wikidot.com/1973-list | ▶ Pages, a Recording Session | its four columns fill (before: "no page of its own"); so does a row whose link ends in a letter       |
-| https://brucebase.wikidot.com/1972      | Show all events, ▶ Pages     | Venue ⚠️ on 1972-05-02 and 1972-05-00 CBS Records (venue page "CBS"); Mediasound, Sunshine In clean   |
-| https://brucebase.wikidot.com/1985      | Show all events, ▶ Pages     | Venue ⚠️ on 1985-06-15 Frankfurt and 1985-06-18 Munich ("West Germany" / "Germany"), 1985-08-07       |
+| https://brucebase.wikidot.com/1972      | Show all events, ▶ Pages     | Venue ⚠️ on 1972-05-02 and 1972-05-00 CBS Records (venue page "CBS"); Mediasound, Sunshine In clean    |
+| https://brucebase.wikidot.com/1985      | Show all events, ▶ Pages     | Venue ⚠️ on 1985-06-15 Frankfurt and 1985-06-18 Munich ("West Germany" / "Germany"), 1985-08-07        |
 | https://brucebase.wikidot.com/1985      | the job popup while reading  | the request count grows by one per venue as well as one per entry                                     |
 | https://brucebase.wikidot.com/1977      | Show all events              | nothing flagged for the listing, no request                                                           |
 | https://brucebase.wikidot.com/1977      | ▶ Pages                      | Event ❌ "missing from the year's listing" on 3: 1977-01-00 and 1977-04-00 Telegraph Hill, 1977-07-29 |
-| https://brucebase.wikidot.com/2025      | ▶ Pages                      | Event ⚠️ on 3: 2025-10-16 Claridge's, 2025-10-16 Television Centre, 2025-10-22 TCL Chinese Theatre    |
-| https://brucebase.wikidot.com/2011      | ▶ Pages                      | Event ⚠️ on 2011-02-15 Stone Hill Studio (the listing links it as #000211)                            |
+| https://brucebase.wikidot.com/2025      | ▶ Pages                      | Event ⚠️ on 3: 2025-10-16 Claridge's, 2025-10-16 Television Centre, 2025-10-22 TCL Chinese Theatre     |
+| https://brucebase.wikidot.com/2011      | ▶ Pages                      | Event ⚠️ on 2011-02-15 Stone Hill Studio (the listing links it as #000211)                             |
 | https://brucebase.wikidot.com/1977      | reload, Show all events      | the same 3 at once, without ▶ Pages and without a request (the listing is kept)                       |
-| https://brucebase.wikidot.com/1981      | Show all events, ▶ Pages     | Setlist ⚠️ on 1981-03-04 Lexington; ❌ on 1981-04-11 Zurich and 1981-06-05 London (scroll to them)    |
+| https://brucebase.wikidot.com/1981      | Show all events, ▶ Pages     | Setlist ⚠️ on 1981-03-04 Lexington; ❌ on 1981-04-11 Zurich and 1981-06-05 London (scroll to them)     |
 | https://brucebase.wikidot.com/1981      | hover 1981-03-04's Setlist   | card "A song is written differently": TWIST & SHOUT / TWIST AND SHOUT marked, "… 25 songs the same …" |
 | https://brucebase.wikidot.com/1981      | "Show all 27 songs", Esc     | every song listed; Esc closes; the pointer can move from the cell onto the card                       |
 | https://brucebase.wikidot.com/1981      | hover 1981-04-11's Setlist   | "The setlists differ": HUNGRY HEART under SOUNDCHECK only on the year page; pill "sets named …"       |
 | https://brucebase.wikidot.com/1980      | ▶ Pages, 1980-11-05 Tempe    | Setlist ❌: "NO MONEY DOWN - CADILLAC RANCH" only on the event page; CANDY'S ROOM's apostrophe marked |
-| https://brucebase.wikidot.com/1973      | ▶ Pages, 1973-10-06          | Setlist ⚠️ for the set name only: "Pre-show jam" against "Pre-Show Jam"                               |
-| https://brucebase.wikidot.com/1988      | ▶ Pages, September's shows   | Setlist ⚠️ on most: "Pre-show" against "Pre-Set"                                                      |
+| https://brucebase.wikidot.com/1973      | ▶ Pages, 1973-10-06          | Setlist ⚠️ for the set name only: "Pre-show jam" against "Pre-Show Jam"                                |
+| https://brucebase.wikidot.com/1988      | ▶ Pages, September's shows   | Setlist ⚠️ on most: "Pre-show" against "Pre-Set"                                                       |
 | any of them                             | Save to Disk, Load from Disk | the same cells are flagged, nothing is asked                                                          |
 
 * Batch 3: a show's expected tags against its actual tags (=feat/bb-findings-batch3=, 2026-11-15; merged 2026-11-16 as 9.99.1633–1635; vzell: "everything tested live, OK")
@@ -276,17 +276,17 @@ vzell first.
 older in five places): 4,998 events (gig 3,589, nogig 447, rehearsal 211, recording 564, interview 187; 12 "-N" pages
 left out), 3,252 of them with tags on other pages. With every rule unchanged 4,387 events (88 %) are flagged:
 
-| Family         | Events missing a tag | What is behind it                                                                        |
-|----------------+----------------------+------------------------------------------------------------------------------------------|
+| Family         | Events missing a tag | What is behind it                                                                             |
+|----------------+----------------------+-----------------------------------------------------------------------------------------------|
 | date parts     |                   28 | real; 7 in BruceParser's report, the other 27 flagged here are recordings (not covered there) |
-| day letter     |                   47 | real                                                                                     |
-| event type     |                   27 | real                                                                                     |
-| premiere count |                   56 | real                                                                                     |
-| tour           |                  169 | 116 are =tour_no=, expected from the alias line (a guess)                                |
-| place          |                  662 | mixed: =springsteenresidence= 70, =unitedkingdom= 60, Australian states, studios         |
-| songs          |                1,115 | the initials rule: "Mona" expects =m=, 'Paradise by the "C"' expects =pbt"=              |
-| cast           |                1,842 | =onstage= 584 and =studio= 464 from the tab alone, =guest= 407, a name on 684 events     |
-| content        |                2,459 | =memorabilia= 1,128, =news= 946: a tab with only ticket scans expects both               |
+| day letter     |                   47 | real                                                                                          |
+| event type     |                   27 | real                                                                                          |
+| premiere count |                   56 | real                                                                                          |
+| tour           |                  169 | 116 are =tour_no=, expected from the alias line (a guess)                                     |
+| place          |                  662 | mixed: =springsteenresidence= 70, =unitedkingdom= 60, Australian states, studios              |
+| songs          |                1,115 | the initials rule: "Mona" expects =m=, 'Paradise by the "C"' expects =pbt"=                   |
+| cast           |                1,842 | =onstage= 584 and =studio= 464 from the tab alone, =guest= 407, a name on 684 events          |
+| content        |                2,459 | =memorabilia= 1,128, =news= 946: a tab with only ticket scans expects both                    |
 
 Spurious tags: 1,358 events (tour 847, mostly =tour_no=; content 462; type 66; prem 26; date 18; letter 16). The four
 shipping families: 246 events (156 missing, 124 spurious).
@@ -311,33 +311,33 @@ Install the script from the branch =feat/bb-findings-batch3=. Every stored previ
 changed), so the first ▶ Pages of a year asks each page again. "▶ Pages" is the button in the On stage header; rows are
 read as they come into view, one page a second, and a show with a cast now takes two (its page, then its On stage page).
 
-| Page                                                                               | Step                                  | Expected                                                                                                              |
-|------------------------------------------------------------------------------------+---------------------------------------+-----------------------------------------------------------------------------------------------------------------------|
-| https://brucebase.wikidot.com/2016                                                 | Show all events                       | a new Tags column after Start, every cell "—"; nothing flagged for tags, no request                                   |
-| https://brucebase.wikidot.com/2016                                                 | ▶ Pages, the first rows               | 2016-01-16 Pittsburgh: Tags ❌, folded, "9+ missing" on top; 2016-01-19 Chicago: no mark, its first tag and ▶          |
-| https://brucebase.wikidot.com/2016                                                 | ▶ on Pittsburgh's Tags cell           | every tag a row, A–Z; the cast's (garrytallent, …) grey with ↪; ▶▤ in the Tags header unfolds every row               |
-| https://brucebase.wikidot.com/2016                                                 | hover Pittsburgh's Tags cell          | "Brucebase tags: an expected tag is missing: missing: 9+ (35 songs are in bold on the Setlist tab …)"                 |
-| https://brucebase.wikidot.com/2016                                                 | scroll to May, ▶ Pages on             | 2016-05-21 Madrid: ❌, "3 missing" and ⚠️ "2" both in view while folded                                                |
-| https://brucebase.wikidot.com/2016                                                 | scroll to September                   | 2016-09-06 interview, Stone Hill Studio: ⚠️ only, "nogig" in view                                                      |
-| https://brucebase.wikidot.com/2016                                                 | the ❌ and ⚠️ menus, all rows read     | "Brucebase tags: an expected tag is missing" 8, "… a tag that is not expected" 5; a click leaves those rows, again all |
-| https://brucebase.wikidot.com/2016                                                 | the job popup while reading           | the request count grows by two for a show with a cast (page, On stage page), three with its venue                     |
-| https://brucebase.wikidot.com/1983                                                 | Show all events, ▶ Pages, May–June    | four Hit Factory recordings (05-23, 05-24, 06-10, 06-13): ❌ a weekday missing, ⚠️ another weekday; no On stage request |
-| https://brucebase.wikidot.com/1967                                                 | Show all events, ▶ Pages              | six Café Wha? gigs (1967-05-00b … 1967-07-00b): ❌ the letter ("b missing")                                            |
-| https://brucebase.wikidot.com/2018                                                 | ▶ Pages, July                         | 2018-07-17 and 2018-07-18 Walter Kerr: ❌ "gig missing", ⚠️ "recording" (a second kind of page)                         |
-| https://brucebase.wikidot.com/2016-list                                            | Show this year's events, ▶ Pages      | the listing has the Tags column too, with the same marks                                                              |
-| https://brucebase.wikidot.com/2016                                                 | Save to Disk, reload, Load from Disk  | the same Tags cells and the same ❌/⚠️ counts, nothing asked                                                            |
-| https://brucebase.wikidot.com/2016                                                 | reload, Show all events (no ▶ Pages)  | the rows read before come back with their tags and marks, with no request                                             |
-| https://brucebase.wikidot.com/gig:2016-05-21-estadio-santiago-bernabeu-madrid-spain | Show the event                        | Tags card: first "The tags are checked once …" while the On stage page is read, then pills ❌ 1 missing, ⚠️ 1 not expected |
-| the same page                                                                      | look at the chips                     | "3 missing" red and dashed under On the page; "2" amber with ⚠️; the count beside "Tags" does not include the 3        |
-| the same page                                                                      | hover "3 missing", then "2"           | cards "Missing: 3" / "Not expected: 2" with the reason; under the chips both are written out                          |
-| the same page                                                                      | press ❌ 1 missing, press it again     | only the two marked chips, then all; "Findings 2" in Show does the same                                               |
-| https://brucebase.wikidot.com/gig:2016-01-19-united-center-chicago-il               | Show the event                        | "✓ date, letter, kind and premiere tags as expected", no pill, no marked chip                                         |
-| https://brucebase.wikidot.com/recording:1983-06-13-hit-factory-new-york-city-ny     | Show the event                        | at once (no other page): "monday missing" under Date, "wednesday" amber                                               |
-| https://brucebase.wikidot.com/gig:2026-08-28-stone-pony-asbury-park-nj              | Show the event                        | a ⚠️ after the byline "~ Gig at …"; hover: the title with "Summer Stage,␣␣Asbury Park"                                 |
-| https://brucebase.wikidot.com/2016                                                 | Ctrl+hover the Madrid link, Space     | the window: open "Tags (N)": the same chips, pills and sentences as on its page                                       |
-| https://brucebase.wikidot.com/2026                                                 | Ctrl+hover 2026-08-28 Stone Pony, Space | the window's title ends in ⚠️ with the same hover text                                                                |
-| any of them                                                                        | ⚙️ Settings → ⚠️ Findings              | three new: "Find Brucebase shows that lack a tag …", "… with a date, letter, kind or premiere tag that is not expected", the Tags tint |
-| https://brucebase.wikidot.com/2016                                                 | "lack a tag" off, reload, ▶ Pages     | no On stage page is asked (one request a show, plus venue); no ❌ for tags; the ⚠️ ones stay                            |
+| Page                                                                                | Step                                    | Expected                                                                                                                               |
+|-------------------------------------------------------------------------------------+-----------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/2016                                                  | Show all events                         | a new Tags column after Start, every cell "—"; nothing flagged for tags, no request                                                    |
+| https://brucebase.wikidot.com/2016                                                  | ▶ Pages, the first rows                 | 2016-01-16 Pittsburgh: Tags ❌, folded, "9+ missing" on top; 2016-01-19 Chicago: no mark, its first tag and ▶                          |
+| https://brucebase.wikidot.com/2016                                                  | ▶ on Pittsburgh's Tags cell             | every tag a row, A–Z; the cast's (garrytallent, …) grey with ↪; ▶▤ in the Tags header unfolds every row                                |
+| https://brucebase.wikidot.com/2016                                                  | hover Pittsburgh's Tags cell            | "Brucebase tags: an expected tag is missing: missing: 9+ (35 songs are in bold on the Setlist tab …)"                                  |
+| https://brucebase.wikidot.com/2016                                                  | scroll to May, ▶ Pages on               | 2016-05-21 Madrid: ❌, "3 missing" and ⚠️ "2" both in view while folded                                                                 |
+| https://brucebase.wikidot.com/2016                                                  | scroll to September                     | 2016-09-06 interview, Stone Hill Studio: ⚠️ only, "nogig" in view                                                                       |
+| https://brucebase.wikidot.com/2016                                                  | the ❌ and ⚠️ menus, all rows read       | "Brucebase tags: an expected tag is missing" 8, "… a tag that is not expected" 5; a click leaves those rows, again all                 |
+| https://brucebase.wikidot.com/2016                                                  | the job popup while reading             | the request count grows by two for a show with a cast (page, On stage page), three with its venue                                      |
+| https://brucebase.wikidot.com/1983                                                  | Show all events, ▶ Pages, May–June      | four Hit Factory recordings (05-23, 05-24, 06-10, 06-13): ❌ a weekday missing, ⚠️ another weekday; no On stage request                 |
+| https://brucebase.wikidot.com/1967                                                  | Show all events, ▶ Pages                | six Café Wha? gigs (1967-05-00b … 1967-07-00b): ❌ the letter ("b missing")                                                            |
+| https://brucebase.wikidot.com/2018                                                  | ▶ Pages, July                           | 2018-07-17 and 2018-07-18 Walter Kerr: ❌ "gig missing", ⚠️ "recording" (a second kind of page)                                         |
+| https://brucebase.wikidot.com/2016-list                                             | Show this year's events, ▶ Pages        | the listing has the Tags column too, with the same marks                                                                               |
+| https://brucebase.wikidot.com/2016                                                  | Save to Disk, reload, Load from Disk    | the same Tags cells and the same ❌/⚠️ counts, nothing asked                                                                            |
+| https://brucebase.wikidot.com/2016                                                  | reload, Show all events (no ▶ Pages)    | the rows read before come back with their tags and marks, with no request                                                              |
+| https://brucebase.wikidot.com/gig:2016-05-21-estadio-santiago-bernabeu-madrid-spain | Show the event                          | Tags card: first "The tags are checked once …" while the On stage page is read, then pills ❌ 1 missing, ⚠️ 1 not expected              |
+| the same page                                                                       | look at the chips                       | "3 missing" red and dashed under On the page; "2" amber with ⚠️; the count beside "Tags" does not include the 3                         |
+| the same page                                                                       | hover "3 missing", then "2"             | cards "Missing: 3" / "Not expected: 2" with the reason; under the chips both are written out                                           |
+| the same page                                                                       | press ❌ 1 missing, press it again      | only the two marked chips, then all; "Findings 2" in Show does the same                                                                |
+| https://brucebase.wikidot.com/gig:2016-01-19-united-center-chicago-il               | Show the event                          | "✓ date, letter, kind and premiere tags as expected", no pill, no marked chip                                                          |
+| https://brucebase.wikidot.com/recording:1983-06-13-hit-factory-new-york-city-ny     | Show the event                          | at once (no other page): "monday missing" under Date, "wednesday" amber                                                                |
+| https://brucebase.wikidot.com/gig:2026-08-28-stone-pony-asbury-park-nj              | Show the event                          | a ⚠️ after the byline "~ Gig at …"; hover: the title with "Summer Stage,␣␣Asbury Park"                                                  |
+| https://brucebase.wikidot.com/2016                                                  | Ctrl+hover the Madrid link, Space       | the window: open "Tags (N)": the same chips, pills and sentences as on its page                                                        |
+| https://brucebase.wikidot.com/2026                                                  | Ctrl+hover 2026-08-28 Stone Pony, Space | the window's title ends in ⚠️ with the same hover text                                                                                  |
+| any of them                                                                         | ⚙️ Settings → ⚠️ Findings                 | three new: "Find Brucebase shows that lack a tag …", "… with a date, letter, kind or premiere tag that is not expected", the Tags tint |
+| https://brucebase.wikidot.com/2016                                                  | "lack a tag" off, reload, ▶ Pages       | no On stage page is asked (one request a show, plus venue); no ❌ for tags; the ⚠️ ones stay                                            |
 
 Unverified: all of it on the live site (the fixtures and counts are the mirror's pages of 2026-11-15; Claude made no
 request to the wiki). The 2016 menu counts (8 and 5) are the mirror's 12 flagged shows of that year. Two things differ
@@ -380,20 +380,20 @@ request, kept); both icons, Help Us and Featured; inside the two existing findin
 Install the script from the branch =feat/bb-findings-help-icon=. Every stored preview and every stored year page is read
 once more (both readers changed).
 
-| Page                                                                                      | Step                              | Expected                                                                                             |
-|-------------------------------------------------------------------------------------------+-----------------------------------+------------------------------------------------------------------------------------------------------|
-| https://brucebase.wikidot.com/1968                                                        | Show all events, ▶ Pages          | 1968-05-00 Off Broad Street (the "a" entry): Tags ❌, "help missing"; hover: "The year page marks …" |
-| https://brucebase.wikidot.com/1968                                                        | ▶ Pages, June                     | 1968-06-22 Off Broad Street (both): no mark for "featured" (they have the star, which has no title) |
-| https://brucebase.wikidot.com/1968                                                        | ▶ on 1968-06-22a's Tags cell      | its cast is listed with ↪ (castiles, …): missing before, its On stage page has a shortened name     |
-| https://brucebase.wikidot.com/1966                                                        | Show all events, ▶ Pages, July    | 1966-07-25, -26 and -28: Tags ⚠️ "help" (tagged, no Help Us icon on the year page)                   |
-| https://brucebase.wikidot.com/1972                                                        | ▶ Pages, March                    | 1972-03-17 Arena, Richmond: ❌ "featured missing" (the star, no tag)                                  |
-| https://brucebase.wikidot.com/1978                                                        | ▶ Pages, August                   | 1978-08-30 Agora, Cleveland (the "b" entry): ⚠️ "featured" (tagged, no star)                         |
-| https://brucebase.wikidot.com/1968-list                                                   | Show this year's events, ▶ Pages  | the same marks on the listing's rows                                                                 |
-| https://brucebase.wikidot.com/gig:1968-05-00a-off-broad-street-coffee-house-red-bank-nj   | Show the event                    | Tags card: "help missing" under On the page, after one request for /1968; the reason under the chips |
-| https://brucebase.wikidot.com/gig:1966-07-25-unknown-location-asbury-park-nj              | Show the event                    | "help" amber with ⚠️: "Neither the year page nor the show's page has the Help Us icon."              |
-| https://brucebase.wikidot.com/gig:1968-03-10-hullabaloo-freehold-nj                       | Show the event                    | "✓ date, letter, kind, premiere and icon tags as expected"                                           |
-| https://brucebase.wikidot.com/1968                                                        | Ctrl+hover the 1968-05-00a link, Space | the window's Tags section: "help missing" (the year page is kept, no new request)                |
-| any show page                                                                             | both tag findings off, reload, Show the event | no request for the year page; the card without marks                                     |
+| Page                                                                                    | Step                                          | Expected                                                                                             |
+|-----------------------------------------------------------------------------------------+-----------------------------------------------+------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1968                                                      | Show all events, ▶ Pages                      | 1968-05-00 Off Broad Street (the "a" entry): Tags ❌, "help missing"; hover: "The year page marks …" |
+| https://brucebase.wikidot.com/1968                                                      | ▶ Pages, June                                 | 1968-06-22 Off Broad Street (both): no mark for "featured" (they have the star, which has no title)  |
+| https://brucebase.wikidot.com/1968                                                      | ▶ on 1968-06-22a's Tags cell                  | its cast is listed with ↪ (castiles, …): missing before, its On stage page has a shortened name      |
+| https://brucebase.wikidot.com/1966                                                      | Show all events, ▶ Pages, July                | 1966-07-25, -26 and -28: Tags ⚠️ "help" (tagged, no Help Us icon on the year page)                    |
+| https://brucebase.wikidot.com/1972                                                      | ▶ Pages, March                                | 1972-03-17 Arena, Richmond: ❌ "featured missing" (the star, no tag)                                 |
+| https://brucebase.wikidot.com/1978                                                      | ▶ Pages, August                               | 1978-08-30 Agora, Cleveland (the "b" entry): ⚠️ "featured" (tagged, no star)                          |
+| https://brucebase.wikidot.com/1968-list                                                 | Show this year's events, ▶ Pages              | the same marks on the listing's rows                                                                 |
+| https://brucebase.wikidot.com/gig:1968-05-00a-off-broad-street-coffee-house-red-bank-nj | Show the event                                | Tags card: "help missing" under On the page, after one request for /1968; the reason under the chips |
+| https://brucebase.wikidot.com/gig:1966-07-25-unknown-location-asbury-park-nj            | Show the event                                | "help" amber with ⚠️: "Neither the year page nor the show's page has the Help Us icon."               |
+| https://brucebase.wikidot.com/gig:1968-03-10-hullabaloo-freehold-nj                     | Show the event                                | "✓ date, letter, kind, premiere and icon tags as expected"                                           |
+| https://brucebase.wikidot.com/1968                                                      | Ctrl+hover the 1968-05-00a link, Space        | the window's Tags section: "help missing" (the year page is kept, no new request)                    |
+| any show page                                                                           | both tag findings off, reload, Show the event | no request for the year page; the card without marks                                                 |
 
 Unverified: all of it on the live site. The On stage page with the shortened name is the one thing that rests on how
 the live wiki answers: if 1968-06-22a's cast does NOT appear, the wiki answers the full name after all, and the fix is wrong.
@@ -483,22 +483,22 @@ The plan is =~/.claude/plans/structured-mixing-muffin.md= (NB-3641 only); this s
 Install the script from the branch =feat/bb-feed=. The first Brucebase press reads the feed from GitHub (one request,
 then not again for a day).
 
-| Page                                                                         | Step                                          | Expected                                                                                                  |
-|------------------------------------------------------------------------------+-----------------------------------------------+-----------------------------------------------------------------------------------------------------------|
-| https://brucebase.wikidot.com/1972                                           | ☰ SAED before any press                       | a "Brucebase" group: "Brucebase feed · not read yet · Read now" (or the run, if read before)               |
-| https://brucebase.wikidot.com/1972                                           | Show all events                               | 1972-04-00b Mediasound and 1972-06-00 Point Pleasant: Event cell ❌ (red); ☰ now names the run of 2026-11-15 |
-| https://brucebase.wikidot.com/1972                                           | hover the Point Pleasant Event cell           | "Its page gignote:1972-06-00-… is titled "1972-06-00 Private Property, Point Pleasant, NJ" …", the run     |
-| https://brucebase.wikidot.com/1972                                           | the ❌ menu                                    | "Brucebase page titled differently from its show 2"; at the foot "Brucebase feed · run of 2026-11-15 …"    |
-| https://brucebase.wikidot.com/1975                                           | Show all events, November                     | 1975-11-10 Tampa (two pages: Media and On stage, "Jai Alai") and 1975-11-11 Miami: ❌                       |
-| https://brucebase.wikidot.com/gig:1975-11-10-jai-alai-fronton-tampa-fl       | Show the event                                | "❌ ≢" after the byline; its hover names both pages                                                        |
-| https://brucebase.wikidot.com/1975                                           | Ctrl+hover the 1975-11-10 link, Space         | the window's title ends in "❌ ≢"                                                                          |
-| https://brucebase.wikidot.com/song:two-of-us                                 | Show the song                                 | NEW: "⚠️ Ⓐ" after the byline; hover: no "t" tag (dropped if the page has it by now)                       |
-| https://brucebase.wikidot.com/stats:relations                                | Show all relations                            | Rob DeMartin ⚠️ ("d"); nothing else marked                                                                 |
-| https://brucebase.wikidot.com/system:page-tags/tag/storyteller               | Show the tagged pages                         | 104 story pages ⚠️ (no parent), two ❌ (title); the ⚠️ menu's row counts them                              |
-| https://brucebase.wikidot.com/story:story-1972-01-21-neptune-nj              | Show the story                                | "⚠️ ⌂" after the byline (dropped if the page has a parent by now)                                         |
-| https://brucebase.wikidot.com/relation:chubby-checker                        | Show the person                               | "❌ ⊘" after the byline (dropped if the page has tags by now)                                             |
-| any Brucebase page                                                           | ⚙️ Settings → 📚 BRUCEBASE: the feed off, reload | no Brucebase group in ☰, no mark, no request to raw.githubusercontent.com                                |
-| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events   | Show all Events                               | nothing new: no request for the feed, no Brucebase group                                                  |
+| Page                                                                       | Step                                            | Expected                                                                                                     |
+|----------------------------------------------------------------------------+-------------------------------------------------+--------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1972                                         | ☰ SAED before any press                         | a "Brucebase" group: "Brucebase feed · not read yet · Read now" (or the run, if read before)                 |
+| https://brucebase.wikidot.com/1972                                         | Show all events                                 | 1972-04-00b Mediasound and 1972-06-00 Point Pleasant: Event cell ❌ (red); ☰ now names the run of 2026-11-15 |
+| https://brucebase.wikidot.com/1972                                         | hover the Point Pleasant Event cell             | "Its page gignote:1972-06-00-… is titled "1972-06-00 Private Property, Point Pleasant, NJ" …", the run       |
+| https://brucebase.wikidot.com/1972                                         | the ❌ menu                                     | "Brucebase page titled differently from its show 2"; at the foot "Brucebase feed · run of 2026-11-15 …"      |
+| https://brucebase.wikidot.com/1975                                         | Show all events, November                       | 1975-11-10 Tampa (two pages: Media and On stage, "Jai Alai") and 1975-11-11 Miami: ❌                        |
+| https://brucebase.wikidot.com/gig:1975-11-10-jai-alai-fronton-tampa-fl     | Show the event                                  | "❌ ≢" after the byline; its hover names both pages                                                          |
+| https://brucebase.wikidot.com/1975                                         | Ctrl+hover the 1975-11-10 link, Space           | the window's title ends in "❌ ≢"                                                                            |
+| https://brucebase.wikidot.com/song:two-of-us                               | Show the song                                   | NEW: "⚠️ Ⓐ" after the byline; hover: no "t" tag (dropped if the page has it by now)                           |
+| https://brucebase.wikidot.com/stats:relations                              | Show all relations                              | Rob DeMartin ⚠️ ("d"); nothing else marked                                                                    |
+| https://brucebase.wikidot.com/system:page-tags/tag/storyteller             | Show the tagged pages                           | 104 story pages ⚠️ (no parent), two ❌ (title); the ⚠️ menu's row counts them                                  |
+| https://brucebase.wikidot.com/story:story-1972-01-21-neptune-nj            | Show the story                                  | "⚠️ ⌂" after the byline (dropped if the page has a parent by now)                                             |
+| https://brucebase.wikidot.com/relation:chubby-checker                      | Show the person                                 | "❌ ⊘" after the byline (dropped if the page has tags by now)                                                |
+| any Brucebase page                                                         | ⚙️ Settings → 📚 BRUCEBASE: the feed off, reload | no Brucebase group in ☰, no mark, no request to raw.githubusercontent.com                                    |
+| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events | Show all Events                                 | nothing new: no request for the feed, no Brucebase group                                                     |
 
 vzell checked the table live (2026-11-17): every row OK but two, which were wrong in this table, not in the code.
 - *stats:songs* expected Dinner At Eight, Follow The Sun, Two Of Us and You're Gonna Miss Me When I'm Gone. They are
@@ -559,16 +559,16 @@ before is used for up to a day.
 
 | Page                                                               | Step                                       | Expected                                                                                                                                                     |
 |--------------------------------------------------------------------+--------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| https://brucebase.wikidot.com/system:page-tags/tag/pass            | Show the tagged pages                      | files:pass-1989, -1994, -1998, -2010, -2015, -2020: ⚠️ (the ⚠️ menu: "… tagged "files" without a picture" 6)                                                 |
-| https://brucebase.wikidot.com/system:page-tags/tag/pass            | Ctrl+hover the files:pass-1989 link, Space | the window's title ends in "⚠️ ▢"; the page itself says "Sorry, no Passes available"                                                                         |
-| https://brucebase.wikidot.com/system:page-tags/tag/essay           | Show the tagged pages                      | news:essay-1975-12-31 Tower Theater: ❌ (hover: lacks the date tag "1975")                                                                                    |
+| https://brucebase.wikidot.com/system:page-tags/tag/pass            | Show the tagged pages                      | files:pass-1989, -1994, -1998, -2010, -2015, -2020: ⚠️ (the ⚠️ menu: "… tagged "files" without a picture" 6)                                                   |
+| https://brucebase.wikidot.com/system:page-tags/tag/pass            | Ctrl+hover the files:pass-1989 link, Space | the window's title ends in "⚠️ ▢"; the page itself says "Sorry, no Passes available"                                                                          |
+| https://brucebase.wikidot.com/system:page-tags/tag/essay           | Show the tagged pages                      | news:essay-1975-12-31 Tower Theater: ❌ (hover: lacks the date tag "1975")                                                                                   |
 | https://brucebase.wikidot.com/system:page-tags/tag/23              | Show the tagged pages                      | news:1978-08-22 Madison Square Garden: ❌ and ⚠️ ("22" missing, "23" not its date)                                                                            |
-| https://brucebase.wikidot.com/system:page-tags/tag/11              | Show the tagged pages                      | media:1975-11-10 Jai Alai Fronton: ❌ (date "10" missing, and its title); 6 rows marked in all                                                                |
-| https://brucebase.wikidot.com/venue:park-werchter-belgium          | Show the venue                             | "⚠️ ▢" after the byline; the four social icons do not count as pictures                                                                                      |
+| https://brucebase.wikidot.com/system:page-tags/tag/11              | Show the tagged pages                      | media:1975-11-10 Jai Alai Fronton: ❌ (date "10" missing, and its title); 6 rows marked in all                                                               |
+| https://brucebase.wikidot.com/venue:park-werchter-belgium          | Show the venue                             | "⚠️ ▢" after the byline; the four social icons do not count as pictures                                                                                       |
 | https://brucebase.wikidot.com/venue:samson-stages-brooklyn-ny      | Show the venue                             | the same                                                                                                                                                     |
 | https://brucebase.wikidot.com/venue:roxy-theatre-west-hollywood-ca | Show the venue                             | no "▢" (the Roxy has photos and is not in the feed)                                                                                                          |
 | any Brucebase page                                                 | ☰ SAED → Brucebase                         | NEW: "Brucebase feed · run of 2026-11-15 · BruceParser 0.19.0 · 226 pages · read today · Read again"; hover: feed.sh 1.1, commit edecd7e, the pages per kind |
-| any Brucebase page                                                 | ⚙️ Settings → ⚠️ Findings                  | three new switches: "… without a date tag of their date", "… a date tag that is not their date", "… tagged "files" that show no picture"                     |
+| any Brucebase page                                                 | ⚙️ Settings → ⚠️ Findings                    | three new switches: "… without a date tag of their date", "… a date tag that is not their date", "… tagged "files" that show no picture"                     |
 | https://brucebase.wikidot.com/system:page-tags/tag/23              | "… a date tag that is not their date" off  | the ⚠️ on 1978-08-22 goes, the ❌ stays                                                                                                                       |
 
 Unverified: all of it on the live wiki (the rows are the mirror's of 2026-11-15; a page fixed since loses its mark
@@ -604,15 +604,15 @@ Python over the mirror bb/2026-11-15, n/a; spec, checker: Playwright Chromium, n
 *First:* the feed of BruceParser 0.20.0 must be on GitHub (=./publish-feed.sh= in BruceParser, your call). Then install
 the script from =feat/bb-feed-v2-listing= and press ☰ → Brucebase → Read again: the line must say BruceParser 0.20.0.
 
-| Page                                    | Step                                  | Expected                                                                                                                                        |
-|-----------------------------------------+---------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------|
-| https://brucebase.wikidot.com/1975-list | Show this year's events               | 1975-11-10 Tampa and 1975-11-11 Miami: Event cell ❌ (hover: "Its page … is titled …"); the ❌ menu counts 2                                      |
+| Page                                    | Step                                  | Expected                                                                                                                                         |
+|-----------------------------------------+---------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1975-list | Show this year's events               | 1975-11-10 Tampa and 1975-11-11 Miami: Event cell ❌ (hover: "Its page … is titled …"); the ❌ menu counts 2                                     |
 | https://brucebase.wikidot.com/1975-list | Ctrl+hover the 1975-11-10 link, Space | the window's title ends in "❌ ≢"                                                                                                                |
 | https://brucebase.wikidot.com/1973-list | Show this year's events               | ❌ on 1973-01-29 and 1973-01-30 914 Sound Studios, 1973-02-16 Boylan Gymnasium, 1973-02-28 Stockton, 1973-09-22 Jai Alai Fronton (Miami)         |
 | https://brucebase.wikidot.com/1972-list | Show this year's events               | ❌ on 1972-04-00 Mediasound (the shared anchor, picked by its date), 1972-06-00 Point Pleasant, 1972-12-07 Ossining; 1972-05-00 Mediasound clean |
 | https://brucebase.wikidot.com/1978-list | Show this year's events               | ❌ on 1978-07-28 Jai Alai Fronton, Miami                                                                                                         |
 | https://brucebase.wikidot.com/1973-list | Save to Disk, reload, Load from Disk  | the same five rows ❌, no request                                                                                                                |
-| https://brucebase.wikidot.com/1985-list | Show this year's events               | no feed mark (no 1985 show is in the feed)                                                                                                      |
+| https://brucebase.wikidot.com/1985-list | Show this year's events               | no feed mark (no 1985 show is in the feed)                                                                                                       |
 
 Unverified: all of it on the live wiki (rows from the mirror of 2026-11-15; a listing fixed since keeps the mark until the
 next run).
@@ -660,11 +660,11 @@ Env: 2026-11-18T17:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) 
 | Page                                                                       | Step                                                                                       | Expected                                                                                                                                                       |
 |----------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events | Show all Events                                                                            | ❌ menu "Brucebase link reaches no entry" 197; ⚠️ menu "Two events link one Brucebase entry" 18, "… no year-page anchor" 1; at each menu's foot the feed's line |
-| the same list                                                              | hover 2023-09-12 PPG Paints Arena's Event cell                                             | the card: "❌ ⚓ Brucebase link reaches no entry", #120923a Stone Hill Farm and #120923b PPG Paints Arena (green, likely), both links to the 2023 page           |
-| the same list                                                              | hover 2026-04-16 Mortgage Matchup Center                                                   | "⚠️ ⇉ Two events link one Brucebase entry": its date differs, likely the wrong link; #160426 suggested                                                         |
-| https://musicbrainz.org/event/f60ec13f-0c48-4c64-b80d-b4a226207017         | load the page (after a feed is kept)                                                       | "❌ ⚓" beside the Brucebase link in the sidebar; a click opens the card; no request at load                                                                     |
-| https://musicbrainz.org/event/cabf4768-6517-4c97-b74c-c7f551a92c93         | load the page                                                                              | "⚠️ ⇉" beside its Brucebase link; the card: the dates agree, the other event's link is likely wrong                                                            |
-| https://musicbrainz.org/event/4ce084be-d3bf-4da4-92c0-5538f149b8e2         | load the page                                                                              | "⚠️ ⌗": it links a show's page; #231020a and #231020b (likely), #231020c                                                                                       |
+| the same list                                                              | hover 2023-09-12 PPG Paints Arena's Event cell                                             | the card: "❌ ⚓ Brucebase link reaches no entry", #120923a Stone Hill Farm and #120923b PPG Paints Arena (green, likely), both links to the 2023 page         |
+| the same list                                                              | hover 2026-04-16 Mortgage Matchup Center                                                   | "⚠️ ⇉ Two events link one Brucebase entry": its date differs, likely the wrong link; #160426 suggested                                                          |
+| https://musicbrainz.org/event/f60ec13f-0c48-4c64-b80d-b4a226207017         | load the page (after a feed is kept)                                                       | "❌ ⚓" beside the Brucebase link in the sidebar; a click opens the card; no request at load                                                                   |
+| https://musicbrainz.org/event/cabf4768-6517-4c97-b74c-c7f551a92c93         | load the page                                                                              | "⚠️ ⇉" beside its Brucebase link; the card: the dates agree, the other event's link is likely wrong                                                             |
+| https://musicbrainz.org/event/4ce084be-d3bf-4da4-92c0-5538f149b8e2         | load the page                                                                              | "⚠️ ⌗": it links a show's page; #231020a and #231020b (likely), #231020c                                                                                        |
 | any MusicBrainz event list                                                 | ⚙️ Settings → 📚 BRUCEBASE: "Read the Brucebase feed on MusicBrainz too" off, reload, press | no request to raw.githubusercontent.com, no mark                                                                                                               |
 | https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f        | press a release-group button                                                               | no request for the feed (no event list)                                                                                                                        |
 
@@ -729,22 +729,22 @@ the baseline. =npm run test:full= at =51c1d8e6=: 22:50:24–23:13:14 CET, 3,273 
 Install the script from the branch =feat/bb-findings-page-tags=. Every stored preview is read once more (the reader
 changed). The feed's mark rows need a kept feed (any Brucebase press reads it).
 
-| Page                                                                                | Step                                                                                         | Expected                                                                                                    |
-|-------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------|
-| https://brucebase.wikidot.com/venue:unknown-location-bayonne-nj                     | Show the venue                                                                               | Tags card: "u missing" red and dashed in the Letter row, ❌ 1 missing; NO ⚠️ Ⓐ after the byline              |
+| Page                                                                                | Step                                                                                       | Expected                                                                                                   |
+|-------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/venue:unknown-location-bayonne-nj                     | Show the venue                                                                             | Tags card: "u missing" red and dashed in the Letter row, ❌ 1 missing; NO ⚠️ Ⓐ after the byline             |
 | the same page                                                                       | ⚙️ Settings → ⚠️ Findings: "… shows and pages that lack a tag …" off, reload, Show the venue | no mark, "✓ kind, first-letter and construction tags as expected"; the feed's ⚠️ Ⓐ is back after the byline |
-| https://brucebase.wikidot.com/venue:ball-arena-denver-co                            | Show the venue                                                                               | "venue missing" in the Category row                                                                         |
-| https://brucebase.wikidot.com/venue:stone-pony-asbury-park-nj                       | Show the venue                                                                               | "✓ kind, first-letter and construction tags as expected"                                                    |
-| https://brucebase.wikidot.com/song:we-are-the-world                                 | Show the song                                                                                | "lyricsheet" amber with ⚠️, ⚠️ 1 not expected, "The Gallery tab has no lyric sheet."                        |
-| https://brucebase.wikidot.com/song:dinner-at-eight                                  | Show the song                                                                                | "d missing"                                                                                                 |
-| https://brucebase.wikidot.com/stats:songs-d                                         | Ctrl+hover "Down In The Hole", Space                                                         | the window's Tags: "downinthehole missing" (the page is tagged "downinthewhole")                            |
-| https://brucebase.wikidot.com/stats:relations                                       | the M tab: Ctrl+hover "DeMartin, Rob", Space                                                 | the window's Tags: "d missing"; no ⚠️ Ⓐ after the window's title                                            |
-| https://brucebase.wikidot.com/relation:usa-for-africa                               | Show the person                                                                              | one request (its "-2"), then "✓ person/band, first-letter and construction tags as expected"                |
-| https://brucebase.wikidot.com/relation:bob-seger-the-silver-bullet-band             | Show the person                                                                              | "&" in the Letter row, "✓ … as expected"                                                                    |
-| https://brucebase.wikidot.com/retail:rescue                                         | Show the release                                                                             | "retail missing" in the Category row                                                                        |
-| https://brucebase.wikidot.com/stats:awards-grammy-2026                              | Ctrl+hover "Tracks II", Space                                                                | the window's Tags: "underconstruction" amber with ⚠️ (no banner on the page)                                |
-| https://brucebase.wikidot.com/retail:born-to-run-credits                            | Ctrl+hover any link to it, Space (or open it)                                                | no pill, no ✓ line: a release's tab page is not checked                                                     |
-| https://brucebase.wikidot.com/gig:2016-05-21-estadio-santiago-bernabeu-madrid-spain | Show the event                                                                               | as before: "3 missing", "2" not expected, "✓"-line wording of a show unchanged                              |
+| https://brucebase.wikidot.com/venue:ball-arena-denver-co                            | Show the venue                                                                             | "venue missing" in the Category row                                                                        |
+| https://brucebase.wikidot.com/venue:stone-pony-asbury-park-nj                       | Show the venue                                                                             | "✓ kind, first-letter and construction tags as expected"                                                   |
+| https://brucebase.wikidot.com/song:we-are-the-world                                 | Show the song                                                                              | "lyricsheet" amber with ⚠️, ⚠️ 1 not expected, "The Gallery tab has no lyric sheet."                         |
+| https://brucebase.wikidot.com/song:dinner-at-eight                                  | Show the song                                                                              | "d missing"                                                                                                |
+| https://brucebase.wikidot.com/stats:songs-d                                         | Ctrl+hover "Down In The Hole", Space                                                       | the window's Tags: "downinthehole missing" (the page is tagged "downinthewhole")                           |
+| https://brucebase.wikidot.com/stats:relations                                       | the M tab: Ctrl+hover "DeMartin, Rob", Space                                               | the window's Tags: "d missing"; no ⚠️ Ⓐ after the window's title                                            |
+| https://brucebase.wikidot.com/relation:usa-for-africa                               | Show the person                                                                            | one request (its "-2"), then "✓ person/band, first-letter and construction tags as expected"               |
+| https://brucebase.wikidot.com/relation:bob-seger-the-silver-bullet-band             | Show the person                                                                            | "&" in the Letter row, "✓ … as expected"                                                                   |
+| https://brucebase.wikidot.com/retail:rescue                                         | Show the release                                                                           | "retail missing" in the Category row                                                                       |
+| https://brucebase.wikidot.com/stats:awards-grammy-2026                              | Ctrl+hover "Tracks II", Space                                                              | the window's Tags: "underconstruction" amber with ⚠️ (no banner on the page)                                |
+| https://brucebase.wikidot.com/retail:born-to-run-credits                            | Ctrl+hover any link to it, Space (or open it)                                              | no pill, no ✓ line: a release's tab page is not checked                                                    |
+| https://brucebase.wikidot.com/gig:2016-05-21-estadio-santiago-bernabeu-madrid-spain | Show the event                                                                             | as before: "3 missing", "2" not expected, "✓"-line wording of a show unchanged                             |
 
 Unverified: all of it on the live site (the pages are the mirror's of 2026-11-15; Claude made no request to the wiki).
 Not checked here whether each page shows its button: =retail:tracks-ii= shows none in the fixture run, so its row
@@ -796,7 +796,7 @@ guard is one element lookup when the buttons are made and at a press.
 | https://brucebase.wikidot.com/2016                                                  | load the page                               | BruceBaseParser's own bar; SAED's button reads "🎛 BruceBaseParser is on this page", no button |
 | the same page                                                                       | hover the notice                            | "BruceBaseParser has already changed this page …, switch BruceBaseParser off …"               |
 | https://brucebase.wikidot.com/song:dinner-at-eight                                  | load the page                               | the same notice; BruceBaseParser's tag box as before                                          |
-| https://brucebase.wikidot.com/gig:2016-05-21-estadio-santiago-bernabeu-madrid-spain | load, wait for BruceBaseParser's ✅/❌        | the notice                                                                                    |
+| https://brucebase.wikidot.com/gig:2016-05-21-estadio-santiago-bernabeu-madrid-spain | load, wait for BruceBaseParser's ✅/❌      | the notice                                                                                    |
 | any of them                                                                         | Ctrl+hover a song link, Space               | SAED's preview window as always                                                               |
 | https://brucebase.wikidot.com/2016                                                  | BruceBaseParser off in Tampermonkey, reload | "Show all events" as always, the table as always                                              |
 | https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events          | load, press                                 | unchanged                                                                                     |
@@ -827,14 +827,14 @@ known flake; =pop-mb-image.mobile=, a tap-point check under load) pass alone, 45
 
 ** The browser check of All errors / All warnings, for vzell
 
-| Page                                                                       | Step                                                          | Expected                                                                                                 |
-|----------------------------------------------------------------------------+---------------------------------------------------------------+----------------------------------------------------------------------------------------------------------|
-| https://brucebase.wikidot.com/1972                                         | Show all events, open ❌                                       | "❌ All errors" first, its number the rows with any error; click: only those rows, a chip, singles greyed |
-| the same page                                                              | ✕ on the chip                                                 | every row back                                                                                           |
-| https://brucebase.wikidot.com/2016                                         | Show all events, ▶ Pages on a few rows, ❌ All errors          | the rows read with an error; rows not read yet hidden; its hover text says only what is known counts     |
-| https://musicbrainz.org/release/20a52f17-ce0b-48bf-911e-9f962a518185       | Show all Tracks, ⚠️: tick both single rows, then All warnings | two ticks: no row; All warnings: every track with a warning, the two ticks released and greyed           |
-| the same page                                                              | Clear ALL filters                                             | every row back, All warnings unticked                                                                    |
-| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events | Show all Events, ❌ All errors and ⚠️ All warnings             | rows with an error AND a warning                                                                         |
+| Page                                                                       | Step                                                         | Expected                                                                                                  |
+|----------------------------------------------------------------------------+--------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1972                                         | Show all events, open ❌                                     | "❌ All errors" first, its number the rows with any error; click: only those rows, a chip, singles greyed |
+| the same page                                                              | ✕ on the chip                                                | every row back                                                                                            |
+| https://brucebase.wikidot.com/2016                                         | Show all events, ▶ Pages on a few rows, ❌ All errors        | the rows read with an error; rows not read yet hidden; its hover text says only what is known counts      |
+| https://musicbrainz.org/release/20a52f17-ce0b-48bf-911e-9f962a518185       | Show all Tracks, ⚠️: tick both single rows, then All warnings | two ticks: no row; All warnings: every track with a warning, the two ticks released and greyed            |
+| the same page                                                              | Clear ALL filters                                            | every row back, All warnings unticked                                                                     |
+| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events | Show all Events, ❌ All errors and ⚠️ All warnings            | rows with an error AND a warning                                                                          |
 
 Unverified: all of it in a real browser.
 
@@ -857,14 +857,14 @@ row is DONE. Of the matrix, only batch 3b's rows remain open (the tag-source hig
 
 ** The browser check of Read every row, for vzell
 
-| Page                               | Step                                                                          | Expected                                                                                                       |
-|------------------------------------+-------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------|
-| https://brucebase.wikidot.com/1972 | Show all events, hover ▶ Pages, "Read every row" in the card                  | no question (under 200 rows); every row fills in from the top without scrolling, the card's "Left" counts down |
-| the same page, reloaded            | Show all events                                                               | every row read paints at once from the store, no request                                                       |
+| Page                               | Step                                                                           | Expected                                                                                                       |
+|------------------------------------+--------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/1972 | Show all events, hover ▶ Pages, "Read every row" in the card                   | no question (under 200 rows); every row fills in from the top without scrolling, the card's "Left" counts down |
+| the same page, reloaded            | Show all events                                                                | every row read paints at once from the store, no request                                                       |
 | https://brucebase.wikidot.com/2016 | Show all events, ❌ All errors, then ☰ → Brucebase → "▶ Pages: read every row" | rows with an error join the view while reading (every 25 rows or 10 s); the window does not jump               |
-| the same page                      | ■ Pages after a few rows, then the ☰ row again                                | the rest goes back to —; the second press goes on, no row read twice                                           |
-| https://brucebase.wikidot.com/     | Show all events of all years, then "Read every row" in the card               | a question: rows not read of about 5,018, about 10,000 pages, nearly three hours; Cancel reads nothing         |
-| the same page                      | the same, OK, wait a minute, then sort by a column and look at the card       | the card: "Left", "Flagged so far", "Now reading"; the reading keeps the order it started with                 |
+| the same page                      | ■ Pages after a few rows, then the ☰ row again                                 | the rest goes back to —; the second press goes on, no row read twice                                           |
+| https://brucebase.wikidot.com/     | Show all events of all years, then "Read every row" in the card                | a question: rows not read of about 5,018, about 10,000 pages, nearly three hours; Cancel reads nothing         |
+| the same page                      | the same, OK, wait a minute, then sort by a column and look at the card        | the card: "Left", "Flagged so far", "Now reading"; the reading keeps the order it started with                 |
 
 Unverified: all of it in a real browser.
 
@@ -916,16 +916,16 @@ neighbouring specs (batch 3, page tags, feed, On stage tags) 80/80; lint within 
 
 First: ⚙️ Settings → "Also check a Brucebase show's tour tag" on ("Read the Brucebase feed" on).
 
-| URL                                                                                      | Step                                           | What should appear                                                                                         |
-|------------------------------------------------------------------------------------------+------------------------------------------------+------------------------------------------------------------------------------------------------------------|
+| URL                                                                                      | Step                                           | What should appear                                                                                        |
+|------------------------------------------------------------------------------------------+------------------------------------------------+-----------------------------------------------------------------------------------------------------------|
 | https://brucebase.wikidot.com/nogig:2008-06-23a-koning-boudewijnstadion-brussels-belgium | press "Show the event"                         | Tags card: "tour_mgc missing" (red dashed) in the Tour row, "tour_rsng" ⚠️; both explained under the chips |
-| https://brucebase.wikidot.com/gig:2023-05-04-burrow-rathangan-ireland                    | press "Show the event"                         | after the On stage page is read: "tour_23int missing"                                                      |
-| https://brucebase.wikidot.com/nogig:1973-12-12-bijou-cafe-philadelphia-pa                | press "Show the event"                         | "tour_wiess missing"; its "tour_wies" is not marked (not a tour of the table)                              |
-| https://brucebase.wikidot.com/gig:2016-01-22-louisburg-farm-wellington-fl                | press "Show the event"                         | no tour mark (tagged tour_no); "✓ … icon and tour tags as expected"                                        |
+| https://brucebase.wikidot.com/gig:2023-05-04-burrow-rathangan-ireland                    | press "Show the event"                         | after the On stage page is read: "tour_23int missing"                                                     |
+| https://brucebase.wikidot.com/nogig:1973-12-12-bijou-cafe-philadelphia-pa                | press "Show the event"                         | "tour_wiess missing"; its "tour_wies" is not marked (not a tour of the table)                             |
+| https://brucebase.wikidot.com/gig:2016-01-22-louisburg-farm-wellington-fl                | press "Show the event"                         | no tour mark (tagged tour_no); "✓ … icon and tour tags as expected"                                       |
 | https://brucebase.wikidot.com/1975                                                       | Show all events, ▶ Pages, scroll to March      | the 1975-03-13/14/15 Electric Ballroom rows: ⚠️ on Tags, "tour_wiess" flagged                              |
-| https://brucebase.wikidot.com/2023                                                       | Show all events, ▶ Pages, then ⚠️/❌ menus      | Rathangan ❌ (tour_23int); the nogig rows (2023-03-21 White House, …) ❌                                     |
-| https://brucebase.wikidot.com/2008                                                       | Ctrl+hover the Brussels 2008-06-23 link, Space | the window's Tags section: the same two marks as the event page                                            |
-| the Brussels page again                                                                  | the setting off, reload, press                 | no tour mark; "✓ date, letter, kind, premiere and icon tags as expected"                                   |
+| https://brucebase.wikidot.com/2023                                                       | Show all events, ▶ Pages, then ⚠️/❌ menus      | Rathangan ❌ (tour_23int); the nogig rows (2023-03-21 White House, …) ❌                                  |
+| https://brucebase.wikidot.com/2008                                                       | Ctrl+hover the Brussels 2008-06-23 link, Space | the window's Tags section: the same two marks as the event page                                           |
+| the Brussels page again                                                                  | the setting off, reload, press                 | no tour mark; "✓ date, letter, kind, premiere and icon tags as expected"                                  |
 
 vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".
 
@@ -940,12 +940,12 @@ the feed (BruceParser 0.22.1: =placeTags= and =expectedRegions= in =tagTables=; 
 
 | Part             | Shows | Carry the tag | Share  |
 |------------------+-------+---------------+--------|
-| venue            | 4,043 |         3,385 | 83.7 % |
-| city             | 4,043 |         4,032 | 99.7 % |
-| US/CA state      | 3,346 |         3,339 | 99.8 % |
-| Australian state |    57 |             0 |  0.0 % |
-| country          | 4,043 |         4,011 | 99.2 % |
-| region           |   819 |           716 | 87.4 % |
+| venue            | 4,043 | 3,385         | 83.7 % |
+| city             | 4,043 | 4,032         | 99.7 % |
+| US/CA state      | 3,346 | 3,339         | 99.8 % |
+| Australian state | 57    | 0             | 0.0 %  |
+| country          | 4,043 | 4,011         | 99.2 % |
+| region           | 819   | 716           | 87.4 % |
 
 The rule as decided, every kind of event: *35 shows*, 41 missing tags (=usa= 14, =canada= 6, =europe= 4, states 8,
 cities 6, one of them the title's "Los Angels"). =placeTags= takes West/East Germany, West/East Berlin, The
@@ -976,7 +976,7 @@ so it is not read again before its day is up: press the ☰ menu's Brucebase "Re
 | https://brucebase.wikidot.com/gig:1984-07-23-cne-grandstand-toronto-on              | press, wait for On stage   | "canada missing"                                                                      |
 | https://brucebase.wikidot.com/interview:2025-04-28-saban-media-center-los-angels-ca | press, wait for On stage   | "losangels missing" (the title's typo)                                                |
 | https://brucebase.wikidot.com/gig:1981-04-09-icc-berlin-germany                     | press (after the publish)  | no place mark: West Berlin and West Germany as "berlin" and "germany"                 |
-| https://brucebase.wikidot.com/1984                                                  | Show all events, ▶ Pages   | the four Toronto/Montreal rows of July ❌ on Tags ("canada")                           |
+| https://brucebase.wikidot.com/1984                                                  | Show all events, ▶ Pages   | the four Toronto/Montreal rows of July ❌ on Tags ("canada")                          |
 | the Mark Twain page again                                                           | both families on, feed off | "The tour and place tags are not checked: the Brucebase feed is off."                 |
 
 vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".
@@ -1032,9 +1032,9 @@ First: ⚙️ Settings → "Also check a Brucebase show's content tags" on.
 |---------------------------------------------------------------------------+--------------------------+-------------------------------------------------------------------------------|
 | https://brucebase.wikidot.com/gig:1980-12-31-nassau-coliseum-uniondale-ny | press, wait for On stage | Tags card: "storyteller missing" in the "On the page" row                     |
 | https://brucebase.wikidot.com/gig:1978-07-19-ellis-auditorium-memphis-tn  | press, wait for On stage | "ticket missing" (the News/Memorabilia tab shows a ticket)                    |
-| https://brucebase.wikidot.com/gig:1982-10-03-stone-pony-asbury-park-nj    | press                    | "eyewitness" ⚠️: the Eyewitness tab says "Sorry, no Eyewitness-report"        |
+| https://brucebase.wikidot.com/gig:1982-10-03-stone-pony-asbury-park-nj    | press                    | "eyewitness" ⚠️: the Eyewitness tab says "Sorry, no Eyewitness-report"         |
 | https://brucebase.wikidot.com/gig:1971-05-14-sunshine-in-asbury-park-nj   | press                    | no content mark: "setlist" and "handwritten" without a picture are left alone |
-| https://brucebase.wikidot.com/1974                                        | Show all events, ▶ Pages | Schenectady 1974-10-19 ❌ on Tags ("setlist", "handwritten")                   |
+| https://brucebase.wikidot.com/1974                                        | Show all events, ▶ Pages | Schenectady 1974-10-19 ❌ on Tags ("setlist", "handwritten")                  |
 
 vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".
 
@@ -1075,7 +1075,7 @@ First: ⚙️ Settings → "Also check a Brucebase show's cast tags" on ("Show t
 | https://brucebase.wikidot.com/gig:1971-03-27-sunshine-in-asbury-park-nj-early          | press, wait for On stage                                          | "bigdannygallagher missing"                                                                |
 | https://brucebase.wikidot.com/gig:1972-10-25-shipbottom-lounge-point-pleasant-beach-nj | press, wait for On stage                                          | no cast mark: Vini Lopez as "vini.lopez" counts                                            |
 | https://brucebase.wikidot.com/recording:1979-06-21-power-station-new-york-city-ny      | press                                                             | "flo missing" and "eddie missing" (Flo & Eddie)                                            |
-| https://brucebase.wikidot.com/1969                                                     | Show all events, ▶ Pages                                          | the rows without an On stage page ❌ on Tags ("onstage")                                    |
+| https://brucebase.wikidot.com/1969                                                     | Show all events, ▶ Pages                                          | the rows without an On stage page ❌ on Tags ("onstage")                                   |
 | the Wanamassa page again                                                               | "Show the tags kept on a show's On stage page" off, reload, press | no cast mark                                                                               |
 
 vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".
@@ -1124,7 +1124,7 @@ venue rows).
 | https://brucebase.wikidot.com/gig:1975-02-23-music-fair-westbury-ny                     | press, wait for On stage | "dtbsa82s missing"                                                         |
 | https://brucebase.wikidot.com/gig:2014-01-26-bellville-velodrome-cape-town-south-africa | press, wait for On stage | only "jlfw missing": the LOHAD medley counts                               |
 | https://brucebase.wikidot.com/gig:1981-04-26-forest-national-brussels-belgium           | place tags on, press     | "forestnational missing" in the Place row                                  |
-| https://brucebase.wikidot.com/2013                                                      | Show all events, ▶ Pages | the Australian rows of March ❌ on Tags (song tags)                         |
+| https://brucebase.wikidot.com/2013                                                      | Show all events, ▶ Pages | the Australian rows of March ❌ on Tags (song tags)                        |
 
 vzell, 2026-11-20 (on vzell-lap, every family on): "all tested live OK".
 
@@ -1160,14 +1160,14 @@ of its 4,304 rows are variants of those rules, not wiki errors (its page is OBSO
 First: the feed 1.6 is on GitHub (BruceParser 0.24.0, published 2026-11-20); then use the
 ☰ menu's Brucebase "Read again". The finding is on by default.
 
-| URL                                                                                 | Step                                     | What should appear                                                                     |
-|-------------------------------------------------------------------------------------+------------------------------------------+----------------------------------------------------------------------------------------|
+| URL                                                                                 | Step                                     | What should appear                                                                    |
+|-------------------------------------------------------------------------------------+------------------------------------------+---------------------------------------------------------------------------------------|
 | https://brucebase.wikidot.com/1968                                                  | Show all events                          | the 1968-11-00 Off Broad Street Coffee House row ⚠️ on Event; hover names its gallery  |
 | https://brucebase.wikidot.com/gig:1967-11-00a-first-presbyterian-church-freehold-nj | Show the event                           | ⚠️ ⇋ after the byline: "Its page gallery:1967-11-00-first-presbyterian-… is named …"   |
 | https://brucebase.wikidot.com/1978-list                                             | Show this year's events                  | three rows ⚠️ on Event: 1978-06-03 Uniondale, 1978-07-15 Houston, 1978-08-30 Cleveland |
 | https://brucebase.wikidot.com/1999                                                  | Show all events, Ctrl+hover 06-02, Space | the window's title ⚠️ ⇋: its gallery and recnote pages say "palais-omnisport"          |
-| https://brucebase.wikidot.com/system:page-tags/tag/media                            | Show the tagged pages                    | the row of media:1975-11-10-jai-alai-fronton-tampa-fl ⚠️ ⇋ (and ❌ for its date tag)    |
-| ⚙️ Settings → ⚠️ Findings → "Find Brucebase pages named differently …"              | off, then 1968 again                     | no ⚠️ on the Off Broad Street row                                                      |
+| https://brucebase.wikidot.com/system:page-tags/tag/media                            | Show the tagged pages                    | the row of media:1975-11-10-jai-alai-fronton-tampa-fl ⚠️ ⇋ (and ❌ for its date tag)   |
+| ⚙️ Settings → ⚠️ Findings → "Find Brucebase pages named differently …"                | off, then 1968 again                     | no ⚠️ on the Off Broad Street row                                                      |
 
 * Track A idea 5, check 1: an MB event whose Brucebase entry has another date (=feat/bb-feed-mb-date=, 2026-11-20; feed 1.7)
 
@@ -1235,14 +1235,14 @@ The feed 1.7 is published (2026-11-20, feed repo =1450799=). Install the script 
 day is up: on the artist's events, after "Show all Events", the feed line at the foot of the ⚠️/❌ menus → "Read
 again", then the press once more.
 
-| URL                                                                                | Step                                      | What should appear                                                                                                                                                                                                                 |
-|------------------------------------------------------------------------------------+-------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events         | Show all Events                           | ⚠️ menu "Brucebase entry has another date" 7, beside "Two events link …" 18 and "… no year-page anchor" 1                                                                                                                          |
-| the same list                                                                      | click that menu row                       | only the 7 events: 1971-07-03 and 1971-10-29 The Upstage, 1971-07-25 Rumson, 1974-04-26 Providence, 1975-10-11 Red Bank, 1991-02-17 Malibu, 2012-06-03 Lisbon                                                                      |
-| the same list                                                                      | hover 1971-07-03 The Upstage's Event cell | the card ⚠️ ± with Event (… The Sundance Blues Band), Date 1971-07-04, link 1971#030771b; in bold "Its name says 1971-07-03, as Brucebase does: likely the event's date is wrong."; the wiki's entry of 1971-07-04: Student Prince |
-| https://musicbrainz.org/event/fe126f9a-b359-47e2-964c-3d118a179c54                 | load the page (after a feed is kept)      | "⚠️ ±" beside the Brucebase link in the sidebar; a click opens the same card; no request at load                                                                                                                                   |
-| https://musicbrainz.org/event/20326b65-08df-4a9e-893c-8803a75ac244                 | load the page, click the mark             | "Its name says 1991-02-17 too: likely the link, or the wiki's date, is wrong." and "The wiki has no entry of 1991-02-17."                                                                                                          |
-| ⚙️ Settings → ⚠️ Findings → "Find events whose Brucebase entry has another date …" | off, then the artist's events again       | no ± mark and no such menu row; ⇉, ⌗ and ❌ ⚓ stay                                                                                                                                                                                  |
+| URL                                                                              | Step                                      | What should appear                                                                                                                                                                                                                |
+|----------------------------------------------------------------------------------+-------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events       | Show all Events                           | ⚠️ menu "Brucebase entry has another date" 7, beside "Two events link …" 18 and "… no year-page anchor" 1                                                                                                                          |
+| the same list                                                                    | click that menu row                       | only the 7 events: 1971-07-03 and 1971-10-29 The Upstage, 1971-07-25 Rumson, 1974-04-26 Providence, 1975-10-11 Red Bank, 1991-02-17 Malibu, 2012-06-03 Lisbon                                                                     |
+| the same list                                                                    | hover 1971-07-03 The Upstage's Event cell | the card ⚠️ ± with Event (… The Sundance Blues Band), Date 1971-07-04, link 1971#030771b; in bold "Its name says 1971-07-03, as Brucebase does: likely the event's date is wrong."; the wiki's entry of 1971-07-04: Student Prince |
+| https://musicbrainz.org/event/fe126f9a-b359-47e2-964c-3d118a179c54               | load the page (after a feed is kept)      | "⚠️ ±" beside the Brucebase link in the sidebar; a click opens the same card; no request at load                                                                                                                                   |
+| https://musicbrainz.org/event/20326b65-08df-4a9e-893c-8803a75ac244               | load the page, click the mark             | "Its name says 1991-02-17 too: likely the link, or the wiki's date, is wrong." and "The wiki has no entry of 1991-02-17."                                                                                                         |
+| ⚙️ Settings → ⚠️ Findings → "Find events whose Brucebase entry has another date …" | off, then the artist's events again       | no ± mark and no such menu row; ⇉, ⌗ and ❌ ⚓ stay                                                                                                                                                                               |
 
 Unverified: all of it live (an event corrected on MusicBrainz since 2026-11-19 keeps its mark until the next run).
 
@@ -1288,14 +1288,14 @@ mutations failing it; =bb-feed*= specs 62/62.
 
 The feed 1.8 is published (2026-11-20, feed repo =17d9cb0=). Install the script from =feat/bb-feed-mb-works=. A kept 1.7 file is read again on a works page's press once it was read an hour ago.
 
-| URL                                                                         | Step                                    | What should appear                                                                                                 |
-|-----------------------------------------------------------------------------+-----------------------------------------+--------------------------------------------------------------------------------------------------------------------|
-| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works   | Show all Works                          | ❌ menu "Brucebase link reaches nothing" 10; ⚠️ menu "Two works link one Brucebase song" 2, "Work title differs …" 2 |
-| the same list                                                               | hover Blinded by the Light's Work cell  | the card ❌ ⚓, likely =stats:greetings-from-asbury-park-nj-studio-sessions#blindedbythelight=                        |
-| https://musicbrainz.org/work/fdb63bfc-2429-474a-816d-281d1d33ceb3           | load the page, hover the sidebar mark   | ❌ ⚓ beside the Brucebase link; "… has no anchor #kingsrockkingsbigchance", likely =#kingsrock=                      |
-| https://musicbrainz.org/work/904c52a3-2cd7-4c3e-867a-340581b0971f           | load the page, hover the mark           | ⚠️ ⇉; the card lists Don't Back Down on Our Love                                                                    |
-| https://musicbrainz.org/work/f78b04ca-bf32-41cc-bd36-70d7d6144059           | press "Show all Recordings", hover mark | ⚠️ ≉ in the Sidebar card too: "Its link is the song "Tarantella Napoletana"; the work is "Tarantella Napolitana" …"  |
-| ⚙️ Settings → ⚠️ Findings → "Find MusicBrainz works titled differently …"   | off, then the works again               | no ≉ mark and no such menu row; ⚓ and ⇉ stay                                                                        |
+| URL                                                                       | Step                                    | What should appear                                                                                                  |
+|---------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------------|
+| https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works | Show all Works                          | ❌ menu "Brucebase link reaches nothing" 10; ⚠️ menu "Two works link one Brucebase song" 2, "Work title differs …" 2 |
+| the same list                                                             | hover Blinded by the Light's Work cell  | the card ❌ ⚓, likely =stats:greetings-from-asbury-park-nj-studio-sessions#blindedbythelight=                      |
+| https://musicbrainz.org/work/fdb63bfc-2429-474a-816d-281d1d33ceb3         | load the page, hover the sidebar mark   | ❌ ⚓ beside the Brucebase link; "… has no anchor #kingsrockkingsbigchance", likely =#kingsrock=                    |
+| https://musicbrainz.org/work/904c52a3-2cd7-4c3e-867a-340581b0971f         | load the page, hover the mark           | ⚠️ ⇉; the card lists Don't Back Down on Our Love                                                                     |
+| https://musicbrainz.org/work/f78b04ca-bf32-41cc-bd36-70d7d6144059         | press "Show all Recordings", hover mark | ⚠️ ≉ in the Sidebar card too: "Its link is the song "Tarantella Napoletana"; the work is "Tarantella Napolitana" …"  |
+| ⚙️ Settings → ⚠️ Findings → "Find MusicBrainz works titled differently …"   | off, then the works again               | no ≉ mark and no such menu row; ⚓ and ⇉ stay                                                                       |
 
 Unverified: all of it live (a work corrected on MusicBrainz since 2026-11-20 keeps its mark until the next run).
 
@@ -1334,23 +1334,23 @@ Env: 2026-11-21T00:54:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 
 *A. Typos and style errors (10):*
 
-| Event                                                                            | MusicBrainz title now                                                      | Should read             |
-|----------------------------------------------------------------------------------+----------------------------------------------------------------------------+-------------------------|
-| [[https://musicbrainz.org/event/5ca9be81-4cc4-4dd0-8a07-9d932e6b4b23][5ca9be81]] | 1992‐01: St. Charles Avenue *Steetcar* Line, New Orleans, LA, USA          | Streetcar               |
-| [[https://musicbrainz.org/event/4713487c-62d6-4151-b628-8a5804fea9d3][4713487c]] | 2017‐09‐19: *Pollack* Theatre, Monmouth University, …                      | Pollak                  |
-| [[https://musicbrainz.org/event/bb6c1d8c-1f4e-4675-ae5c-eafdb3edda81][bb6c1d8c]] | 2017‐09‐22: *Pollack* Theatre, Monmouth University, …                      | Pollak                  |
-| [[https://musicbrainz.org/event/5a9c9a6d-1c74-422e-a27f-2a52c7aeb8eb][5a9c9a6d]] | 1975‐12‐21: Convocation Hall, University of Toronto, Toronto, *On*, Canada | ON                      |
-| [[https://musicbrainz.org/event/57b91acb-7d48-44cb-9e46-8b1f0dfbef56][57b91acb]] | 2013‐07‐24: *first direct arena*, Leeds, England, UK                       | First Direct Arena      |
-| [[https://musicbrainz.org/event/d36cb15d-43df-41dc-b0ab-01d242bd0d6d][d36cb15d]] | 2023‐09‐09: Oriole Park *At* Camden Yards, Baltimore, MD, USA              | at                      |
-| [[https://musicbrainz.org/event/1fd3133f-6bd8-4a5f-a183-626fb00ad6cd][1fd3133f]] | 2017‐12‐23: Walter Kerr Theatre, New York City, *NY; USA*                  | NY, USA                 |
-| [[https://musicbrainz.org/event/b85fb122-d690-4c64-91ea-2396c006a274][b85fb122]] | 2021‐07‐09: St. James Theatre, *New York, City NY*, USA                    | New York City, NY       |
-| [[https://musicbrainz.org/event/e97fbe44-af64-4767-b857-d21e532d42bb][e97fbe44]] | 2013‐07‐03: Stade de Genève, *Geneve*, Switzerland                         | Geneva (BB)             |
-| [[https://musicbrainz.org/event/cff64fec-4c82-466d-ac24-8d6339b92e3d][cff64fec]] | 1996‐08‐10: *Grand* Mountain Lodge, Whitefish, MT, USA                     | Grouse (BB; check)      |
+| Event    | MusicBrainz title now                                                      | Should read        |
+|----------+----------------------------------------------------------------------------+--------------------|
+| [[https://musicbrainz.org/event/5ca9be81-4cc4-4dd0-8a07-9d932e6b4b23][5ca9be81]] | 1992‐01: St. Charles Avenue *Steetcar* Line, New Orleans, LA, USA          | Streetcar          |
+| [[https://musicbrainz.org/event/4713487c-62d6-4151-b628-8a5804fea9d3][4713487c]] | 2017‐09‐19: *Pollack* Theatre, Monmouth University, …                      | Pollak             |
+| [[https://musicbrainz.org/event/bb6c1d8c-1f4e-4675-ae5c-eafdb3edda81][bb6c1d8c]] | 2017‐09‐22: *Pollack* Theatre, Monmouth University, …                      | Pollak             |
+| [[https://musicbrainz.org/event/5a9c9a6d-1c74-422e-a27f-2a52c7aeb8eb][5a9c9a6d]] | 1975‐12‐21: Convocation Hall, University of Toronto, Toronto, *On*, Canada | ON                 |
+| [[https://musicbrainz.org/event/57b91acb-7d48-44cb-9e46-8b1f0dfbef56][57b91acb]] | 2013‐07‐24: *first direct arena*, Leeds, England, UK                       | First Direct Arena |
+| [[https://musicbrainz.org/event/d36cb15d-43df-41dc-b0ab-01d242bd0d6d][d36cb15d]] | 2023‐09‐09: Oriole Park *At* Camden Yards, Baltimore, MD, USA              | at                 |
+| [[https://musicbrainz.org/event/1fd3133f-6bd8-4a5f-a183-626fb00ad6cd][1fd3133f]] | 2017‐12‐23: Walter Kerr Theatre, New York City, *NY; USA*                  | NY, USA            |
+| [[https://musicbrainz.org/event/b85fb122-d690-4c64-91ea-2396c006a274][b85fb122]] | 2021‐07‐09: St. James Theatre, *New York, City NY*, USA                    | New York City, NY  |
+| [[https://musicbrainz.org/event/e97fbe44-af64-4767-b857-d21e532d42bb][e97fbe44]] | 2013‐07‐03: Stade de Genève, *Geneve*, Switzerland                         | Geneva (BB)        |
+| [[https://musicbrainz.org/event/cff64fec-4c82-466d-ac24-8d6339b92e3d][cff64fec]] | 1996‐08‐10: *Grand* Mountain Lodge, Whitefish, MT, USA                     | Grouse (BB; check) |
 
 *B. Dropped accents (9; MusicBrainz's own area names carry them):*
 
-| Event                                                                            | Word on MusicBrainz           | With its accent |
-|----------------------------------------------------------------------------------+-------------------------------+-----------------|
+| Event    | Word on MusicBrainz           | With its accent |
+|----------+-------------------------------+-----------------|
 | [[https://musicbrainz.org/event/ec63eb3c-f14d-4897-9cb0-523074ee2044][ec63eb3c]] | Dusseldorf                    | Düsseldorf      |
 | [[https://musicbrainz.org/event/6dc5adec-ea05-4ccf-b3a8-c46de9266b10][6dc5adec]] | Dusseldorf                    | Düsseldorf      |
 | [[https://musicbrainz.org/event/1fae7591-bd75-4618-9fa0-045fd2bd98a4][1fae7591]] | Dusseldorf                    | Düsseldorf      |
@@ -1364,8 +1364,8 @@ Env: 2026-11-21T00:54:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 *C. Disagreements (5): check a source before editing either side.* 1974‐04‐10…12 are Charlie’s Place on
 MusicBrainz too and have no Brucebase title to compare.
 
-| Event                                                                            | MusicBrainz                            | Brucebase       |
-|----------------------------------------------------------------------------------+----------------------------------------+-----------------|
+| Event    | MusicBrainz                            | Brucebase       |
+|----------+----------------------------------------+-----------------|
 | [[https://musicbrainz.org/event/d12c08c6-1b5a-413c-b0d0-866a0426652b][d12c08c6]] | 1982‐02: The Power Station             | The Hit Factory |
 | [[https://musicbrainz.org/event/2b4dc146-46c4-450c-b3c9-f2b7e46ec0b5][2b4dc146]] | 1983‐07: The Power Station             | Record Plant    |
 | [[https://musicbrainz.org/event/f74adb5d-c3a1-4058-880d-58b81eec41b8][f74adb5d]] | 1995‐08‐06: Cheers, Long Branch        | The Metro       |
