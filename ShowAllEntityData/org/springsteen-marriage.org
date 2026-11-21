@@ -16,9 +16,10 @@ left out by decision), NOT (not done, with the reason).
 * PICKUP HERE (2026-11-21)
 
 - *Now: BruceParser's open items* ("TODO Still open in BruceParser" below). Audit done, plan approved by vzell, probes
-  in BruceParser 0.27.1; the run of 2026-11-21 (started by Claude on vzell's word) is the baseline. Next: fix block 1
-  (0.28.0, the setlist pipeline). The MusicBrainz title list for vzell (24 events) and the =bb-place.spec.js= flake
-  (not reproduced): bbp-parity.org, "Loose ends of 2026-11-20".
+  in BruceParser 0.27.1; the run of 2026-11-21 (started by Claude on vzell's word) is the baseline. Blocks 1–4 are
+  done (0.28.0–0.30.0, see the table below); next: block 5 (0.31.0, =erfsl.sh='s SpringsteenLyrics part). The
+  MusicBrainz title list for vzell (24 events) and the =bb-place.spec.js= flake (not reproduced): bbp-parity.org,
+  "Loose ends of 2026-11-20".
 
 - *Every row of the parity matrix is DONE or decided.* Batch 3b (the five tag families, each behind its own switch,
   off by default) and idea 3 (the lookup tables and the song and venue maps in the feed) are merged as
@@ -500,13 +501,28 @@ vzell, 2026-11-19: a new run before any 3b implementation, with the open BrucePa
 
   | Block | Version | Scope                                                                | State |
   |-------+---------+----------------------------------------------------------------------+-------|
-  |     1 | 0.28.0  | the setlist pipeline (F1–F8, F14; E15–E20): 341 → about 318          | TODO  |
-  |     2 | 0.28.1  | =eefyp.sh= (F10–F13; E1–E4, E12: the story pages)                    | TODO  |
-  |     3 | 0.29.0  | =efc.sh= (E5–E10, E21)                                               | TODO  |
-  |     4 | 0.30.0  | =checkURLandTitles.sh= (E11 Wikidot's URL rule, E13, E14)            | TODO  |
+  |     1 | 0.28.0  | the setlist pipeline (F1–F8, F14; E15–E20): 341 → about 318          | DONE  |
+  |     2 | 0.28.1  | =eefyp.sh= (F10–F13; E1–E4, E12: the story pages)                    | DONE  |
+  |     3 | 0.29.0  | =efc.sh= (E5–E10, E21)                                               | DONE  |
+  |     4 | 0.30.0  | =checkURLandTitles.sh= (E11 Wikidot's URL rule, E13, E14)            | DONE  |
   |     5 | 0.31.0  | =erfsl.sh=, SpringsteenLyrics (S1–S9, S18)                           | TODO  |
   |     6 | 0.31.1  | =erfsl.sh=, KF and JL (S10–S14; JL from the fresh download)          | TODO  |
   |     7 | 0.32.0  | =esfsl.sh= (S15–S17): SL vs BB kept, the MB side dropped             | TODO  |
+
+  Outcome so far (2026-11-21, offline on =bb/2026-11-21=; each in BruceParser's CHANGELOG with its probe values):
+  - *0.28.0:* setlist differences 341 → 316 (26 parsing artefacts gone, 1 real difference found). The YEAR side by
+    position (=year-setlists.awk=), the DETAIL side item by item (=detail-setlists.awk=); the whitelist and twelve
+    prose deletes are gone.
+  - *0.28.1:* 315; entries without a page no longer inherit the event before's values; story pages compared at
+    last; double blanks in titles reported (30 rows, kept out of the feed: =feed.sh= 1.8.1); private residences by
+    rule (Sting/Sumner and the Rumson news page show). F12 (2010-07-22/23 in one list item) is a wiki markup slip
+    and stays reported. Feed: dependent-title 39 → 40.
+  - *0.29.0:* =efc.sh='s exceptions as rules; date-parts 23 → 27 (Shea's Theatre's false rows gone, the Villa Park
+    parts show: no =xdate=); "(The)" within its own part. Feed: date-parts 3 → 5.
+  - *0.30.0:* Wikidot's character rule, "New Jersey" as a phrase: URL-shortening 4,304 → 4,226. *Open for vzell:*
+    the rest of E13 (title rules true for most pages only); accepting any rule variant hid real deviations
+    (=onstage:1988-05-06-tacoma-dome-tacoma-wa=), so it needs a comparison with the show's other pages.
+  - The feed is not published since: it goes out after the final full run.
 
 * Track B: volkerzell.de (Ionos shared hosting: PHP + MySQL/MariaDB)
 
