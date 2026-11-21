@@ -4,9 +4,17 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1846 versions; the month pages hold all of them.
+This page shows the newest 100 of 1847 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1676 — 2026-11-21
+
+**✨ Improve**
+
+- Event Horizon's keys on our table: a standalone Event Horizon (2026.11.22.184100 or newer) now gets the same treatment as String Theory's. It marks the page with its version (&lt;html data-mbu-eh&gt;, majkinetor's answer on \#938), so while a table of ours shows the page asks it to leave all its keys alone except its on/off switch: U, Ctrl+P (which prints again) and its player's keys no longer act on the table, and an on/off switch rebound to another letter keeps working. Before, only String Theory's version mark counted, and a standalone Event Horizon kept the older single-letter guard.
+- The keys marks also follow when String Theory or Event Horizon starts after the table is shown: their version marks are watched, so the next render is no longer needed.
+
 
 ## 9.99.1675 — 2026-11-21
 
@@ -859,13 +867,6 @@ This page shows the newest 100 of 1846 versions; the month pages hold all of the
 **✨ Improve**
 
 - New setting: ⚙️ Settings → 🎹 KEYBOARD SHORTCUTS → "Ignore Event Horizon's single-letter keys on MusicBrainz's page" (on). Turn it off to give those keys back to Event Horizon. Keys you rebound in Event Horizon are not known to this script.
-
-
-## 9.99.1576 — 2026-11-08
-
-**🐛 Fix**
-
-- With majkinetor's Event Horizon (String Theory) showing when a page loads, which is its default: after switching it off with V, the script's hover cards no longer showed, and the sidebar handle was missing on MusicBrainz's page and on the rendered page. Before V, the handle showed over Event Horizon's own view. The script's floating elements (cards, menus, dialogs, the sidebar handle, notices and the rest) now always belong to MusicBrainz's page: hidden while Event Horizon shows, there and working after V.
 
 
 ---

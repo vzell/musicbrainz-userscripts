@@ -4924,3 +4924,17 @@ Env: 2026-11-21T14:20:54+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, =c7e74a31=             |  3453 |      12 | *23 m 22 s* | =run-test-full.py=, 14:20:54–14:44:16 CET |
 
 3453 passed, no flake. This branch adds 4 tests (the C3 describe of =eh-single-keys.spec.js=: =data-mbu-eh= current and below the floor, either version mark set after the render).
+
+* 2026-11-21 — =npm run test:full= on =petri=, main after merging feat/eh-version-mark (9.99.1676)
+
+Env: 2026-11-21T17:09:21+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =08074a7f= + the fold  |  3453 |      12 | *23 m 27 s* | =run-test-full.py=, 17:09:21–17:32:48 CET |
+| =popup-mb.spec.js= =--repeat-each 3=        |   447 |      12 | *9 m 42 s*  | =run-test-full.py=, after the spec fix    |
+
+3452 passed, 1 failed: =popup-mb.spec.js:392= "a plain hover is enough" counted 0 lookups. A spec race, not the
+merge: the loading card already shows the link's text (=t.name= in =_mbPopCardShell()=), so the count could run while
+the request still waited for its rate slot. It passed 10/10 alone; the spec now waits for "Pitman pressing" (only the
+answer has it), as its sibling at :374 does, and the whole file then passed three times over.
