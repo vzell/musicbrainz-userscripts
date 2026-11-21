@@ -1,0 +1,15 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-11-21",
+        "sections": [
+            {
+                "label": "✨ Improve",
+                "items": [
+                    "Titles in MusicBrainz style (the Springsteen sites' converted titles and the title-style findings on MusicBrainz) now use MusicBrainz's own guess-case word lists, as majkinetor's Apollo Editor carries them: acronyms such as YMCA, USSR and NBA stay in capitals (\"CORN IN THE USSR\" becomes \"Corn in the USSR\", no longer \"Corn in the Ussr\"); iTunes, iPhone, iPad, iPod, iMac, YouTube, TikTok, DJs and OC ReMix are written that way whatever the source's case; and version phrases such as \"official music video\", \"slowed\", \"sped up\", \"reverb\" and \"nightcore\" count as extra title information, so \"(Slowed + Reverb)\" is written \"(slowed + reverb)\".",
+                    "The title-style findings leave Armenian titles alone, as they already did Cyrillic and Greek ones: those scripts write titles in sentence case."
+                ]
+            }
+        ]
+    }
+]

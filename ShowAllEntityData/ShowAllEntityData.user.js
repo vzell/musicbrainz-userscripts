@@ -301,6 +301,12 @@
 //   compares it with his code). His autoMatch() loop is followed over candidate pairs
 //   (_recDupGroups()); recordingSetting() is replaced by a reader of the page's comments
 //   and recorded-at cells.
+//   Added 2026-11-21: the title case takes the word lists of Apollo Editor's guess case —
+//   UPPER_CASE_WORDS and the letter-case entries of POSTPROCESS_FIXLIST, which are
+//   musicbrainz-server's own GuessCase lists (GPL-2.0-or-later), as _MBTC_ACRONYMS and
+//   _MBTC_BRANDS; VERSION_PHRASES (his, from chaban's "Guess Case Improver") verbatim as
+//   _MBTC_ETI_PHRASES; and his isCasedOther rule, Armenian beside Cyrillic and Greek, in
+//   _MBTS_SKIP_SCRIPT_RE.
 // ============================================================================================================================================
 
 (function() {
@@ -18055,7 +18061,53 @@
     const _MBTC_ACRONYMS = new Set(['USA', 'UK', 'EU', 'EP', 'HBO', 'NYC', 'NY', 'NYU', 'UCLA', 'USO', 'UFO',
         'ICC', 'AC', 'OK', 'VIP', 'UNICEF', 'AOR', 'ABC', 'ESPN', 'UNO', 'JAP',
         // Queen Elizabeth: "QE II JUBILEE SPORTS CENTRE" (Brucebase, 1985-03-31b; 83 "QE II" in the mirror).
-        'QE']);
+        'QE',
+        // MusicBrainz's own guess case, UPPER_CASE_WORDS (musicbrainz-server's
+        // GuessCase modes, as ported in majkinetor's Apollo Editor, 2026-11-21).
+        // Those without a vowel the shape rule keeps already; listed all the same.
+        'DJ', 'MC', 'TV', 'MTV', 'LP', 'YMCA', 'USSR', 'BBC', 'FM', 'BC', 'DC', 'BPM', 'NBA', 'RZA', 'GZA', 'ODB',
+        'DMX', '2XLC']);
+
+    /**
+     * Words MusicBrainz's guess case writes one way whatever the source's case
+     * ("iTunes", "YouTube"), keyed by their lower case: its
+     * POSTPROCESS_FIXLIST (musicbrainz-server, as ported in majkinetor's
+     * Apollo Editor, 2026-11-21), the entries that change letter case only.
+     * Not "a cappella" or "Rock 'n' Roll": those change length.
+     * @type {Map<string, string>}
+     */
+    const _MBTC_BRANDS = new Map(['iMac', 'iPad', 'iPhone', 'iPod', 'iTunes', 'TikTok', 'YouTube', 'DJs', 'OC ReMix']
+        .map(w => [w.toLowerCase(), w]));
+
+    /**
+     * A `_MBTC_BRANDS` word as a whole word (no letter or digit either side),
+     * in any case.
+     * @type {RegExp}
+     */
+    const _MBTC_BRAND_RE = new RegExp(String.raw`(?<![\p{L}\p{N}])(?:` +
+        [..._MBTC_BRANDS.keys()].join('|') + String.raw`)(?![\p{L}\p{N}])`, 'giu');
+
+    /**
+     * Version phrases MusicBrainz's guess case misses, lower case inside
+     * brackets: Apollo Editor's VERSION_PHRASES (from chaban's "Guess Case
+     * Improver"), verbatim. A parenthesised part is extra title information
+     * when what is left after them is made of `_MBTC_ETI` words: "(Slowed +
+     * Reverb)" → "(slowed + reverb)", "(Official Music Video)". As phrases,
+     * so "up", "down" or "music" alone never are.
+     * @type {string[]}
+     */
+    const _MBTC_ETI_PHRASES = ['official lyric video', 'official music video', 'official video', 'official visualizer',
+        'official visualiser', 'official audio', 'kinetic lyric video', 'lyric video', 'lyrics video', 'music video',
+        'backing track', 'animated', 'animation', 'super slowed', 'extra slowed', 'ultra slowed', 'slowed down',
+        'slowed', 'super sped up', 'sped up', 'super speed up', 'speed up', 'low pitched', 'reverb', 'nightcore',
+        'bootleg', 'mashup', 'flip'];
+
+    /**
+     * A `_MBTC_ETI_PHRASES` phrase as a whole word or phrase, any case.
+     * @type {RegExp}
+     */
+    const _MBTC_ETI_PHRASE_RE = new RegExp(String.raw`(?<![\p{L}\p{N}])(?:` + _MBTC_ETI_PHRASES.join('|') +
+        String.raw`)(?![\p{L}\p{N}])`, 'giu');
 
     /**
      * Abbreviations that have no vowel but are not acronyms ("ST. JAMES",
@@ -18185,8 +18237,11 @@
      * keeps every letter but a word's first. With `capsOnly` a mixed part is
      * left exactly as written: a setlist's songs are in capitals and its
      * notes ("(with Patti Scialfa)") are not titles. A parenthesised part
-     * made only of descriptive words (`_MBTC_ETI`) is all lower case. A
-     * title wholly in square brackets ("[no title]") is left as it is.
+     * made only of descriptive words (`_MBTC_ETI`) and version phrases
+     * (`_MBTC_ETI_PHRASES`) is all lower case. A word of `_MBTC_BRANDS` is
+     * written MusicBrainz's way ("iTunes", "YouTube") in every part the pass
+     * rewrites. A title wholly in square brackets ("[no title]") is left as
+     * it is.
      *
      * A part in capitals inside parentheses counts as one only when the
      * title is in capitals outside them too; otherwise it is a name or an
@@ -18229,7 +18284,9 @@
                 words.push({ start: m.index, word: w });
             }
             if (!words.length) return part;
-            const lower = inParens && words.every(({ word }) => {
+            // Extra title information: what is left once the version
+            // phrases are taken out is all descriptive words.
+            const lower = inParens && (part.replace(_MBTC_ETI_PHRASE_RE, ' ').match(_MBTC_WORD_RE) || []).every((word) => {
                 const k = word.toLowerCase().replace(/\.$/, '');
                 return _MBTC_ETI.has(k) || /^\p{N}+$/u.test(k) || /^(?=[ivx]+$)x{0,3}(?:ix|iv|v?i{0,3})$/.test(k);
             });
@@ -18251,7 +18308,9 @@
                 out += gapBefore + rewritten;
                 pos = w.start + w.word.length;
             });
-            return out + part.slice(pos);
+            // MusicBrainz's fixed spellings last ("ITUNES" → "iTunes"); each
+            // is as long as what it replaces.
+            return (out + part.slice(pos)).replace(_MBTC_BRAND_RE, m => _MBTC_BRANDS.get(m.toLowerCase()) || m);
         }).join('');
     }
 
@@ -18549,10 +18608,12 @@
     /**
      * Scripts whose presence takes a title out of the case check: a
      * Japanese title with an English part ("君が通り過ぎたあとに—DON’T PASS ME
-     * BY—") follows its own conventions.
+     * BY—") follows its own conventions. Cyrillic, Greek and (since
+     * 2026-11-21, Apollo Editor's isCasedOther) Armenian are cased scripts
+     * whose titles MusicBrainz writes in sentence case.
      * @type {RegExp}
      */
-    const _MBTS_SKIP_SCRIPT_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Greek}　-〿＀-￯]/u;
+    const _MBTS_SKIP_SCRIPT_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Greek}\p{Script=Armenian}　-〿＀-￯]/u;
 
     /**
      * A live bootleg title ("1977‐05‐13, late show: Monmouth Arts Center, Red
