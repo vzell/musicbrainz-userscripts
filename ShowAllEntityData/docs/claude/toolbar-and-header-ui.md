@@ -812,12 +812,37 @@ SAED's own single keys need nothing from it: the prefix mode's second key and
 the preview window's H already call `preventDefault()` in the capture phase,
 before EH's bubble listener. Spec: `tests/fixtures/eh-single-keys.spec.js`
 (the simulator `eh-body-swap.js` carries EH's key listener); mutations:
-`scripts/mutations/eh-single-keys.json`. The long-term form is convention C3
-in org/majkinetor.org (`<html data-mbu-keys-off>`). EH honours it since
-majkinetor's #938 (upstream 9e4cdd59), but it suspends EVERY EH command, `v`
-included, so it is NOT set on MusicBrainz's page: that would take V, the
-handoff the user relies on (vzell, 2026-11-08). The guard stays, also for EH
-without the mark; the #938 reply asks to keep V working under keys-off.
+`scripts/mutations/eh-single-keys.json`.
+
+**Convention C3 on our table** (`_mbuKeysSync()`, feat/eh-keys-keep-gate-clamp
+WIP.2, 2026-11-21). `<html data-mbu-keys-off>` suspends EVERY EH command,
+`v` included, so it was not set until majkinetor added
+`data-mbu-keys-keep="toggle"` (#938 answer 2026-11-20, EH:17972 at
+`a1e8f54`): beside keys-off it leaves the `view` command working, whatever
+key it is bound to. Rules:
+
+- Up only while a table of ours shows (`_mbuTableShown()`, as
+  `data-mbu-quiet`), `sa_block_eh_single_keys` is on and EH's view is not
+  shown; the <html> observer re-syncs it. NOT on the initial page (vzell,
+  2026-11-21): there it would take EH's player keys on every page we run on.
+- Only when EH is known to honour keys-keep (`_ehKeysKeepHonoured()`):
+  String Theory's `<html data-mbu-st>` version ≥ `_EH_KEYS_KEEP_ST_MIN`
+  (2026.11.20.165956, upstream `352510c`; 2026.11.20.164048 has keys-off
+  without keep, where the marks take V). A standalone EH publishes no
+  version, so it keeps the letter guard.
+- Ownership: keys-off set only when absent, removed only while `saed`;
+  keys-keep set only beside our keys-off, removed only when ours
+  (`_mbuInterop.keysKeepOurs`) and still `toggle`; a keys-keep already there
+  without the `toggle` token means no marks at all (V would die).
+- Under our marks `_ehKeyGuardInstall()` takes nothing (its first check), so
+  a toggle rebound to a listed letter reaches EH, and Ctrl+L needs no special
+  case (EH leaves it). Elsewhere the letter list still applies, with `u`
+  since this change. Ctrl+P is never taken by the list (the print dialog).
+
+Specs: `eh-single-keys.spec.js`, "C3: data-mbu-keys-off + data-mbu-keys-keep
+while our table shows" (the simulator's `__EH_SIM_C3__`, `__EH_SIM_ST__`,
+`__EH_SIM_REBIND__`), and `eh-interop-markers.spec.js`, "under the C3 marks";
+mutations `scripts/mutations/eh-keys-off.json`.
 
 **Ctrl+L** goes through the same capture listener: with
 `sa_enable_direct_ctrl_char_shortcuts` on, our `sa_shortcut_load_from_disk`
@@ -867,6 +892,12 @@ init code (no TDZ). One `MutationObserver` on `<html>` attributes
   (`[data-mb-corner]` or `<html data-mbu-st>`), toggles
   `_mbuInterop.quietUserShown` for the page view. No SAED element carries
   `data-mb-corner`; giving one that attribute would hide it under the mark.
+- **Keys marks** (`_mbuKeysSync()`, `sa_block_eh_single_keys`):
+  `<html data-mbu-keys-off="saed" data-mbu-keys-keep="toggle">` while a table
+  shows, under the same observer and render-tail call as the quiet mark, but
+  only with String Theory ≥ 2026.11.20.165956; the rules are in "Event
+  Horizon's single keys are ignored on MusicBrainz's page" above. Its way
+  back is the setting (no ☰ row: V still switches EH on).
 - **Menu launchers** (`_ehMenuSync()`): hidden `button[data-mbu-menu-item]`
   directly under `<html>`, which EH projects into its More (⋯) menus and
   `.click()`s. Registered only while EH's view shows and only for a page we

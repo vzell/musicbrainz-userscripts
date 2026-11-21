@@ -30871,3 +30871,20 @@ Tampermonkey (GM stubs)
   the 60 s cap anyway). Lint within the baseline; `check-mutation-finds.py` 0 stale.
 - **HELP**: checked, it does not describe the gate; no edit owed. **PERFORMANCE.org**: nothing about the gate's
   writes; no edit.
+
+## 2026-11-21 — C3 with data-mbu-keys-keep on our table (feat/eh-keys-keep-gate-clamp, WIP.2)
+
+Env: 2026-11-21T01:30+01:00 · petri · WSL2 Ubuntu 24.04.3 (Linux 6.18.58.1) · Playwright 1.62.1 Chromium · no
+Tampermonkey (GM stubs)
+
+- **What**: `_mbuKeysSync()` sets `data-mbu-keys-off="saed"` + `data-mbu-keys-keep="toggle"` while a table shows
+  and String Theory's `data-mbu-st` ≥ 2026.11.20.165956 (`_ehKeysKeepHonoured()`; checked via GitHub: ST at `0d083b2`
+  = 164048 has keys-off without keep, `352510c` = 165956 has both). `_ehKeyGuardInstall()` takes nothing under the
+  marks; `_EH_SINGLE_KEYS` gains `u`. Setting relabelled, same key and default.
+- **Simulator trap**: `document.documentElement` is null when a context init script runs in this harness, so the
+  sim's `data-mbu-st` is set again at DOMContentLoaded (before the userscript starts).
+- **Specs**: nine new; on the old userscript six failed, three passed (they pin what must not happen); after, the
+  three EH specs 42/42. Mutations: `eh-keys-off.json` 13/13; `eh-single-keys.json` 11/11 after one stale find
+  (the letter set) was updated; `eh-interop-markers.json` all OK. `check-mutation-finds.py` 0 stale.
+- **Also**: `scripts/config-default-history.json` refreshed (it lacked 9.99.1673's three rec-dup settings; the
+  audit failed on `main` too).

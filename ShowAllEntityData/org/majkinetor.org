@@ -16,11 +16,12 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-21)
 
-- *Now:* nothing in progress. Fusion's duplicate recordings shipped in 9.99.1673 (=feat/fusion-rec-dup=,
-  browser check OK by vzell 2026-11-21); see the item. Its follow-ups: work recordings (second batch), tap to pin
-  on touch (later).
-- *Next:* the next adoption is open (the Credit Hoarder role map, column reorder, …), and two small ours from
-  the 2026-11-20 refresh: C3 with =data-mbu-keys-keep=, the gate's write clamp.
+- *Now:* =feat/eh-keys-keep-gate-clamp= (2026-11-21): the two small ours from the 2026-11-20 refresh are built,
+  WIP.1 the gate's write clamp, WIP.2 C3 with =data-mbu-keys-keep=; waiting for vzell's browser check, then the
+  merge question. Upstream =main= is at =3716624= (44 commits past the clone, EH UI only; the gate and the
+  keys-off check unchanged): refresh next time.
+- *Next:* the next adoption is open (the Credit Hoarder role map, column reorder, …). Fusion's follow-ups: work
+  recordings (second batch), tap to pin on touch (later).
 - *majkinetor answered all three open questions* on #938 (milic-bot, 2026-11-20 17:00 CET,
   [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7044153970][comment]]; on =main=
   since String Theory 2026.11.20.165956, which vzell runs in Vivaldi):
@@ -103,7 +104,7 @@ is removed only while its value is still ours, and the setter offers its own way
 |----+-------------------------------------------------------------------------------------------------------+-------------+------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------|
 | C1 | =data-mbu-foreign="saed"= on a rendered table                                                         | SAED        | ISRC Scout's =fillTrackData()= / =showTrackData()= (insert, wipe, colspans); the shared =mbuTipFind()=      | *adopted* (9.99.1579, =_markForeignTable()=): every =table.tbl= a render builds                                                       |
 | C2 | =a.ii-trk-ln[data-ii-platform][data-ii-ended="true\|false"]=                                          | ISRC Scout  | SAED reads it instead of tip text                                                                          | *adopted* (9.99.1578, =_isrcScoutLinkPlatform()=): metadata, then =data-tip=, then =title=                                           |
-| C3 | =<html data-mbu-keys-off="saed">=                                                                     | SAED        | EH's keydown returns early: *every* command, V and Ctrl+L included                                        | *not adopted yet*: it took V. Asked to keep V working under it (2026-11-08, 2026-11-17); *answered 2026-11-20*: =<html data-mbu-keys-keep="toggle">= beside it keeps EH's on/off command (EH 2026.11.21.190000, =a1e8f54=; anchors =conv-c3-keep=, =saed-no-keys-off=). TODO "Event Horizon's new keys on our FRP" |
+| C3 | =<html data-mbu-keys-off="saed">=                                                                     | SAED        | EH's keydown returns early: *every* command, V and Ctrl+L included                                        | *not adopted yet*: it took V. Asked to keep V working under it (2026-11-08, 2026-11-17); *answered 2026-11-20*: =<html data-mbu-keys-keep="toggle">= beside it keeps EH's on/off command (EH 2026.11.21.190000, =a1e8f54=; anchors =conv-c3-keep=, =saed-keys-off=). *Adopted on =feat/eh-keys-keep-gate-clamp=* (WIP.2, =_mbuKeysSync()=): both marks while a table shows, String Theory ≥ 2026.11.20.165956 |
 | C4 | =<html data-mbu-quiet="saed">=                                                                        | SAED        | =mbRestackCorner()=: =[data-mb-corner]= and =#mbu-dock-shelf= =visibility:hidden=                         | *adopted* (9.99.1580, =_mbuQuietSync()=, =sa_mbu_quiet_corner=, ☰ row)                                                              |
 | C5 | /dropped/ ("no SAED-specific detection"); replaced by EH's More (⋯) menu protocol: hidden =button[data-mbu-menu-item][data-mbu-menu-title]= under =<html>= | SAED | EH projects it into its header menus and =.click()=s it; =disabled= hides it                              | *adopted* (9.99.1581, =_ehMenuSync()=, =_ehHandoff()=): "Open in ShowAllEntityData" + one item per button                           |
 | C6 | =mbu:mb-gate= *version 1* (=version=, =tat=, =cool=, =hot=, =lead=, =leadUntil=; Web Lock =mbu-mb-gate=) | majkinetor (documents it) | SAED books its ws/2 there                                                                                  | adopted: SAED 9.99.1583 (TODO "Join majkinetor's cross-tab request gate"); upstream's code moved on since (TODO "Bring SAED's request-gate port in line with upstream") |
@@ -301,6 +302,16 @@ cost from the wakers (tests/MEASUREMENTS.org, 2026-11-18).
   them, and V toggles in both cases; a foreign value (=data-mbu-keys-off="other"=) is never removed. Mutations: the
   marks never set; =keys-keep= missing (V dead); removal ignores the owner. Live: a probe field for the marks in case
   B.
+- *Built* on =feat/eh-keys-keep-gate-clamp= (WIP.2, 2026-11-21, petri): =_mbuKeysSync()= sets both marks while a
+  table shows; *not on the IP* (vzell, 2026-11-21: they would take EH's player keys on every page SAED runs on), and
+  only when =_ehKeysKeepHonoured()=: String Theory's =<html data-mbu-st>= ≥ 2026.11.20.165956 (upstream =352510c=;
+  2026.11.20.164048 has keys-off without keep, checked through GitHub). A standalone EH publishes no version and keeps
+  the letter guard (vzell's choice; the #938 draft asks for an EH mark). Under the marks =_ehKeyGuardInstall()= takes
+  nothing, so a toggle rebound to =h= works; elsewhere its list has =u= now (Ctrl+P is never taken: print). Setting
+  label "Keep Event Horizon's keys off MusicBrainz's page" (same key, same default). Nine specs (six fail on the old
+  code; the other three pin what must not happen), =scripts/mutations/eh-keys-off.json= (13, all caught); probe
+  =htmlMarks= lists the marks (case B not re-run). Anchor =saed-keys-off= (present; the duplicate
+  =saed-no-keys-off= pair merged). DONE at the merge.
 
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
 

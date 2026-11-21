@@ -1856,17 +1856,25 @@ the direct-shortcuts setting; prefix-mode `o`, `q` and `a` are the alternatives.
 **Every shortcut on this page is configurable**, including the prefix key itself
 — it can be any combination such as `Ctrl+.`, `Alt+X` or `Ctrl+Shift+,`.
 
-**Event Horizon's single-letter keys.** With majkinetor's *Event Horizon*
-installed (on its own or in *String Theory*), its single keys `H` (editing
-history), `E`, `R`, `O`, `C`, `T`, `D`, `A`, `S`, `P`, `.` and `,` would also
-work on MusicBrainz's own page, even with Event Horizon switched off, and one
-stray key would leave the page and a rendered table with it. On the pages
-this script runs on they are ignored, before and after you press a button.
+**Event Horizon's keys.** With majkinetor's *Event Horizon* installed (on its
+own or in *String Theory*), its keys would also work on MusicBrainz's own
+page, even with Event Horizon switched off, and one stray key would leave the
+page and a rendered table with it.
+
+- **While a table of ours shows**, with *String Theory* 2026.11.20.165956 or
+  newer, the page asks Event Horizon to leave all its keys alone except its
+  on/off switch: its single letters, `U` (your profile), its player's keys,
+  and `Ctrl+P`, which prints again. If you rebound the on/off switch in Event
+  Horizon, the new key works here too.
+- **Before you press a button**, or with a standalone or older Event
+  Horizon, its single keys `H` (editing history), `E`, `R`, `O`, `C`, `T`,
+  `D`, `A`, `S`, `P`, `U`, `.` and `,` are ignored. Its player's keys work
+  there, and keys you rebound in Event Horizon are not known.
+
 `V`, which switches Event Horizon on or off, keeps working, and so does every
 key inside Event Horizon's own view and anything you type into a field. To
-give the keys back to Event Horizon, turn off *Ignore Event Horizon's
-single-letter keys on MusicBrainz's page* in ⚙️ Settings → 🎹 KEYBOARD
-SHORTCUTS. Keys you rebound in Event Horizon are not known here.
+give the keys back to Event Horizon, turn off *Keep Event Horizon's keys off
+MusicBrainz's page* in ⚙️ Settings → 🎹 KEYBOARD SHORTCUTS.
 
 After a table is rendered, the script asks nothing when you click in Event
 Horizon's view, because Event Horizon opens many pages in place and the

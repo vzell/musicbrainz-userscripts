@@ -861,10 +861,10 @@
         },
 
         sa_block_eh_single_keys: {
-            label: "Ignore Event Horizon's single-letter keys on MusicBrainz's page",
+            label: "Keep Event Horizon's keys off MusicBrainz's page",
             type: 'checkbox',
             default: true,
-            description: "With majkinetor's Event Horizon (or String Theory) installed, its single-letter keys (H editing history, E edit, R relationships, O, C, T, D, A, S, P, the full stop and the comma) also work on MusicBrainz's own page, where one stray key press leaves the page, and a rendered table with it. On, they are ignored on the pages this script runs on, before and after a button is pressed. V (switch Event Horizon on or off) and every key inside Event Horizon's own view keep working. Keys you rebound in Event Horizon are not known here."
+            description: "With majkinetor's Event Horizon (or String Theory) installed, its keys also work on MusicBrainz's own page, where one stray key press leaves the page, and a rendered table with it. On: while a table of ours shows and String Theory is 2026.11.20.165956 or newer, the page asks Event Horizon to leave all its keys alone except its on/off switch (also its player's keys, U and Ctrl+P, which then prints again); before a button is pressed, or with a standalone or older Event Horizon, its single-letter keys (H editing history, E edit, R relationships, O, C, T, D, A, S, P, U, the full stop and the comma) are ignored. V (switch Event Horizon on or off) and every key inside Event Horizon's own view keep working. Keys you rebound in Event Horizon are not known here, except that its on/off switch keeps working on a table under the newer String Theory."
         },
 
         sa_keyboard_shortcut_prefix: {
@@ -112412,11 +112412,45 @@ ${sections.join('\n')}
      * page (event_horizon.user.js `KEY_CMDS`, EH:12419, 2026.11.08.131500):
      * o overview, e edit, r edit relationships, c cover art, h editing
      * history, t tags, d details, a aliases, s search, p your profile,
-     * "." home, "," settings. Not `v`, its on/off switch, which the user
-     * needs on these pages. Keys rebound in Event Horizon's Ctrl+/ palette
-     * live in its own GM storage and cannot be known here.
+     * "." home, "," settings; and since 0693aea `u` your profile (anchor
+     * `eh-key-u`; `p` is "play" now). Not `v`, its on/off switch, which the
+     * user needs on these pages. Keys rebound in Event Horizon's Ctrl+/
+     * palette live in its own GM storage and cannot be known here. Ctrl+P
+     * (its player) is not taken: that would take the browser's print dialog.
+     * Used only where the C3 marks are not up (`_mbuKeysSync()`): the
+     * initial page, a standalone Event Horizon, an older String Theory.
      */
-    const _EH_SINGLE_KEYS = new Set(['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 's', 'p', '.', ',']);
+    const _EH_SINGLE_KEYS = new Set(['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 's', 'p', 'u', '.', ',']);
+
+    /**
+     * The first String Theory build whose Event Horizon honours
+     * `<html data-mbu-keys-keep="toggle">` (upstream `352510c`, #938 answer
+     * 2026-11-20; checked 2026-11-21: 2026.11.20.164048 honours keys-off
+     * without keys-keep, so the marks there would take V). String Theory
+     * writes its version to `<html data-mbu-st>`; a standalone Event Horizon
+     * publishes none.
+     */
+    const _EH_KEYS_KEEP_ST_MIN = '2026.11.20.165956';
+
+    /**
+     * Whether the Event Horizon on this page is known to honour
+     * `data-mbu-keys-keep`: String Theory's `<html data-mbu-st>` version is
+     * at least `_EH_KEYS_KEEP_ST_MIN`, compared number by number. A missing
+     * or unreadable mark is false (a standalone Event Horizon, an older
+     * String Theory): the marks would suspend its V too there.
+     *
+     * @returns {boolean}
+     */
+    function _ehKeysKeepHonoured() {
+        const have = (document.documentElement.getAttribute('data-mbu-st') || '').match(/\d+/g);
+        const min = _EH_KEYS_KEEP_ST_MIN.split('.').map(Number);
+        if (!have || have.length < min.length) return false;
+        for (let i = 0; i < min.length; i++) {
+            const n = Number(have[i]);
+            if (n !== min[i]) return n > min[i];
+        }
+        return true;
+    }
 
     /**
      * Keeps majkinetor's Event Horizon (alone, or inside String Theory) from
@@ -112445,6 +112479,12 @@ ${sections.join('\n')}
      * Installed once, at page init, MusicBrainz only: it covers the initial
      * page and every render after it.
      *
+     * While our C3 marks are up (`_mbuKeysSync()`: a table shows, and String
+     * Theory's Event Horizon honours `data-mbu-keys-keep`), it takes nothing:
+     * Event Horizon itself then leaves every command but its on/off one, and
+     * exempts that one by COMMAND, whatever key it is rebound to. A letter
+     * list here would swallow a toggle rebound to, say, `h`.
+     *
      * @returns {void}
      */
     function _ehKeyGuardInstall() {
@@ -112452,6 +112492,7 @@ ${sections.join('\n')}
         document._mbEhKeyGuardInstalled = true;
         document.addEventListener('keydown', (e) => {
             if (e.defaultPrevented) return;
+            if (document.documentElement.getAttribute('data-mbu-keys-off') === 'saed' && _ehKeysKeepHonoured()) return;
             // Ctrl+L: this script's "Load from disk" when direct Ctrl+letter
             // shortcuts are on, and Event Horizon's history.forward() — both
             // fired, and EH's listener (registered at document-start) runs
@@ -112499,10 +112540,12 @@ ${sections.join('\n')}
      *     this page view (`_mbuQuietSync()`);
      *   - `menu`: the launchers registered for Event Horizon's More (⋯) menu,
      *     by id (`_ehMenuSync()`);
-     *   - `observing`: the `<html>` attribute observer is installed.
+     *   - `observing`: the `<html>` attribute observer is installed;
+     *   - `keysKeepOurs`: `<html data-mbu-keys-keep>` was set by this script
+     *     (`_mbuKeysSync()`), so it may remove it.
      * Declared before the init code that first uses it (no TDZ).
      */
-    const _mbuInterop = { tableShown: false, quietUserShown: false, menu: new Map(), observing: false };
+    const _mbuInterop = { tableShown: false, quietUserShown: false, menu: new Map(), observing: false, keysKeepOurs: false };
 
     /** sessionStorage key of a pending "press this button" handoff from Event Horizon's menu. */
     const _EH_HANDOFF_KEY = 'sa_eh_handoff';
@@ -112523,7 +112566,7 @@ ${sections.join('\n')}
     function _ehInteropObserve() {
         if (_mbuInterop.observing || _foreignHost) return;
         _mbuInterop.observing = true;
-        new MutationObserver(() => { _ehMenuSync(); _mbuQuietSync(); })
+        new MutationObserver(() => { _ehMenuSync(); _mbuQuietSync(); _mbuKeysSync(); })
             .observe(document.documentElement, { attributes: true, attributeFilter: ['data-mbu-dock', 'data-mbu-page'] });
     }
 
@@ -112552,6 +112595,53 @@ ${sections.join('\n')}
         _mbuInterop.tableShown = true;
         _ehInteropObserve();
         _mbuQuietSync();
+        _mbuKeysSync();
+    }
+
+    /**
+     * The keys marks, convention C3 with `data-mbu-keys-keep` (#938; Event
+     * Horizon's keydown, EH:17972 at `a1e8f54`):
+     * `<html data-mbu-keys-off="saed" data-mbu-keys-keep="toggle">` suspends
+     * every Event Horizon command except its on/off one (V, or the key the
+     * user rebound it to): its single letters, `u`, Ctrl+P, Ctrl+L and its
+     * player's keys stay off our table. Up while a table of ours shows on
+     * MusicBrainz's page (as `data-mbu-quiet`), `sa_block_eh_single_keys` is
+     * on and String Theory's Event Horizon is known to honour keys-keep
+     * (`_ehKeysKeepHonoured()`); down while Event Horizon's view shows. The
+     * initial page keeps the letter guard (`_ehKeyGuardInstall()`; vzell,
+     * 2026-11-21: marks there would take Event Horizon's player keys on
+     * every page this script runs on).
+     *
+     * The protocol's ownership rules: keys-off is set only when absent and
+     * removed only while its value is `saed`; keys-keep is set only beside
+     * our keys-off and removed only when this script set it
+     * (`_mbuInterop.keysKeepOurs`) and it still reads `toggle`. An existing
+     * keys-keep without the `toggle` token means V would die under our
+     * keys-off, so then no mark is set.
+     *
+     * @returns {void}
+     */
+    function _mbuKeysSync() {
+        if (_foreignHost) return;
+        const root = document.documentElement;
+        const want = _mbuInterop.tableShown && Lib.settings.sa_block_eh_single_keys !== false &&
+            !root.hasAttribute('data-mbu-dock') && _ehKeysKeepHonoured();
+        if (want) {
+            if (root.hasAttribute('data-mbu-keys-off')) return;
+            const keep = root.getAttribute('data-mbu-keys-keep');
+            if (keep !== null && !/(^|\s)toggle(\s|$)/.test(keep)) return;
+            root.setAttribute('data-mbu-keys-off', 'saed');
+            if (keep === null) {
+                root.setAttribute('data-mbu-keys-keep', 'toggle');
+                _mbuInterop.keysKeepOurs = true;
+            }
+        } else if (root.getAttribute('data-mbu-keys-off') === 'saed') {
+            root.removeAttribute('data-mbu-keys-off');
+            if (_mbuInterop.keysKeepOurs && root.getAttribute('data-mbu-keys-keep') === 'toggle') {
+                root.removeAttribute('data-mbu-keys-keep');
+            }
+            _mbuInterop.keysKeepOurs = false;
+        }
     }
 
     /**

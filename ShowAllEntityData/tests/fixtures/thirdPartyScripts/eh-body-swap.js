@@ -50,12 +50,40 @@
  * `button[data-mbu-menu-item]` with a title, not disabled, first of an id in
  * document order — and `sim.select(id)` is choosing one (EH clicks the
  * source button). `sim.navigate(path)` is an in-place move (pushState).
+ *
+ * #938 convention C3 (opt-in, set in an earlier init script; off by
+ * default, so older specs see the listener as before):
+ * - `window.__EH_SIM_C3__ = 'keep'`: EH 2026.11.21.190000's check (EH:17972,
+ *   `a1e8f54`): with `<html data-mbu-keys-off>` every command returns, except
+ *   the `view` command when `data-mbu-keys-keep` holds the token `toggle`,
+ *   whatever key `view` is bound to. `'off'`: the builds between `7eb7c563`
+ *   and String Theory 2026.11.20.164048, where keys-off suspends V too.
+ * - `window.__EH_SIM_ST__ = '<version>'`: String Theory's mark,
+ *   `<html data-mbu-st="<version>">`, set at once (ST:792 sets it at start).
+ * - `window.__EH_SIM_REBIND__ = { view: 'h' }`: keys rebound in EH's Ctrl+/
+ *   palette (`S.keys`); a key taken from another command unbinds that one,
+ *   as EH's palette does. `sim.fired` records the KEY pressed.
  */
 (function () {
     'use strict';
 
-    /** Event Horizon's default KEY_CMDS keys (EH:12419-12436). */
-    const KEYS = ['o', 'e', 'r', 'c', 'h', 't', 'd', 'a', 'v', 's', 'p', '.', ',', 'ctrl+h', 'ctrl+l', 'ctrl+/'];
+    /**
+     * Event Horizon's default KEY_CMDS as [command, key] (EH:12419-12436, and
+     * since 0693aea `u` your profile, `ctrl+p` its player; EH:17840-17880 at
+     * a1e8f54). Only the commands the specs press.
+     */
+    const KEY_CMDS = [['overview', 'o'], ['edit', 'e'], ['rels', 'r'], ['cover', 'c'], ['history', 'h'], ['tags', 't'],
+        ['details', 'd'], ['aliases', 'a'], ['view', 'v'], ['search', 's'], ['play', 'p'], ['home', '.'], ['settings', ','],
+        ['profile', 'u'], ['back', 'ctrl+h'], ['forward', 'ctrl+l'], ['palette', 'ctrl+/'], ['player', 'ctrl+p']];
+    const REBIND = (typeof window.__EH_SIM_REBIND__ === 'object' && window.__EH_SIM_REBIND__) || {};
+    /** @returns {string} the key a command answers to ('' when another command took it) */
+    const keyOfCmd = ([cmd, def]) => {
+        if (cmd in REBIND) return REBIND[cmd];
+        return Object.values(REBIND).includes(def) ? '' : def;
+    };
+    const C3 = window.__EH_SIM_C3__ || '';
+    // No documentElement yet at init-script time in this harness; set again at DOMContentLoaded below.
+    if (window.__EH_SIM_ST__ && document.documentElement) document.documentElement.setAttribute('data-mbu-st', String(window.__EH_SIM_ST__));
 
     /**
      * Event Horizon's keyCombo() (EH 2026.11.08.131500), verbatim in effect.
@@ -166,9 +194,14 @@
         const t = ev.target;
         if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
         const k = keyCombo(ev);
-        if (!k || !KEYS.includes(k)) return;
+        const c = k && KEY_CMDS.find((x) => keyOfCmd(x) === k);
+        if (!c) return;
+        const h = document.documentElement;
+        if (C3 === 'keep' && h.hasAttribute('data-mbu-keys-off')
+            && !(c[0] === 'view' && /(^|\s)toggle(\s|$)/.test(h.getAttribute('data-mbu-keys-keep') || ''))) return;
+        if (C3 === 'off' && h.hasAttribute('data-mbu-keys-off')) return;
         sim.fired.push(k);
-        if (k === 'v') {
+        if (c[0] === 'view') {
             // navigated inside EH: reload for MusicBrainz's page of this one (EH:11490)
             sim.toggle();
             if (!sim.isOn() || location.pathname + location.search === sim.loadPath + sim.loadSearch) ev.preventDefault();
@@ -191,6 +224,9 @@
     });
 
     document.addEventListener('DOMContentLoaded', () => {
+        // An init script's attribute on <html> does not survive the parser in
+        // this harness: String Theory's mark again, before the userscript starts.
+        if (window.__EH_SIM_ST__) document.documentElement.setAttribute('data-mbu-st', String(window.__EH_SIM_ST__));
         sim.mbBody = document.body;
         if (window.__EH_SIM_NO_LAUNCHER__ !== true) {
             sim.launcher = document.createElement('button');

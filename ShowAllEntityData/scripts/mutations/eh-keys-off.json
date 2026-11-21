@@ -1,0 +1,171 @@
+[
+  {
+    "name": "the keys-off mark is never set",
+    "why": "Without data-mbu-keys-off Event Horizon's u, Ctrl+P and player keys act on our table (the state before C3 was adopted).",
+    "edits": [
+      {
+        "find": "            root.setAttribute('data-mbu-keys-off', 'saed');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "the marks go up with the table",
+    "expect": "fail"
+  },
+  {
+    "name": "the render tail does not sync the marks",
+    "why": "_mbuTableShown() is where a render reports the table; without the call the marks never go up.",
+    "edits": [
+      {
+        "find": "        _mbuQuietSync();\n        _mbuKeysSync();\n    }",
+        "replace": "        _mbuQuietSync();\n    }"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "the marks go up with the table",
+    "expect": "fail"
+  },
+  {
+    "name": "keys-keep is never set (V dies)",
+    "why": "data-mbu-keys-off alone suspends EVERY Event Horizon command, its on/off switch included: the user is locked out of Event Horizon on our table.",
+    "edits": [
+      {
+        "find": "                root.setAttribute('data-mbu-keys-keep', 'toggle');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "V toggles with the marks set",
+    "expect": "fail"
+  },
+  {
+    "name": "the letter guard is not skipped under the marks",
+    "why": "EH exempts the view COMMAND whatever its key; our capture-phase letter list would still swallow a toggle rebound to h.",
+    "edits": [
+      {
+        "find": "            if (document.documentElement.getAttribute('data-mbu-keys-off') === 'saed' && _ehKeysKeepHonoured()) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "rebound",
+    "expect": "fail"
+  },
+  {
+    "name": "the String Theory version gate is removed",
+    "why": "An Event Horizon that honours keys-off but not keys-keep (String Theory 2026.11.20.164048, or a standalone EH) would lose V under the marks.",
+    "edits": [
+      {
+        "find": "            !root.hasAttribute('data-mbu-dock') && _ehKeysKeepHonoured();",
+        "replace": "            !root.hasAttribute('data-mbu-dock');"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "an older String Theory",
+    "expect": "fail"
+  },
+  {
+    "name": "the version compare accepts any version",
+    "why": "A compare that returns true on the first differing number lets 2026.11.20.164048 through: marks under an EH without keys-keep.",
+    "edits": [
+      {
+        "find": "            if (n !== min[i]) return n > min[i];",
+        "replace": "            if (n !== min[i]) return true;"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "an older String Theory",
+    "expect": "fail"
+  },
+  {
+    "name": "the marks stay up in Event Horizon's view",
+    "why": "In its own view EH's keys are its own; the marks there would suspend all of them but V.",
+    "edits": [
+      {
+        "find": "            !root.hasAttribute('data-mbu-dock') && _ehKeysKeepHonoured();",
+        "replace": "            _ehKeysKeepHonoured();"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "V toggles with the marks set",
+    "expect": "fail"
+  },
+  {
+    "name": "the observer does not sync the marks",
+    "why": "Without the <html> observer's call the marks do not follow Event Horizon's view coming and going.",
+    "edits": [
+      {
+        "find": "_mbuQuietSync(); _mbuKeysSync(); })",
+        "replace": "_mbuQuietSync(); })"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "V toggles with the marks set",
+    "expect": "fail"
+  },
+  {
+    "name": "another script's keys-off is removed",
+    "why": "The protocol: a mark is removed only while its value is still ours.",
+    "edits": [
+      {
+        "find": "        } else if (root.getAttribute('data-mbu-keys-off') === 'saed') {",
+        "replace": "        } else if (root.hasAttribute('data-mbu-keys-off')) {"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "another script's keys-off",
+    "expect": "fail"
+  },
+  {
+    "name": "another script's keys-off is overwritten",
+    "why": "The protocol: a mark is set only when absent; the value names its owner.",
+    "edits": [
+      {
+        "find": "            if (root.hasAttribute('data-mbu-keys-off')) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "another script's keys-off",
+    "expect": "fail"
+  },
+  {
+    "name": "a keys-keep without toggle is ignored",
+    "why": "Beside someone else's keys-keep that lacks the toggle token, our keys-off would take V.",
+    "edits": [
+      {
+        "find": "            if (keep !== null && !/(^|\\s)toggle(\\s|$)/.test(keep)) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "a keys-keep without",
+    "expect": "fail"
+  },
+  {
+    "name": "u is missing from the letter list",
+    "why": "EH's u (your profile, since 0693aea) leaves the page wherever the marks are not up: the initial page, a standalone EH, an older String Theory.",
+    "edits": [
+      {
+        "find": "'s', 'p', 'u', '.', ','",
+        "replace": "'s', 'p', '.', ','"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "a standalone Event Horizon",
+    "expect": "fail"
+  },
+  {
+    "name": "the setting is ignored by the marks",
+    "why": "sa_block_eh_single_keys off must give Event Horizon all its keys back, the marks included.",
+    "edits": [
+      {
+        "find": "        const want = _mbuInterop.tableShown && Lib.settings.sa_block_eh_single_keys !== false &&",
+        "replace": "        const want = _mbuInterop.tableShown &&"
+      }
+    ],
+    "spec": "tests/fixtures/eh-single-keys.spec.js",
+    "grep": "sa_block_eh_single_keys off: no marks",
+    "expect": "fail"
+  }
+]
