@@ -310,7 +310,10 @@ cost from the wakers (tests/MEASUREMENTS.org, 2026-11-18).
   nothing, so a toggle rebound to =h= works; elsewhere its list has =u= now (Ctrl+P is never taken: print). Setting
   label "Keep Event Horizon's keys off MusicBrainz's page" (same key, same default). Nine specs (six fail on the old
   code; the other three pin what must not happen), =scripts/mutations/eh-keys-off.json= (13, all caught); probe
-  =htmlMarks= lists the marks (case B not re-run). Anchor =saed-keys-off= (present; the duplicate
+  =htmlMarks= lists the marks. *Case B live* (2026-11-21 11:06–11:08 CET, petri, logged out): with the String
+  Theory bundle (2026.11.20.215710) both marks are up after the render, gone in EH's view, back after V; the real
+  EH's V works under them and =h= on the table stays; with EH alone no keys marks (DEBUG-NOTES 2026-11-21).
+  =test:full= 3449/3449 at =c515878d=. Anchor =saed-keys-off= (present; the duplicate
   =saed-no-keys-off= pair merged). DONE at the merge.
 
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
