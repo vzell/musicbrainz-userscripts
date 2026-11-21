@@ -16,10 +16,11 @@ left out by decision), NOT (not done, with the reason).
 * PICKUP HERE (2026-11-21)
 
 - *Now: BruceParser's open items* ("TODO Still open in BruceParser" below). Audit done, plan approved by vzell, probes
-  in BruceParser 0.27.1; the run of 2026-11-21 (started by Claude on vzell's word) is the baseline. Blocks 1–4 are
-  done (0.28.0–0.30.0, see the table below); next: block 5 (0.31.0, =erfsl.sh='s SpringsteenLyrics part). The
-  MusicBrainz title list for vzell (24 events) and the =bb-place.spec.js= flake (not reproduced): bbp-parity.org,
-  "Loose ends of 2026-11-20".
+  in BruceParser 0.27.1; the run of 2026-11-21 (started by Claude on vzell's word) is the baseline. *All seven
+  blocks are done* (0.28.0–0.32.0, BruceParser =1be5437=, see the table below). Next: the final full =bbp.sh= run
+  (vzell's, or Claude's on his word), its run-history section, then the feed published. Open for vzell: the rest of
+  E13 (0.30.0). The MusicBrainz title list for vzell (24 events) and the =bb-place.spec.js= flake (not reproduced):
+  bbp-parity.org, "Loose ends of 2026-11-20".
 
 - *Every row of the parity matrix is DONE or decided.* Batch 3b (the five tag families, each behind its own switch,
   off by default) and idea 3 (the lookup tables and the song and venue maps in the feed) are merged as
@@ -505,9 +506,9 @@ vzell, 2026-11-19: a new run before any 3b implementation, with the open BrucePa
   |     2 | 0.28.1  | =eefyp.sh= (F10–F13; E1–E4, E12: the story pages)                    | DONE  |
   |     3 | 0.29.0  | =efc.sh= (E5–E10, E21)                                               | DONE  |
   |     4 | 0.30.0  | =checkURLandTitles.sh= (E11 Wikidot's URL rule, E13, E14)            | DONE  |
-  |     5 | 0.31.0  | =erfsl.sh=, SpringsteenLyrics (S1–S9, S18)                           | TODO  |
-  |     6 | 0.31.1  | =erfsl.sh=, KF and JL (S10–S14; JL from the fresh download)          | TODO  |
-  |     7 | 0.32.0  | =esfsl.sh= (S15–S17): SL vs BB kept, the MB side dropped             | TODO  |
+  |     5 | 0.31.0  | =erfsl.sh=, SpringsteenLyrics (S1–S9, S18)                           | DONE  |
+  |     6 | 0.31.1  | =erfsl.sh=, KF and JL (S10–S14; JL from the fresh download)          | DONE  |
+  |     7 | 0.32.0  | =esfsl.sh= (S15–S17): SL vs BB kept, the MB side dropped             | DONE  |
 
   Outcome so far (2026-11-21, offline on =bb/2026-11-21=; each in BruceParser's CHANGELOG with its probe values):
   - *0.28.0:* setlist differences 341 → 316 (26 parsing artefacts gone, 1 real difference found). The YEAR side by
@@ -522,7 +523,15 @@ vzell, 2026-11-19: a new run before any 3b implementation, with the open BrucePa
   - *0.30.0:* Wikidot's character rule, "New Jersey" as a phrase: URL-shortening 4,304 → 4,226. *Open for vzell:*
     the rest of E13 (title rules true for most pages only); accepting any rule variant hid real deviations
     (=onstage:1988-05-06-tacoma-dome-tacoma-wa=), so it needs a comparison with the show's other pages.
-  - The feed is not published since: it goes out after the final full run.
+  - *0.31.0:* SpringsteenLyrics' lists from the site's menu and pager (8 pages and five categories had been missed),
+    =sl-items.awk= parses items by their labels: collection 4,159 → 4,626 rows, Stefano's list 300 → 402, uniform
+    columns, no CR or entity left.
+  - *0.31.1:* brucespringsteen.it and jungleland.it from the fresh download (the hand copies are gone): KF 1,878 rows
+    with a Note column, JL 6,199 → 6,327 (=jl-items.awk= on the cp1252 bytes).
+  - *0.32.0:* =esfsl.sh= compares SL and BB by a title key (diff 1,102 → 946 lines); the MB side is gone, and with it
+    =bbp.sh='s wait for the work search. The audit's "96 Tears missing" was wrong (no SL letter page lists it).
+  - The feed is not published since: it goes out after the final full run. Ready in =bb/2026-11-21= from =1be5437=
+    (feed 1.8.1; dependent-title 39 → 40, date-parts 3 → 5; =probe-bb-feed.py= agrees on all 264 pages).
 
 * Track B: volkerzell.de (Ionos shared hosting: PHP + MySQL/MariaDB)
 
