@@ -394,6 +394,11 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
         await relLink(page).scrollIntoViewIfNeeded();
         await relLink(page).hover();
         await expect(card(page)).toContainText('Greetings From Asbury Park, N.J.');
+        // The loading card already shows the link's text (t.name), so wait
+        // for what only the answer has before counting the lookup: under a
+        // loaded run the request can still sit in its rate slot here
+        // (test:full on main, 2026-11-21 17:32 CET, petri: 0 lookups).
+        await expect(card(page)).toContainText('Pitman pressing');
         expect(log.lookups).toHaveLength(1);
     });
 
