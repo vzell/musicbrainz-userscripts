@@ -15,12 +15,18 @@ left out by decision), NOT (not done, with the reason).
 
 * PICKUP HERE (2026-11-21)
 
-- *Now: BruceParser's open items* ("TODO Still open in BruceParser" below). Audit done, plan approved by vzell, probes
-  in BruceParser 0.27.1; the run of 2026-11-21 (started by Claude on vzell's word) is the baseline. *All seven
-  blocks are done* (0.28.0–0.32.0, BruceParser =1be5437=, see the table below). Next: the final full =bbp.sh= run
-  (vzell's, or Claude's on his word), its run-history section, then the feed published. Open for vzell: the rest of
-  E13 (0.30.0). The MusicBrainz title list for vzell (24 events) and the =bb-place.spec.js= flake (not reproduced):
-  bbp-parity.org, "Loose ends of 2026-11-20".
+- *BruceParser's open items are done* ("Still open in BruceParser" below): the seven blocks (0.28.0–0.32.0), the
+  final run of 2026-11-21 01:57 (Claude, on vzell's word; 44 min, no failed step, the probes equal the offline
+  values), the feed published (feed repo =0613c37=, FORMAT.md =82b4683=; feed 1.8.1). Then, on vzell's word: 0.32.1
+  (=tag-maps.awk='s tab bound; feed unchanged), 0.33.0 (the MusicBrainz side, =search/*.sh=: two real, several latent
+  findings; =feed.sh= 1.8.2 refuses a stale MusicBrainz input), 0.34.0 (E13: a page judged by its show; 76 stage
+  pages named otherwise, a report). BruceParser =0ff3b21=.
+- *For vzell:* send the draft to Danny (bbp-parity.org, "Wiki fixes for Danny"); decide whether the 76 stage pages
+  go into the feed (the userscript would mark them; today a BruceParser report only); upload the volkerzell.de pages
+  (=bb/index.org='s hand count "319" is 315 now); the 24 MusicBrainz event titles (bbp-parity.org). The
+  =bb-place.spec.js= flake did not come back.
+- *Not live-tested yet:* 0.33.0's browse changes (timeouts, backoff, the distinct/count check) run first in the next
+  =bbp.sh=; and 0.34.0's =checkURLandTitles.sh= is not in the published feed (it feeds no kind).
 
 - *Every row of the parity matrix is DONE or decided.* Batch 3b (the five tag families, each behind its own switch,
   off by default) and idea 3 (the lookup tables and the song and venue maps in the feed) are merged as
@@ -530,8 +536,11 @@ vzell, 2026-11-19: a new run before any 3b implementation, with the open BrucePa
     with a Note column, JL 6,199 → 6,327 (=jl-items.awk= on the cp1252 bytes).
   - *0.32.0:* =esfsl.sh= compares SL and BB by a title key (diff 1,102 → 946 lines); the MB side is gone, and with it
     =bbp.sh='s wait for the work search. The audit's "96 Tears missing" was wrong (no SL letter page lists it).
-  - The feed is not published since: it goes out after the final full run. Ready in =bb/2026-11-21= from =1be5437=
-    (feed 1.8.1; dependent-title 39 → 40, date-parts 3 → 5; =probe-bb-feed.py= agrees on all 264 pages).
+  - The final run (2026-11-21 01:57, =1be5437=) confirmed every value; its feed is published (feed repo =0613c37=;
+    feed 1.8.1; dependent-title 39 → 40, date-parts 3 → 5; =probe-bb-feed.py= agrees on all 264 pages).
+  - *After the blocks:* 0.32.1 (=tag-maps.awk=, F14's rest: no link changes), 0.33.0 (=search/*.sh=: the event-title
+    extract and the lengths were wrong, the rest latent but feed-relevant), 0.34.0 (E13 done by judging a page by its
+    show: URL-shortening 4,226 → 2,749, stage-page report of 76).
 
 * Track B: volkerzell.de (Ionos shared hosting: PHP + MySQL/MariaDB)
 

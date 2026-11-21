@@ -1438,12 +1438,15 @@ exceptions gone, a few real things on the wiki have surfaced. No hurry with any 
    https://brucebase.wikidot.com/media:2024-09-15a-beach-asbury-park-nj                    (before "Asbury Park")
    https://brucebase.wikidot.com/media:2026-04-26-moody-center-austin-tx                   (before "Austin")
 
-7. Only if you care about consistent page names: these On stage pages are named
-   differently from the other pages of their show:
+7. Only if you care about consistent page names: 76 On stage, Off stage and
+   soundcheck pages are named differently from the other pages of their show,
+   for example:
    onstage:1988-05-06-tacoma-dome-tacoma-wa             (the others: ...-dome-tacoma-wa)
+   onstage:1981-04-09-icc-west-berlin-west-germany      (the others: ...-icc-berlin-germany)
    onstage:2009-07-08-mch-arena-herning-herning-denmark (the others: ...-mch-arena-herning-denmark)
-   onstage:2012-11-05-downtown-madison-madison-wi       (the Off stage page: ...-2012-11-05-downtown-madison-wi)
    onstage:2008-03-29-keyarena-seattle-wa               (the others: ...-keyarena-at-seattle-center-seattle-wa)
+   The full list is on the URL page after my next upload:
+   https://volkerzell.de/bruce/URL-shortening.html (last section)
 
 The setlist differences list (volkerzell.de/bruce/setlist-differences.txt) is down to 315
 events after the next upload; about 25 of the old entries were parser artefacts, not
