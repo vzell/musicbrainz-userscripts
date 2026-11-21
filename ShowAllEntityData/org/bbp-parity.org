@@ -1375,3 +1375,80 @@ MusicBrainz too and have no Brucebase title to compare.
 *D. Probably conventions, no action suggested:* Theater/Theatre ×6, Feyenoord/Feijenoord ×4, Tokyo Dome, missing
 possessive apostrophes (Hooligans, T‐Birds, Ripley, Macauley, Old Timer's), venue sub-names without a comma (Cipriani
 42nd Street, Barnes & Noble Union Square, …), =St=/=St.=.
+
+** Wiki fixes for Danny (draft for vzell to send, 2026-11-21)
+
+Env: 2026-11-21T02:19:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+(BruceParser 0.28.1–0.32.0 reports over the run =bb/2026-11-21=)
+
+From BruceParser's fixed reports (0.28.0–0.32.0): what they show on the wiki now that the parser's own artefacts and
+the hand-coded exceptions that hid real rows are gone. vzell sends it; nothing here was posted.
+
+#+begin_example
+Hi Danny,
+
+I've been cleaning up BruceParser (the scripts behind the volkerzell.de reports and the
+Brucebase feed for my userscript). With several parser bugs fixed and some hard-coded
+exceptions gone, a few real things on the wiki have surfaced. No hurry with any of it:
+
+1. 2010 list page: 2010-07-22 (Stone Hill Studio) and 2010-07-23 (The Stone Pony) appear
+   in ONE bullet, joined by a "*". Looks like a missing line break in the list text of
+   one of the two entries.
+   https://brucebase.wikidot.com/2010-list
+
+2. Pages tagged with several dates but without "xdate":
+   https://brucebase.wikidot.com/gallery:2002-07-11-expo-theater-fort-monmouth-nj  (11, 12, 16, 18, 22)
+   https://brucebase.wikidot.com/news:story-1988-06-21-villa-park-birmingham-england-1  (21, 22, 25 June)
+   https://brucebase.wikidot.com/news:story-1988-06-21-villa-park-birmingham-england-2  (21, 22, 25 June, 9, 10 July)
+
+3. An event page without any date tag (june, 06, 2026 missing):
+   https://brucebase.wikidot.com/nogig:2026-06-06-center-for-american-music-west-long-branch
+
+4. Setlist items with two song links and nothing between them ("TENTH AVENUE FREEZE-OUT"
+   directly followed by "SHOUT"; probably " - " or two items):
+   https://brucebase.wikidot.com/gig:2014-02-05-arena-perth-australia
+   https://brucebase.wikidot.com/gig:2014-02-15-aami-park-melbourne-australia
+
+5. Titles that disagree:
+   - 1991 year page "STING RESIDENCE" vs. the event page "Sumner Residence":
+     https://brucebase.wikidot.com/gig:1991-02-09-private-residence-malibu-ca
+   - title "1985-12-24 Springsteen Residence, Rumson, NJ Rumson Nj" (an extra "Rumson Nj"):
+     https://brucebase.wikidot.com/news:1985-12-24-private-residence-rumson-nj
+   - story "Municipal Auditorium" vs. the gig "Jackson Municipal Auditorium":
+     https://brucebase.wikidot.com/story:story-1978-07-18-municipal-auditorium-jackson-ms
+   - story "Frankfurt, Germany" vs. the gig "Frankfurt, West Germany":
+     https://brucebase.wikidot.com/story:story-1981-04-14-festhalle-frankfurt-germany
+
+6. Page titles with a double blank (invisible on the page, but in the title itself;
+   fixing an event page also clears its dependent pages):
+   https://brucebase.wikidot.com/gig:1966-07-28-arthur-pryor-bandshell-asbury-park-nj      (after the date)
+   https://brucebase.wikidot.com/gig:1973-04-28-cole-field-house-college-park-md           (before "College Park")
+   https://brucebase.wikidot.com/nogig:1975-12-21a-minkler-auditorium-toronto-on           (before "Toronto")
+   https://brucebase.wikidot.com/gig:1978-11-12-rpi-field-house-troy-ny                    (before "Troy")
+   https://brucebase.wikidot.com/gig:2026-08-28-stone-pony-asbury-park-nj                  (before "Asbury Park")
+   https://brucebase.wikidot.com/gignote:1975-12-21b-convocation-hall-toronto-on           (before "Toronto")
+   https://brucebase.wikidot.com/onstage:1978-06-09-mecca-arena-milwaukee-wi               ("MECCA  Arena")
+   https://brucebase.wikidot.com/media:1988-02-28-centrum-worcester-ma                     (before "Worcester")
+   https://brucebase.wikidot.com/story:story-2000-05-22-arrowhead-pond-anaheim-ca          (before "Anaheim")
+   https://brucebase.wikidot.com/news:essay-2000-05-22-arrowhead-pond-anaheim-ca           (before "Anaheim")
+   https://brucebase.wikidot.com/recnote:2014-12-07-kennedy-center-washington-dc           (before "Washington")
+   https://brucebase.wikidot.com/media:2022-11-14-rockefeller-center-new-york-city-ny      (before "New York City")
+   https://brucebase.wikidot.com/news:2023-04-07-cfg-bank-arena-baltimore-md               ("CFG Bank  Arena")
+   https://brucebase.wikidot.com/media:2023-10-28-pollak-theatre-west-long-branch-nj       (before "West Long Branch")
+   https://brucebase.wikidot.com/media:2024-09-15a-beach-asbury-park-nj                    (before "Asbury Park")
+   https://brucebase.wikidot.com/media:2026-04-26-moody-center-austin-tx                   (before "Austin")
+
+7. Only if you care about consistent page names: these On stage pages are named
+   differently from the other pages of their show:
+   onstage:1988-05-06-tacoma-dome-tacoma-wa             (the others: ...-dome-tacoma-wa)
+   onstage:2009-07-08-mch-arena-herning-herning-denmark (the others: ...-mch-arena-herning-denmark)
+   onstage:2012-11-05-downtown-madison-madison-wi       (the Off stage page: ...-2012-11-05-downtown-madison-wi)
+   onstage:2008-03-29-keyarena-seattle-wa               (the others: ...-keyarena-at-seattle-center-seattle-wa)
+
+The setlist differences list (volkerzell.de/bruce/setlist-differences.txt) is down to 315
+events after the next upload; about 25 of the old entries were parser artefacts, not
+wiki differences.
+
+Thanks again for Brucebase!
+Volker
+#+end_example
