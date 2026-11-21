@@ -17,8 +17,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 * PICKUP HERE (2026-11-21)
 
 - *Now:* =feat/eh-keys-keep-gate-clamp= (2026-11-21): the two small ours from the 2026-11-20 refresh are built,
-  WIP.1 the gate's write clamp, WIP.2 C3 with =data-mbu-keys-keep=; waiting for vzell's browser check, then the
-  merge question. Upstream =main= is at =3716624= (44 commits past the clone, EH UI only; the gate and the
+  WIP.1 the gate's write clamp, WIP.2 C3 with =data-mbu-keys-keep=; test:full 3449/3449, vzell's browser check OK
+  (keys and gate); merge pending vzell's go. Upstream =main= is at =3716624= (44 commits past the clone, EH UI only; the gate and the
   keys-off check unchanged): refresh next time.
 - *Next:* the next adoption is open (the Credit Hoarder role map, column reorder, …). Fusion's follow-ups: work
   recordings (second batch), tap to pin on touch (later).
@@ -313,7 +313,8 @@ cost from the wakers (tests/MEASUREMENTS.org, 2026-11-18).
   =htmlMarks= lists the marks. *Case B live* (2026-11-21 11:06–11:08 CET, petri, logged out): with the String
   Theory bundle (2026.11.20.215710) both marks are up after the render, gone in EH's view, back after V; the real
   EH's V works under them and =h= on the table stays; with EH alone no keys marks (DEBUG-NOTES 2026-11-21).
-  =test:full= 3449/3449 at =c515878d=. Anchor =saed-keys-off= (present; the duplicate
+  =test:full= 3449/3449 at =c515878d=. *vzell's browser check 2026-11-21: keys OK*, gate OK (a forced ⟳ wrote =cool= back to 57 s
+  out from a planted ten minutes; DEBUG-NOTES). Anchor =saed-keys-off= (present; the duplicate
   =saed-no-keys-off= pair merged). DONE at the merge.
 
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)

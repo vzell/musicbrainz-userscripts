@@ -30899,3 +30899,13 @@ Tampermonkey (GM stubs)
     `data-mbu-keys-keep=toggle` beside `data-mbu-quiet=saed`; in EH's view (V) all three gone; after V again all
     back. With the marks up, the real EH's V switched it on and off, and `h` on the table did not navigate
     (`{"navigated":false}`). So the real EH honours the marks as the simulator does.
+- **Browser check by vzell, 2026-11-21** (live, logged in; browser and Tampermonkey versions not restated, the
+  previous evening's report was Vivaldi 8.2.4133.96 · Tampermonkey 5.5.1; SAED from this branch):
+  - *Keys* (release 1d404e1d-fcb6-3a52-b478-e706e893c897, String Theory on): OK.
+  - *Gate* (series aa3694d3-a3d0-48ed-8f07-5b576de87908, String Theory OFF, a hold planted ten minutes out).
+    First try proved nothing: the Relationships column answered from the `rel-ws2` cache (`Rels: 1ms`), so no
+    request reached the gate and the stored `cool` read 577,512 ms out, untouched; my check plan had missed the
+    cache again (as on 2026-11-18). Second try: the hover ⟳ of one loaded cell (`_relLoadRow()` forced, both cache
+    tiers bypassed, foreground) at 10:37:54.939 — "waits 60 s (MusicBrainz asked every script to wait)" at
+    10:37:54.946, and the stored `cool` then read 57,459 ms out. The write clamp works in the browser.
+  - For a future gate check: force a request (the ⟳ of a loaded cell), never rely on a render's Relationships pass.
