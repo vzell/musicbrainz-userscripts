@@ -4914,3 +4914,13 @@ Env: 2026-11-21T11:42:51+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, =c001553e= + the fold  |  3449 |      12 | *22 m 57 s* | =run-test-full.py=, 11:42:51–12:05:48 CET |
 
 3449 passed, no flake.
+
+* 2026-11-21 — =npm run test:full= on =petri=, feat/eh-version-mark (WIP.1)
+
+Env: 2026-11-21T14:20:54+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =c7e74a31=             |  3453 |      12 | *23 m 22 s* | =run-test-full.py=, 14:20:54–14:44:16 CET |
+
+3453 passed, no flake. This branch adds 4 tests (the C3 describe of =eh-single-keys.spec.js=: =data-mbu-eh= current and below the floor, either version mark set after the render).

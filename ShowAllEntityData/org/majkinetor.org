@@ -349,7 +349,7 @@ CLOSED: [2026-11-21 Sat]
 - *Built* on =feat/eh-version-mark= (WIP.1, 2026-11-21, petri): =_mbuVersionMarkAtLeast()=, =_EH_KEYS_KEEP_EH_MIN=,
   the observer's filter with =data-mbu-st= and =data-mbu-eh=; four specs (three fail on the old code), four
   mutations (17/17 caught); HELP and the setting's description name the standalone EH. SAED anchor
-  =saed-eh-version-mark=. Waiting for =test:full= and vzell's browser check.
+  =saed-eh-version-mark=. =test:full= 3453/3453 at =c7e74a31= (14:20–14:44 CET); waiting for vzell's browser check.
 
 ** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
 
