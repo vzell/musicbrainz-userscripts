@@ -60,6 +60,13 @@ gets it as its tooltip, "As written on the site: …" (`_setTip()`, so the
   typesetting choice, not the title; extra title information's descriptive
   words (live, remix, version, …) are lower case.
 - The general Style page has no title rule of its own; it indexes the two above.
+- MusicBrainz's own guess case (musicbrainz-server's GuessCase modes), as ported
+  in majkinetor's Apollo Editor (`apollo_editor.user.js`, `a1e8f54`; copied with
+  his consent and a credit, #938 adoption question 3, 2026-11-21): its
+  `UPPER_CASE_WORDS` (into `_MBTC_ACRONYMS`), the letter-case entries of its
+  `POSTPROCESS_FIXLIST` (`_MBTC_BRANDS`), and Apollo's own `VERSION_PHRASES`
+  (from chaban's "Guess Case Improver", `_MBTC_ETI_PHRASES`) and its
+  `isCasedOther` script rule (Armenian in `_MBTS_SKIP_SCRIPT_RE`).
 
 ## How `_mbTitleCase()` decides
 
@@ -75,7 +82,7 @@ song's `<strong>` (a tour premiere), `<em>` and link survive.
    parentheses too — "Out There In Radioland (JEMS)" keeps JEMS.
 2. **In capitals**, every word is lowered and then capitalised by the rules,
    except acronyms (`_mbtcIsAcronym()`): `_MBTC_ACRONYMS` (USA, UK, EP, NYC,
-   ICC, JAP, QE, …), dotted letters (U.S.A., M.G.'s), letters round an "&" (A&M,
+   ICC, JAP, QE, …, and MusicBrainz's own: YMCA, USSR, NBA, RZA, GZA, ODB, …), dotted letters (U.S.A., M.G.'s), letters round an "&" (A&M,
    R&B), a Roman numeral of two or more letters, and two to five letters with
    no vowel and no Y (NJ, TCB, PNC, DVD, MTV) unless an abbreviation of
    `_MBTC_ABBREVIATIONS` (St., Dr., Vol.). O'/D'/L' and Mc prefixes capitalise
@@ -91,13 +98,23 @@ song's `<strong>` (a tour premiere), `<em>` and link survive.
 5. **Extra title information.** A parenthesised part made only of
    `_MBTC_ETI` words (and numbers, Roman numerals, "&", "/", "and") is all
    lower case: "(version 2)", "(half speed)", "(mono / stereo)",
-   "(one sided)", "(late show)".
+   "(one sided)", "(late show)". Apollo's version phrases
+   (`_MBTC_ETI_PHRASES`: "official music video", "slowed", "sped up",
+   "reverb", "nightcore", …) are taken out first, as whole phrases, so
+   "(Slowed + Reverb)" → "(slowed + reverb)" while "(Up)" or "(Music)" keep
+   their capital: none of their words is an ETI word on its own.
 6. **`capsOnly`** (song rows): a mixed part is left exactly as written. A
    setlist's songs are in capitals; its notes ("(with Patti Scialfa)",
    "(partial)") are not titles.
 7. **Particles.** `_MBTC_PARTICLES` (de, des, du, di, del, della, …) are lower
    case in a title in capitals ("Palais des Sports", "Stade de France") and
    left as written otherwise.
+8. **Fixed spellings** (`_MBTC_BRANDS`, last, in every part the pass
+   rewrites): iTunes, iPhone, iPad, iPod, iMac, YouTube, TikTok, DJs, OC
+   ReMix, as whole words in any case ("ITUNES SESSION" → "iTunes Session",
+   "Live on Youtube" → "Live on YouTube"). Letter case only, so the length
+   rule holds; "a cappella" and "Rock 'n' Roll" of the same list change
+   length and are not taken.
 
 ### Deliberate deviations from the letter of the guideline
 
@@ -123,7 +140,13 @@ saved snapshot in `debug/` (songs, jungleland.it, the three
 brucespringsteen.it lists, the springsteenlyrics.com cards and lyrics index,
 all 63 year pages' venues, cities, countries and songs), how many
 titles change and a spread of before → after. Use it to judge any rule change
-on the whole data, not just on the cases.
+on the whole data, not just on the cases. `--diff <git-ref>` (2026-11-21)
+lists EVERY sample title, foreign and MusicBrainz, whose result differs
+between that ref and the working copy: the exact cost of a rule or list
+change. MusicBrainz's guess-case lists changed 6 (petri, 2026-11-21, against
+`main` at `f18f6ecb`): "CORN IN THE USSR" and its "PART TWO" in two
+brucespringsteen.it lists, the Brucebase venue "YMCA", and one MusicBrainz
+recording newly flagged, "Roulette Roulette (Nightcore)" → "(nightcore)".
 
 ## Typography — `_mbTypography()`
 
@@ -186,10 +209,10 @@ case hits to 3.4% of all titles (typography 4.7%). Per " / " part outside bracke
 | Spec / script                                                                                                             | Pins                                                                                                                                                                                                                                                                                                                                                                                                                            |
 |---------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `tests/support/mbTitleCaseCases.js`                                                                                       | the cases, each a real title of one of the sites unless marked "constructed"                                                                                                                                                                                                                                                                                                                                                    |
-| `scripts/check-mb-title-case.js`                                                                                          | the cases in Node (no browser), `--sample [--typo]` over the snapshots                                                                                                                                                                                                                                                                                                                                                          |
+| `scripts/check-mb-title-case.js`                                                                                          | the cases in Node (no browser), `--sample [--typo]` over the snapshots, `--diff <git-ref>` every title a change alters                                                                                                                                                                                                                                                                                                          |
 | `tests/fixtures/mb-title-case.spec.js`                                                                                    | the cases through `window.__saTest` in Chromium; per site the rendered titles (song list, jungleland.it, brucespringsteen.it "(THE)", springsteenlyrics.com bootlegs and lyrics, 1985 venues, cities, countries ("USA" kept, State untouched) and songs, 2018 notes kept, 2012 bold kept, set labels kept and the first song after one rewritten), the tooltips, a lower-case Setlist filter still matching, each setting alone |
 | `tests/support/mbTitleStyleCases.js`, `tests/fixtures/findings-title-style.spec.js`, `scripts/mutations/title-style.json` | the MusicBrainz title-style checker and findings (above)                                                                                                                                                                                                                                                                                                                                                                        |
-| `scripts/mutations/foreign-titles.json`                                                                                   | 20 planted defects; `"expect": "pass"`: the per-node ellipsis (no setlist in the year fixtures holds "..." or "--") and the "USA" exception (see above)                                                                                                                                                                                                                                                                         |
+| `scripts/mutations/foreign-titles.json`                                                                                   | 25 planted defects; `"expect": "pass"`: the per-node ellipsis (no setlist in the year fixtures holds "..." or "--") and the "USA" exception (see above)                                                                                                                                                                                                                                                                         |
 
 The converter specs (`bb-songs`, `bb-year`, `bb-home`, `jl-list`,
 `bs-records`, every `sl-*` list spec) load with BOTH settings OFF: their

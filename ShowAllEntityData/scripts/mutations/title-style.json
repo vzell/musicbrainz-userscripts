@@ -351,5 +351,18 @@
     "spec": "tests/fixtures/findings-title-style.spec.js",
     "grep": "one button in the global filter bar",
     "expect": "fail"
+  },
+  {
+    "name": "Armenian titles are judged for case",
+    "why": "Apollo's isCasedOther: a cased script other than Latin is written in sentence case, so \"(Live Version)\" beside Armenian must not be flagged.",
+    "edits": [
+      {
+        "find": "\\p{Script=Greek}\\p{Script=Armenian}",
+        "replace": "\\p{Script=Greek}"
+      }
+    ],
+    "spec": "tests/fixtures/findings-title-style.spec.js",
+    "grep": "the shared cases hold in the browser",
+    "expect": "fail"
   }
 ]

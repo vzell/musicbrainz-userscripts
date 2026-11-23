@@ -121,8 +121,8 @@
         "why": "\"(Version 2)\" is \"(version 2)\" in MusicBrainz style; the jungleland.it titles show it in every re-issue.",
         "edits": [
             {
-                "find": "const lower = inParens && words.every(({ word }) => {",
-                "replace": "const lower = false && words.every(({ word }) => {"
+                "find": "const lower = inParens && (part.replace(_MBTC_ETI_PHRASE_RE, ' ')",
+                "replace": "const lower = false && (part.replace(_MBTC_ETI_PHRASE_RE, ' ')"
             }
         ],
         "spec": "tests/fixtures/mb-title-case.spec.js",
@@ -266,7 +266,59 @@
     {
         "name": "QE is not a listed acronym",
         "why": "\"QE II JUBILEE SPORTS CENTRE\" keeps QE (Queen Elizabeth): a word with a vowel is kept in capitals only when listed.",
-        "edits": [{ "find": "        'QE']);", "replace": "        ]);" }],
+        "edits": [{ "find": "        'QE',\n", "replace": "" }],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "the shared cases hold in the browser",
+        "expect": "fail"
+    },
+    {
+        "name": "MusicBrainz's acronyms are missing",
+        "why": "Without UPPER_CASE_WORDS, \"CORN IN THE USSR\" (brucespringsteen.it) is written \"Corn in the Ussr\" and the Brucebase venue \"YMCA\" \"Ymca\".",
+        "edits": [
+            {
+                "find": "        'DJ', 'MC', 'TV', 'MTV', 'LP', 'YMCA', 'USSR', 'BBC', 'FM', 'BC', 'DC', 'BPM', 'NBA', 'RZA', 'GZA', 'ODB',\n        'DMX', '2XLC']);",
+                "replace": "        ]);"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "the shared cases hold in the browser",
+        "expect": "fail"
+    },
+    {
+        "name": "the fixed spellings are not applied",
+        "why": "\"ITUNES SESSION\" would read \"Itunes Session\", \"Live on Youtube\" stays: MusicBrainz's POSTPROCESS_FIXLIST writes iTunes, YouTube.",
+        "edits": [
+            {
+                "find": "            return (out + part.slice(pos)).replace(_MBTC_BRAND_RE, m => _MBTC_BRANDS.get(m.toLowerCase()) || m);",
+                "replace": "            return out + part.slice(pos);"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "the shared cases hold in the browser",
+        "expect": "fail"
+    },
+    {
+        "name": "the version phrases are not taken out of the ETI test",
+        "why": "\"(Slowed + Reverb)\", \"(Official Music Video)\", \"(Nightcore)\" would keep their capitals.",
+        "edits": [
+            {
+                "find": "const lower = inParens && (part.replace(_MBTC_ETI_PHRASE_RE, ' ').match(_MBTC_WORD_RE) || [])",
+                "replace": "const lower = inParens && (part.match(_MBTC_WORD_RE) || [])"
+            }
+        ],
+        "spec": "tests/fixtures/mb-title-case.spec.js",
+        "grep": "the shared cases hold in the browser",
+        "expect": "fail"
+    },
+    {
+        "name": "a brand matches inside a word",
+        "why": "Without the whole-word guard \"Ipodcast\" would become \"iPodcast\".",
+        "edits": [
+            {
+                "find": "        [..._MBTC_BRANDS.keys()].join('|') + String.raw`)(?![\\p{L}\\p{N}])`, 'giu');",
+                "replace": "        [..._MBTC_BRANDS.keys()].join('|') + String.raw`)`, 'giu');"
+            }
+        ],
         "spec": "tests/fixtures/mb-title-case.spec.js",
         "grep": "the shared cases hold in the browser",
         "expect": "fail"

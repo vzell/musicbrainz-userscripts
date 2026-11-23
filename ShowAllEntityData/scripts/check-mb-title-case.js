@@ -22,7 +22,13 @@
  *   4. with `--mb-sample`, runs `_mbTitleStyleCheck()` over the MusicBrainz
  *      titles of the snapshots in debug/ and tests/fixtures/, and times it.
  *
- *     node scripts/check-mb-title-case.js [--sample [--typo]] [--mb-sample]
+ *   5. with `--diff <git-ref>`, rewrites every title of both samples with the
+ *      section as it is at <git-ref> AND as it is now, and lists EVERY title
+ *      whose result differs (the foreign converters' case, and the
+ *      MusicBrainz findings' case and typography fixes): what a rule or list
+ *      change alters, in full, instead of a spread.
+ *
+ *     node scripts/check-mb-title-case.js [--sample [--typo]] [--mb-sample] [--diff <git-ref>]
  *
  * The fixture spec tests/fixtures/mb-title-case.spec.js runs the same CASES
  * through `window.__saTest.mbTitleCase` in Chromium.
@@ -31,13 +37,19 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const CASES = require('../tests/support/mbTitleCaseCases.js');
 const STYLE_CASES = require('../tests/support/mbTitleStyleCases.js');
 
-function loadSection() {
-    const src = fs.readFileSync(path.join(ROOT, 'ShowAllEntityData.user.js'), 'utf8');
+/**
+ * Evaluates the userscript's title-style section in a sandbox.
+ *
+ * @param {string} [src] - The userscript's text (default: the working copy).
+ * @returns {object} The section's functions.
+ */
+function loadSection(src = fs.readFileSync(path.join(ROOT, 'ShowAllEntityData.user.js'), 'utf8')) {
     const a = src.indexOf('// MusicBrainz title style on the non-MusicBrainz sites');
     const b = src.indexOf('// jungleland.it: the bootleg artwork list');
     if (a < 0 || b < 0) throw new Error('section banners not found');
@@ -51,8 +63,13 @@ function decode(s) {
         .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function sample(fn) {
-    const read = (p) => (fs.existsSync(path.join(ROOT, p)) ? fs.readFileSync(path.join(ROOT, p), 'utf8') : null);
+/**
+ * The foreign sites' titles of the saved snapshots, per source.
+ *
+ * @returns {Array<[string, string[], ?{capsOnly: boolean}]>}
+ */
+function sampleSources() {
+    const read =(p) => (fs.existsSync(path.join(ROOT, p)) ? fs.readFileSync(path.join(ROOT, p), 'utf8') : null);
     const sources = [];
     const songs = read('debug/bb-songs.html');
     if (songs) sources.push(['bb-songs', [...songs.matchAll(/<li><a href="\/song:[^"]*">(.*?)<\/a>/g)].map(m => decode(m[1]))]);
@@ -108,7 +125,16 @@ function sample(fn) {
         sources.push(['bb-year countries (approx.)', countries]);
         sources.push(['bb-year setlist songs (capsOnly)', songsSet, { capsOnly: true }]);
     }
-    sources.forEach(([name, titles, opts]) => {
+    return sources;
+}
+
+/**
+ * `--sample`: per source, how many distinct titles change, and a spread.
+ *
+ * @param {object} fn - The evaluated section's functions.
+ */
+function sample(fn) {
+    sampleSources().forEach(([name, titles, opts]) => {
         const uniq = [...new Set(titles)];
         const typo = process.argv.includes('--typo');
         const conv = (t) => {
@@ -134,6 +160,18 @@ function sample(fn) {
  * @param {object} fn - The evaluated section's functions.
  */
 function mbSample(fn) {
+    const { byKind, files } = mbTitles();
+    console.log(`\n${files} MusicBrainz snapshot files read`);
+    mbSampleReport(fn, byKind);
+}
+
+/**
+ * The MusicBrainz titles of the snapshots in debug/ and tests/fixtures/, by
+ * entity kind.
+ *
+ * @returns {{byKind: Map<string, Set<string>>, files: number}}
+ */
+function mbTitles() {
     const dirs = ['debug', 'tests/fixtures'];
     const foreign = /^(bb-|bs-|jl-|jungleland|sl-|dg-|discogs|brucebase|springsteenlyrics)/;
     const linkRe = /<a [^>]*href="(?:https?:\/\/[^/"]*musicbrainz\.org)?\/(recording|release|release-group|work|track)\/[0-9a-f-]{36}\/?"[^>]*>\s*<bdi>([\s\S]*?)<\/bdi>/g;
@@ -154,7 +192,16 @@ function mbSample(fn) {
             }
         });
     });
-    console.log(`\n${files} MusicBrainz snapshot files read`);
+    return { byKind, files };
+}
+
+/**
+ * `--mb-sample`'s report over the collected titles.
+ *
+ * @param {object} fn - The evaluated section's functions.
+ * @param {Map<string, Set<string>>} byKind
+ */
+function mbSampleReport(fn, byKind) {
     const all = [];
     const latin = /\p{Script=Latin}/u;
     byKind.forEach((set, kind) => {
@@ -190,6 +237,34 @@ function mbSample(fn) {
         `${all.length} distinct titles × ${reps}`);
 }
 
+/**
+ * `--diff <git-ref>`: every sample title whose result differs between the
+ * section at <git-ref> and the working copy.
+ *
+ * @param {object} fn - The working copy's functions.
+ * @param {string} ref - A git ref (a commit, `main`).
+ */
+function diffMode(fn, ref) {
+    const old = loadSection(execFileSync('git', ['show', `${ref}:./ShowAllEntityData.user.js`], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 30 }));
+    let total = 0;
+    const report = (name, rows) => {
+        console.log(`\n=== ${name}: ${rows.length} differ`);
+        rows.forEach(([t, a, b]) => console.log(`  ${t}\n    ${ref}: ${a}\n    now: ${b}`));
+        total += rows.length;
+    };
+    sampleSources().forEach(([name, titles, opts]) => {
+        const conv = (f, t) => (opts ? f._mbTitleCase(t, opts) : f._mbNormalizeTitle(t));
+        report(name, [...new Set(titles)].map(t => [t, conv(old, t), conv(fn, t)]).filter(([, a, b]) => a !== b));
+    });
+    const { byKind } = mbTitles();
+    const show = (r) => JSON.stringify(Object.fromEntries(Object.entries(r).filter(([, v]) => v !== null)));
+    byKind.forEach((set, kind) => {
+        report(`MusicBrainz ${kind} (title-style findings)`, [...set]
+            .map(t => [t, show(old._mbTitleStyleCheck(t)), show(fn._mbTitleStyleCheck(t))]).filter(([, a, b]) => a !== b));
+    });
+    console.log(`\n${total} differences against ${ref}`);
+}
+
 function main() {
     const fn = loadSection();
     let bad = 0;
@@ -217,6 +292,8 @@ function main() {
     bad += badStyle;
     if (process.argv.includes('--sample')) sample(fn);
     if (process.argv.includes('--mb-sample')) mbSample(fn);
+    const di = process.argv.indexOf('--diff');
+    if (di >= 0) diffMode(fn, process.argv[di + 1] || 'HEAD');
     process.exitCode = bad ? 1 : 0;
 }
 

@@ -92,4 +92,11 @@ module.exports = [
     ['Come Together [The Beatles Cover]', { etiRemove: 'The Beatles Cover' }],
     ['Song (bonus track)', { etiRemove: 'bonus track' }], // constructed
     ['Wolfsbane (bonus disc: Everything Else)', {}],
+    // MusicBrainz's guess-case lists (Apollo Editor's port, 2026-11-21).
+    ['Roulette Roulette (Nightcore)', { caseFix: 'Roulette Roulette (nightcore)' }],
+    ['Thunder Road (Official Music Video)', { caseFix: 'Thunder Road (official music video)' }], // constructed
+    ['Live on Youtube', { caseFix: 'Live on YouTube' }], // constructed
+    // Armenian, as Cyrillic and Greek, is not judged for case (Apollo's
+    // isCasedOther); "Live Version" would be raised to "(live version)".
+    ['Սիրում Եմ Քեզ (Live Version)', {}], // constructed
 ];

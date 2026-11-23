@@ -30932,3 +30932,60 @@ Tampermonkey (GM stubs)
   after the render (the marks follow without a render). Before the fix 3 failed (the floor test passes on old code:
   it pins what must not happen); after, eh-single-keys + eh-interop-markers 42/42. Mutations
   `scripts/mutations/eh-keys-off.json` +4, 17/17 caught; one find updated (the compare's `min` is `want` now).
+
+## 2026-11-21 — Title case: MusicBrainz's guess-case word lists, from Apollo Editor (feat/title-style, WIP.1)
+
+Env: 2026-11-21T18:12:19+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Node (check-mb-title-case.js, no browser); specs: Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+- *Item*: org/majkinetor.org "Title style: guess-case word lists, title-difference classes", first half. Apollo's
+  lists (`apollo_editor.user.js` at `a1e8f54`) are musicbrainz-server's own GuessCase lists (`UPPER_CASE_WORDS`,
+  `POSTPROCESS_FIXLIST`), plus Apollo's `VERSION_PHRASES` (from chaban's Guess Case Improver) and `isCasedOther`.
+  vzell (2026-11-21) took all four: acronyms, fixed spellings, version phrases, the Armenian skip. Credited in the
+  header's majkinetor block; anchors `ap-upper-case-words`, `ap-postprocess-fixlist`, `ap-version-phrases`,
+  `ap-cased-other`, `saed-guess-case-lists`.
+- *Change*: `_MBTC_ACRONYMS` + the whole `UPPER_CASE_WORDS` (in effect new: YMCA, USSR, NBA, RZA, GZA, ODB, 2XLC;
+  the shape rule already kept the vowel-less ones). `_MBTC_BRANDS` (iMac, iPad, iPhone, iPod, iTunes, TikTok,
+  YouTube, DJs, OC ReMix; letter case only, so the length rule holds), applied last in every part the pass rewrites,
+  as whole words. `_MBTC_ETI_PHRASES` verbatim, taken out of a parenthesised part before the ETI word test, so
+  phrases count but "up", "down", "music" alone never do. `\p{Script=Armenian}` in `_MBTS_SKIP_SCRIPT_RE` (the case
+  check only; typography still applies, as for Cyrillic: a first draft case expected otherwise and was wrong).
+- *Measured*: a new `--diff <git-ref>` mode of `scripts/check-mb-title-case.js` lists every sample title whose
+  result differs. Against `main` (`f18f6ecb`): 6 of the whole sample (11 foreign sources, 11,969 distinct MusicBrainz
+  titles from 824 snapshot files): "CORN IN THE USSR" and "… PART TWO" in bs-unofficial and bs-lp (was "Ussr"), the
+  Brucebase venue "YMCA" (was "Ymca"), and one MusicBrainz recording newly flagged by the title-case finding,
+  "Roulette Roulette (Nightcore)" → "(nightcore)". Small enough to keep the brand pass in mixed parts as well.
+- *Tests*: 14 title-case and 4 title-style cases (`tests/support/mbTitleCaseCases.js`, `mbTitleStyleCases.js`);
+  against the old userscript 11 + 4 fail, now 125/125 and 63/63; `mb-title-case.spec.js` +
+  `findings-title-style.spec.js` 28/28. Mutations: `foreign-titles.json` +4 (25/25), `title-style.json` +1 (28/28);
+  two older finds updated (the ETI line and the acronym list's end moved).
+
+## 2026-11-23 — The kinds of a track/recording name difference (feat/title-style, WIP.2)
+
+Env: 2026-11-23T11:58:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+What: jesus2099's ≠ note on a Title cell now has a kind, `_titleDiffClass()`:
+case / punct / near (≤ 2 edits) / other. It heads the compare box as a pill
+(`_dpOriginCmp()` → `_cmpHtml()`'s `pill`) and gives four 📊 entries under
+"≠ track/recording name" (`title-mismatch-<kind>`). Mockup part B of
+https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o, approved 2026-11-23.
+
+Found on the way:
+- **Apollo's default tolerance is 1, not 2.** The mockup's question B2 gave
+  "2 edits (Apollo's default tolerance)" as the reason; his `loadSettings()`
+  has `recTitleTol: 1`. vzell approved 2, so 2 stays; the reason is
+  corrected in docs/claude/findings.md.
+- **The fold must be NFC and keep accents.** Apollo's `recFold()` folds
+  accents (`fold()`, NFD + strip); B1 put Café/Cafe under 1–2 characters,
+  so `_titleDiffFold()` takes only its punctuation half. NFD without the
+  strip would be worse: a combining mark is `\p{M}`, not `\p{L}`, and would
+  become a space.
+- **A space inside a word is an edit**, not spacing: "Jungleland" /
+  "Jungle land" is 1–2 characters, as the mockup's own `classOf()` gave.
+  The first spec draft expected punctuation; the spec was corrected, not the
+  code.
+
+Tests: `tests/fixtures/title-diff-classes.spec.js` 3/3 (classifier borders,
+📊 counts and filters and a sort's clones, the compare box's pills), plus
+tooltip-diff, popup-mb and release-rg-main-event 169/169 alongside.
+Mutations `scripts/mutations/title-diff-classes.json` 11/11 OK, userscript
+restored and verified. test:full deferred to the merge.

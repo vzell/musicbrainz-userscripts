@@ -301,6 +301,16 @@
 //   compares it with his code). His autoMatch() loop is followed over candidate pairs
 //   (_recDupGroups()); recordingSetting() is replaced by a reader of the page's comments
 //   and recorded-at cells.
+//   Added 2026-11-21: the title case takes the word lists of Apollo Editor's guess case —
+//   UPPER_CASE_WORDS and the letter-case entries of POSTPROCESS_FIXLIST, which are
+//   musicbrainz-server's own GuessCase lists (GPL-2.0-or-later), as _MBTC_ACRONYMS and
+//   _MBTC_BRANDS; VERSION_PHRASES (his, from chaban's "Guess Case Improver") verbatim as
+//   _MBTC_ETI_PHRASES; and his isCasedOther rule, Armenian beside Cyrillic and Greek, in
+//   _MBTS_SKIP_SCRIPT_RE.
+//   Added 2026-11-23: the kinds of a track/recording name difference (_titleDiffClass()) fold
+//   titles as the punctuation half of Apollo Editor's recFold() does ("&" as "and", other
+//   non-letters as spaces; accents kept) and measure them with his recLev() edit distance,
+//   as _titleDiffFold() and _titleDiffLev().
 // ============================================================================================================================================
 
 (function() {
@@ -18055,7 +18065,53 @@
     const _MBTC_ACRONYMS = new Set(['USA', 'UK', 'EU', 'EP', 'HBO', 'NYC', 'NY', 'NYU', 'UCLA', 'USO', 'UFO',
         'ICC', 'AC', 'OK', 'VIP', 'UNICEF', 'AOR', 'ABC', 'ESPN', 'UNO', 'JAP',
         // Queen Elizabeth: "QE II JUBILEE SPORTS CENTRE" (Brucebase, 1985-03-31b; 83 "QE II" in the mirror).
-        'QE']);
+        'QE',
+        // MusicBrainz's own guess case, UPPER_CASE_WORDS (musicbrainz-server's
+        // GuessCase modes, as ported in majkinetor's Apollo Editor, 2026-11-21).
+        // Those without a vowel the shape rule keeps already; listed all the same.
+        'DJ', 'MC', 'TV', 'MTV', 'LP', 'YMCA', 'USSR', 'BBC', 'FM', 'BC', 'DC', 'BPM', 'NBA', 'RZA', 'GZA', 'ODB',
+        'DMX', '2XLC']);
+
+    /**
+     * Words MusicBrainz's guess case writes one way whatever the source's case
+     * ("iTunes", "YouTube"), keyed by their lower case: its
+     * POSTPROCESS_FIXLIST (musicbrainz-server, as ported in majkinetor's
+     * Apollo Editor, 2026-11-21), the entries that change letter case only.
+     * Not "a cappella" or "Rock 'n' Roll": those change length.
+     * @type {Map<string, string>}
+     */
+    const _MBTC_BRANDS = new Map(['iMac', 'iPad', 'iPhone', 'iPod', 'iTunes', 'TikTok', 'YouTube', 'DJs', 'OC ReMix']
+        .map(w => [w.toLowerCase(), w]));
+
+    /**
+     * A `_MBTC_BRANDS` word as a whole word (no letter or digit either side),
+     * in any case.
+     * @type {RegExp}
+     */
+    const _MBTC_BRAND_RE = new RegExp(String.raw`(?<![\p{L}\p{N}])(?:` +
+        [..._MBTC_BRANDS.keys()].join('|') + String.raw`)(?![\p{L}\p{N}])`, 'giu');
+
+    /**
+     * Version phrases MusicBrainz's guess case misses, lower case inside
+     * brackets: Apollo Editor's VERSION_PHRASES (from chaban's "Guess Case
+     * Improver"), verbatim. A parenthesised part is extra title information
+     * when what is left after them is made of `_MBTC_ETI` words: "(Slowed +
+     * Reverb)" → "(slowed + reverb)", "(Official Music Video)". As phrases,
+     * so "up", "down" or "music" alone never are.
+     * @type {string[]}
+     */
+    const _MBTC_ETI_PHRASES = ['official lyric video', 'official music video', 'official video', 'official visualizer',
+        'official visualiser', 'official audio', 'kinetic lyric video', 'lyric video', 'lyrics video', 'music video',
+        'backing track', 'animated', 'animation', 'super slowed', 'extra slowed', 'ultra slowed', 'slowed down',
+        'slowed', 'super sped up', 'sped up', 'super speed up', 'speed up', 'low pitched', 'reverb', 'nightcore',
+        'bootleg', 'mashup', 'flip'];
+
+    /**
+     * A `_MBTC_ETI_PHRASES` phrase as a whole word or phrase, any case.
+     * @type {RegExp}
+     */
+    const _MBTC_ETI_PHRASE_RE = new RegExp(String.raw`(?<![\p{L}\p{N}])(?:` + _MBTC_ETI_PHRASES.join('|') +
+        String.raw`)(?![\p{L}\p{N}])`, 'giu');
 
     /**
      * Abbreviations that have no vowel but are not acronyms ("ST. JAMES",
@@ -18185,8 +18241,11 @@
      * keeps every letter but a word's first. With `capsOnly` a mixed part is
      * left exactly as written: a setlist's songs are in capitals and its
      * notes ("(with Patti Scialfa)") are not titles. A parenthesised part
-     * made only of descriptive words (`_MBTC_ETI`) is all lower case. A
-     * title wholly in square brackets ("[no title]") is left as it is.
+     * made only of descriptive words (`_MBTC_ETI`) and version phrases
+     * (`_MBTC_ETI_PHRASES`) is all lower case. A word of `_MBTC_BRANDS` is
+     * written MusicBrainz's way ("iTunes", "YouTube") in every part the pass
+     * rewrites. A title wholly in square brackets ("[no title]") is left as
+     * it is.
      *
      * A part in capitals inside parentheses counts as one only when the
      * title is in capitals outside them too; otherwise it is a name or an
@@ -18229,7 +18288,9 @@
                 words.push({ start: m.index, word: w });
             }
             if (!words.length) return part;
-            const lower = inParens && words.every(({ word }) => {
+            // Extra title information: what is left once the version
+            // phrases are taken out is all descriptive words.
+            const lower = inParens && (part.replace(_MBTC_ETI_PHRASE_RE, ' ').match(_MBTC_WORD_RE) || []).every((word) => {
                 const k = word.toLowerCase().replace(/\.$/, '');
                 return _MBTC_ETI.has(k) || /^\p{N}+$/u.test(k) || /^(?=[ivx]+$)x{0,3}(?:ix|iv|v?i{0,3})$/.test(k);
             });
@@ -18251,7 +18312,9 @@
                 out += gapBefore + rewritten;
                 pos = w.start + w.word.length;
             });
-            return out + part.slice(pos);
+            // MusicBrainz's fixed spellings last ("ITUNES" → "iTunes"); each
+            // is as long as what it replaces.
+            return (out + part.slice(pos)).replace(_MBTC_BRAND_RE, m => _MBTC_BRANDS.get(m.toLowerCase()) || m);
         }).join('');
     }
 
@@ -18549,10 +18612,12 @@
     /**
      * Scripts whose presence takes a title out of the case check: a
      * Japanese title with an English part ("君が通り過ぎたあとに—DON’T PASS ME
-     * BY—") follows its own conventions.
+     * BY—") follows its own conventions. Cyrillic, Greek and (since
+     * 2026-11-21, Apollo Editor's isCasedOther) Armenian are cased scripts
+     * whose titles MusicBrainz writes in sentence case.
      * @type {RegExp}
      */
-    const _MBTS_SKIP_SCRIPT_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Greek}　-〿＀-￯]/u;
+    const _MBTS_SKIP_SCRIPT_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Cyrillic}\p{Script=Greek}\p{Script=Armenian}　-〿＀-￯]/u;
 
     /**
      * A live bootleg title ("1977‐05‐13, late show: Monmouth Arts Center, Red
@@ -36310,13 +36375,19 @@
 
     /**
      * The comparison a track/recording note makes (`_cmpHtml()`): the track's
-     * name over the recording's.
+     * name over the recording's, headed by the kind of difference
+     * (`_titleDiffClass()`, mockup part B of
+     * https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o). The cell's finding
+     * box and the link's note box both come from here, so they agree.
      *
      * @param {{track: string, rec: string}} n
-     * @returns {{a: string, b: string, la: string, lb: string, sb: string}}
+     * @returns {{a: string, b: string, la: string, lb: string, sb: string, pill?: string, tone?: string}}
      */
     function _dpOriginCmp(n) {
-        return { la: 'Track name', lb: 'Recording', sb: 'recording name', a: n.track, b: n.rec };
+        const c = { la: 'Track name', lb: 'Recording', sb: 'recording name', a: n.track, b: n.rec };
+        const k = _titleDiffClass(n.track, n.rec);
+        if (k) Object.assign(c, { pill: _TITLE_DIFF_CLASSES[k].head, tone: _TITLE_DIFF_CLASSES[k].tone });
+        return c;
     }
 
     /**
@@ -76697,6 +76768,112 @@
     }
 
     /**
+     * The kinds of difference between a track's name and its recording's
+     * (mockup https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o part B,
+     * approved 2026-11-23): the compare box's headline pill (`_cmpHtml()`'s
+     * `pill`) and the 📊 entries under "≠ track/recording name"
+     * (`title-mismatch-<kind>`). `tone` is the pill's colour
+     * (`.mb-tt-cmp-pill-<tone>`).
+     * @type {Object<string, {head: string, entry: string, tone: string, tip: string}>}
+     */
+    const _TITLE_DIFF_CLASSES = {
+        case: { head: 'Case only', entry: '≠ case only', tone: 'ok',
+            tip: 'The track name and the recording name differ only in letter case.' },
+        punct: { head: 'Punctuation and spacing only', entry: '≠ punctuation only', tone: 'ok',
+            tip: 'Only punctuation, spacing or case differ ("&" counts as "and").' },
+        near: { head: '1–2 characters', entry: '≠ 1–2 characters', tone: 'warn',
+            tip: 'With case and punctuation set aside, one or two letters differ: a typo, a plural, an accent.' },
+        other: { head: 'Different', entry: '≠ different', tone: 'severe',
+            tip: 'Anything else: more words, another version, another title.' },
+    };
+
+    /** The most letters "1–2 characters" allows (decided 2026-11-23, question B2). */
+    const _TITLE_DIFF_NEAR_MAX = 2;
+
+    /**
+     * Folds a title for `_titleDiffClass()`: lower case, "&" as "and", every
+     * run of anything but letters and digits as one space; the punctuation
+     * half of Apollo Editor's `recFold()` (majkinetor, its recording
+     * match). Accents are KEPT, in NFC so an accented letter is one
+     * letter: Café/Cafe is "1–2 characters", not punctuation (question B1).
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _titleDiffFold(s) {
+        return String(s || '').normalize('NFC').toLowerCase().replace(/&/g, ' and ')
+            .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    }
+
+    /**
+     * Levenshtein edit distance in code points, Apollo Editor's `recLev()`
+     * (majkinetor) with an early stop: past `max` it returns `max + 1`.
+     *
+     * @param {string} a
+     * @param {string} b
+     * @param {number} max
+     * @returns {number}
+     */
+    function _titleDiffLev(a, b, max) {
+        const x = Array.from(a), y = Array.from(b);
+        if (Math.abs(x.length - y.length) > max) return max + 1;
+        let prev = Array.from({ length: y.length + 1 }, (_, j) => j);
+        for (let i = 1; i <= x.length; i++) {
+            const cur = [i];
+            let low = i;
+            for (let j = 1; j <= y.length; j++) {
+                cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1));
+                if (cur[j] < low) low = cur[j];
+            }
+            if (low > max) return max + 1;
+            prev = cur;
+        }
+        return prev[y.length];
+    }
+
+    /** `_titleDiffClass()`'s answers by "track\u0001rec", bounded. @type {Map<string, ?string>} */
+    const _titleDiffMemo = new Map();
+
+    /**
+     * What kind of difference a track name has from its recording name
+     * (`_TITLE_DIFF_CLASSES`): `case` when only letter case differs,
+     * `punct` when they agree after `_titleDiffFold()`, `near` within
+     * `_TITLE_DIFF_NEAR_MAX` edits of that, `other` beyond; null for two
+     * equal names.
+     *
+     * @param {string} track
+     * @param {string} rec
+     * @returns {?('case'|'punct'|'near'|'other')}
+     */
+    function _titleDiffClass(track, rec) {
+        const key = `${track}\u0001${rec}`;
+        if (_titleDiffMemo.has(key)) return _titleDiffMemo.get(key);
+        let k = null;
+        if (track !== rec) {
+            const x = _titleDiffFold(track), y = _titleDiffFold(rec);
+            k = track.toLowerCase() === rec.toLowerCase() ? 'case'
+                : x === y ? 'punct'
+                : _titleDiffLev(x, y, _TITLE_DIFF_NEAR_MAX) <= _TITLE_DIFF_NEAR_MAX ? 'near' : 'other';
+        }
+        if (_titleDiffMemo.size >= 5000) _titleDiffMemo.clear();
+        _titleDiffMemo.set(key, k);
+        return k;
+    }
+
+    /**
+     * The difference class of a Title cell's ≠ flag: null when the cell has
+     * none, or its note names only one of the titles (question B3: such a
+     * flag counts under "≠ track/recording name" only).
+     *
+     * @param {Element} cell - A `<td>` in the 'Title' column.
+     * @returns {?('case'|'punct'|'near'|'other')}
+     */
+    function _titleCellDiffClass(cell) {
+        const n = cell && _findingTitleNote(cell);
+        return n ? _titleDiffClass(n.track, n.rec) : null;
+    }
+
+    /**
      * Finds every native MusicBrainz "name variation" marker within (or AS)
      * a table cell — an element whose own class ends in `-variation`,
      * meaning "this credited/displayed name differs from the entity's
@@ -105199,6 +105376,7 @@
         if (mode === 'expanded') return hasMultiRow && isExpanded;
         if (mode === 'single') return hasSingleRow;
         if (mode === 'title-mismatch') return !!cell && _titleHasRecNameMismatch(cell);
+        if (mode.startsWith('title-mismatch-')) return !!cell && _titleCellDiffClass(cell) === mode.slice(15);
         if (mode === 'name-variation') return _findNameVariationElements(cell).length > 0;
         if (mode.startsWith('attr:')) {
             // Compound mode (openUniqDrop()'s makeValueSynItem) — matches a
@@ -123006,6 +123184,10 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-cmp-pill { display: inline-block; font: 600 11px/1.5 system-ui, Arial, sans-serif; letter-spacing: 0.04em; padding: 0 7px; border-radius: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
         .mb-tt-liner .mb-tt-cmp-pill-warn { background: #f6e7bd; color: #6e4c00; }
         .mb-tt-liner .mb-tt-cmp-pill-severe { background: #f3d1cb; color: #9b2218; }
+        .mb-tt-liner .mb-tt-cmp-pill-ok { background: #e3efdf; color: #3f7a3a; }
+        .mb-tt-liner .mb-tt-cmp-head { line-height: 1.2; }
+        /* A 📊 entry that is a kind of the one above it (makeTitleDiffItems()). */
+        .mb-uniq-syn-label-text.mb-uniq-syn-sub { margin-left: 1.2em; }
         /* Annotation prose in the artwork card (_artTooltipAnnotation): the
            cell markup, kept compact. Height is capped per hover by
            _fitArtTooltipToViewport, which also reveals the "more" foot. */
@@ -129543,9 +129725,12 @@ a { color: #1565c0; }`;
      * prefixed "≠", differing runs marked in both, and the summary below.
      * Nothing for two equal values.
      *
-     * @param {{a: string, b: string, la: string, lb: string, sa?: string, sb?: string, own?: ('a'|'b')}} c
+     * @param {{a: string, b: string, la: string, lb: string, sa?: string, sb?: string, own?: ('a'|'b'),
+     *   pill?: string, tone?: ('ok'|'warn'|'severe')}} c
      *   `la`/`lb` label the rows; `sa`/`sb` name them in the summary (default:
-     *   the labels in lower case); `own` is the bold row (default `a`).
+     *   the labels in lower case); `own` is the bold row (default `a`);
+     *   `pill` heads the block, in `tone`'s colour (default `warn`): the kind
+     *   of a track/recording difference (`_dpOriginCmp()`).
      * @returns {string}
      */
     function _cmpHtml(c) {
@@ -129553,7 +129738,10 @@ a { color: #1565c0; }`;
         if (d.same) return '';
         const own = c.own === 'b' ? 'b' : 'a';
         const sum = _cmpSummary(d, c.sa || c.la.toLowerCase(), c.sb || c.lb.toLowerCase());
-        return '<div class="mb-tt-cmp"><div class="mb-tt-cmp-grid">' +
+        const tone = ['ok', 'warn', 'severe'].includes(c.tone) ? c.tone : 'warn';
+        const head = typeof c.pill === 'string' && c.pill
+            ? `<div class="mb-tt-cmp-head"><span class="mb-tt-cmp-pill mb-tt-cmp-pill-${tone}">${_mbttEscape(c.pill)}</span></div>` : '';
+        return `<div class="mb-tt-cmp">${head}<div class="mb-tt-cmp-grid">` +
             `<span class="mb-tt-cmp-lbl">${_mbttEscape(c.la)}</span>` +
             `<span class="mb-tt-cmp-val${own === 'a' ? ' mb-tt-cmp-own' : ''}">${_cmpSideHtml(d, 'a')}</span>` +
             `<span class="mb-tt-cmp-lbl">≠ ${_mbttEscape(c.lb)}</span>` +
@@ -134015,6 +134203,8 @@ a { color: #1565c0; }`;
         expanded: 'structure', any: 'structure',
         'inline-art-yes': 'structureInlineArt', 'inline-art-no': 'structureInlineArt',
         'title-mismatch': 'flagsTitleMismatch', 'name-variation': 'flagsNameVariation',
+        'title-mismatch-case': 'flagsTitleMismatch', 'title-mismatch-punct': 'flagsTitleMismatch',
+        'title-mismatch-near': 'flagsTitleMismatch', 'title-mismatch-other': 'flagsTitleMismatch',
         'multi-medium': 'tracksMultiMedium',
         'catalog-has-prefix': 'catalogPresence', 'catalog-no-prefix': 'catalogPresence', 'catalog-none': 'catalogPresence',
         'isrc-valid': 'isrcValidity', 'isrc-invalid': 'isrcValidity',
@@ -153837,6 +154027,10 @@ a { color: #1565c0; }`;
         // testing for the inequality glyph itself is the robust signal,
         // immune to exactly which third-party script/class name produced it.
         let titleMismatchCount = _uniqCacheHit ? _uniqCacheHit.titleMismatchCount : 0;
+        // ...and its kinds (_titleCellDiffClass(): case/punct/near/other), the
+        // entries under it; a flag whose note names one title has none.
+        const titleDiffClassCounts = _uniqCacheHit ? _uniqCacheHit.titleDiffClassCounts
+            : { case: 0, punct: 0, near: 0, other: 0 };
         // Any column: rows where the cell carries (or contains) a
         // MusicBrainz "name variation" marker — see _findNameVariationElements()'s
         // own JSDoc for the two known shapes (<span class="name-variation">,
@@ -154727,7 +154921,11 @@ a { color: #1565c0; }`;
                 });
                 _rowAnyNameValues.forEach(t => entityNameAnyValueCounts.set(t, (entityNameAnyValueCounts.get(t) || 0) + 1));
                 _rowAnyHrefValues.forEach(h => entityHrefAnyValueCounts.set(h, (entityHrefAnyValueCounts.get(h) || 0) + 1));
-                if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
+                if (isTitleCol && _titleHasRecNameMismatch(cell)) {
+                    titleMismatchCount++;
+                    const _tdc = _titleCellDiffClass(cell);
+                    if (_tdc) titleDiffClassCounts[_tdc]++;
+                }
                 if (isTitleInfoCol) {
                     const _a = _findCellTitleAnatomy(cell);
                     if (_a) {
@@ -156476,7 +156674,7 @@ a { color: #1565c0; }`;
                 collapsedOnlyKeys,
                 valueCounts, itemValueCounts, valueItemSequence,
                 emptyCellCount, multiRowCollapsedCount, multiRowExpandedCount, singleRowCount,
-                titleMismatchCount, nameVariationCount, multiMediumCount,
+                titleMismatchCount, titleDiffClassCounts, nameVariationCount, multiMediumCount,
                 catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
                 isrcValidCount, isrcInvalidCount, iswcValidCount, iswcInvalidCount,
                 barcodeValidCount, barcodeInvalidCount, barcodeFormatValueCounts, barcodeSameAsValueCounts,
@@ -157261,6 +157459,23 @@ a { color: #1565c0; }`;
 
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX + mode);
             getOrCreateSynSection(MB_UNIQ_MODE_TO_SECTION[mode] || 'structure').itemsBox.appendChild(item);
+        };
+
+        /**
+         * The kinds of a track/recording name difference, indented under
+         * "≠ track/recording name" (`_TITLE_DIFF_CLASSES`, mockup part B of
+         * https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o): one entry per
+         * kind present, in the table's order, mode `title-mismatch-<kind>`.
+         *
+         * @returns {void}
+         */
+        const makeTitleDiffItems = () => {
+            if (!titleMismatchCount) return;
+            Object.keys(_TITLE_DIFF_CLASSES).forEach((k) => {
+                if (titleDiffClassCounts[k] > 0) {
+                    makeSynItem(`title-mismatch-${k}`, _TITLE_DIFF_CLASSES[k].entry, titleDiffClassCounts[k], 'mb-uniq-syn-sub');
+                }
+            });
         };
 
         /**
@@ -158126,6 +158341,7 @@ a { color: #1565c0; }`;
             // MB_UNIQ_MODE_TO_SECTION), separate from the collapse-state
             // entries above.
             if (titleMismatchCount > 0)     makeSynItem('title-mismatch', '≠ track/recording name',                                           titleMismatchCount);
+            makeTitleDiffItems();
             if (nameVariationCount > 0)     makeSynItem('name-variation', '~ has name variation',                                              nameVariationCount);
             if (multiMediumCount > 0)       makeSynItem('multi-medium', '➕ multiple mediums',                                                  multiMediumCount);
             if (catalogHasPrefixCount > 0)  makeSynItem('catalog-has-prefix', '🏷️ has catalog prefix',                                          catalogHasPrefixCount);
@@ -158328,6 +158544,7 @@ a { color: #1565c0; }`;
             // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
             if (titleMismatchCount > 0) makeSynItem('title-mismatch', '≠ track/recording name',  titleMismatchCount);
+            makeTitleDiffItems();
             if (nameVariationCount > 0) makeSynItem('name-variation', '~ has name variation',    nameVariationCount);
             if (multiMediumCount > 0)      makeSynItem('multi-medium', '➕ multiple mediums',        multiMediumCount);
             if (catalogHasPrefixCount > 0) makeSynItem('catalog-has-prefix', '🏷️ has catalog prefix', catalogHasPrefixCount);
@@ -159137,6 +159354,7 @@ a { color: #1565c0; }`;
         if (mode === 'expanded')       return '◀ multi-row: expanded';
         if (mode === 'single')         return '• single-row cells';
         if (mode === 'title-mismatch') return '≠ track/recording name';
+        if (mode.startsWith('title-mismatch-') && _TITLE_DIFF_CLASSES[mode.slice(15)]) return _TITLE_DIFF_CLASSES[mode.slice(15)].entry;
         if (mode === 'name-variation') return '~ has name variation';
         if (mode === 'inline-art-yes') return '🖼️ artwork available';
         if (mode === 'inline-art-no')  return '∅ NO artwork available';
@@ -159385,6 +159603,9 @@ a { color: #1565c0; }`;
         if (mode === 'expanded')       return '◀ = a multi-item cell currently showing all its items.';
         if (mode === 'any')            return 'Cells with more than one item, in either collapsed or expanded state (or, for CAA/EAA columns, cells with at least one artwork image).';
         if (mode === 'title-mismatch') return '≠ = flagged by a third-party userscript because the track title differs from the underlying recording name.';
+        if (mode.startsWith('title-mismatch-') && _TITLE_DIFF_CLASSES[mode.slice(15)]) {
+            return `${_TITLE_DIFF_CLASSES[mode.slice(15)].tip} The kinds add up to fewer than "≠ track/recording name" when a ≠ note names only one title.`;
+        }
         if (mode === 'name-variation') return '~ = a credited name is an alias/differently-spelled variation of the entity’s real name.';
         if (mode === 'inline-art-yes' || mode === 'inline-art-no') {
             return '🖼️ = a thumbnail was found and loaded for this row; ∅ = none was found.';
@@ -195476,6 +195697,15 @@ a { color: #1565c0; }`;
              * @returns {boolean}
              */
             titleHasRecNameMismatch: (cell) => _titleHasRecNameMismatch(cell),
+            /**
+             * The kind of a track/recording name difference
+             * (`_titleDiffClass()`): case, punct, near, other or null.
+             *
+             * @param {string} track
+             * @param {string} rec
+             * @returns {?string}
+             */
+            titleDiffClass: (track, rec) => _titleDiffClass(track, rec),
             /**
              * The labels a pageType definition would paint
              * (`_activeColumnLabels()`), so a spec can pin how

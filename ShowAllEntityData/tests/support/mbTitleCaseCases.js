@@ -139,6 +139,22 @@ module.exports = [
     ['Georgetown is rockin` Tonight', 'Georgetown is rockin’ Tonight', { typo: true }],
     ['Live at d´Scene', 'Live at d’Scene', { typo: true }],
     ['"Catch these big Stars in the Night ... if you can !"', '“Catch these big Stars in the Night … if you can !”', { typo: true }],
+    // MusicBrainz's guess-case lists (Apollo Editor's port, 2026-11-21):
+    // its acronyms, its fixed spellings, chaban's version phrases.
+    ['CORN IN THE USSR', 'Corn in the USSR'],
+    ['YMCA', 'YMCA'],
+    ['NBA ALL-STAR NIGHT', 'NBA All-Star Night'], // constructed
+    ['ITUNES SESSION', 'iTunes Session'], // constructed
+    ['Live on Youtube', 'Live on YouTube'], // constructed
+    ['OC REMIX TRIBUTE', 'OC ReMix Tribute'], // constructed
+    ['DJS AT THE STONE PONY', 'DJs at the Stone Pony'], // constructed
+    ['Ipodcast', 'Ipodcast'], // constructed: a brand only as a whole word
+    ['Roulette Roulette (Nightcore)', 'Roulette Roulette (nightcore)'],
+    ['HUNGRY HEART (SLOWED + REVERB)', 'Hungry Heart (slowed + reverb)'], // constructed
+    ['Thunder Road (Official Music Video)', 'Thunder Road (official music video)'], // constructed
+    ['Born to Run (Sped Up)', 'Born to Run (sped up)'], // constructed
+    ['Growin\' Up (Up)', 'Growin\' Up (Up)'], // constructed: "up" alone is no version phrase
+    ['Wings for Wheels (Music)', 'Wings for Wheels (Music)'], // constructed: nor is "music"
     // Both, as the converters write a title.
     ['10TH AVENUE FREEZE-OUT / SHE\'S THE ONE', '10th Avenue Freeze‐Out / She’s the One', { full: true }],
     ['ACROSS THE BORDERLINE...WITH THE BOSS', 'Across the Borderline…With the Boss', { full: true }],

@@ -393,3 +393,30 @@ Specs: `rel-tables-link-site-uvd.spec.js` (counts against a DOM oracle per
 column, the entry icon = the link's, ticks and marks, kinds, the cache
 re-open, the suffix rule), `rel-column-site-kind-discogs.spec.js` (the
 Relationships side). Mutations: `scripts/mutations/link-site-uvd.json`.
+
+## The kinds of "≠ track/recording name" (feat/title-style, WIP.2)
+
+Mockup part B of https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o, approved
+2026-11-23. Under the existing `title-mismatch` entry of "Flags - Title
+mismatch", the Title column lists `≠ case only`, `≠ punctuation only`,
+`≠ 1–2 characters` and `≠ different`, each only when present, indented
+(`makeTitleDiffItems()`, label class `mb-uniq-syn-sub`).
+
+- **Modes** `title-mismatch-case|punct|near|other`, all routed to
+  `flagsTitleMismatch` in `MB_UNIQ_MODE_TO_SECTION`; matched in
+  `_cellMatchesStructureMode()` by `_titleCellDiffClass(cell)` (the cell's
+  ≠ note, `_findingTitleNote()`, then `_titleDiffClass()`; see
+  docs/claude/findings.md for the kinds). A dash, not a colon: these are a
+  fixed set, not a `kind:` value family, and `'title-mismatch'` itself stays
+  an exact match.
+- **Counts** beside `titleMismatchCount` in the same Title-cell test
+  (`titleDiffClassCounts`, in the cache bundle). A ≠ note naming one title
+  counts in the flag only, so the kinds can sum to less.
+- **Cost**: the kind is worked out only for cells that carry ≠, on two short
+  titles, memoised (`_titleDiffMemo`, cleared at 5,000); the edit distance
+  stops once a row is past 2.
+- No highlight: like the flag, the row filter is the mark.
+
+Spec `title-diff-classes.spec.js` (each kind's count and its rows, a sort's
+clones, the compare box's pill); mutations
+`scripts/mutations/title-diff-classes.json`.

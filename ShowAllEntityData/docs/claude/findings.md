@@ -118,6 +118,24 @@ cell's box in the stack gives the label alone (`_dpCollectNotes()`,
 https://claude.ai/artifact/7Nbqih988jfzpGxbiQTX75 (approved 2026-10-17,
 variant A); mutation list `scripts/mutations/tooltip-diff.json`.
 
+**The kind of a track/recording difference** (feat/title-style WIP.2,
+2026-11-23; mockup part B of https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o):
+`_dpOriginCmp()` adds `pill`/`tone` from `_titleDiffClass()`, so the cell's
+finding box and the link's note box both open with it (`_cmpHtml()` draws a
+`pill` as `.mb-tt-cmp-head`). The kinds (`_TITLE_DIFF_CLASSES`): `case`
+(equal ignoring case), `punct` (equal after `_titleDiffFold()`: lower case,
+"&" as "and", non-letters as spaces, accents KEPT in NFC), `near` (at most
+`_TITLE_DIFF_NEAR_MAX` = 2 edits of that, `_titleDiffLev()`), `other`. The
+fold and the distance are Apollo Editor's `recFold()`/`recLev()` (credit in
+the header; anchors `ap-rec-fold`, `ap-rec-lev`). Decided: an accent is a
+letter, so Café/Cafe is `near` (B1); a space inside a word is an edit too
+("Jungle land" is `near`). Apollo's own default title tolerance is 1, not 2:
+the mockup said 2 was his default, which was wrong; 2 was kept as approved.
+A note naming one title (`_findingTitleNote()` null) has no kind (B3). The 📊
+entries are `title-mismatch-<kind>` (docs/claude/uniq-dropdown.md). Spec
+`tests/fixtures/title-diff-classes.spec.js`, mutation list
+`scripts/mutations/title-diff-classes.json`.
+
 Three more cards since 2026-10-20 (branch `feat/mb-title-style-findings`,
 WIP.2):
 

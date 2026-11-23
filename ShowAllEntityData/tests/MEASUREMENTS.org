@@ -4938,3 +4938,14 @@ Env: 2026-11-21T17:09:21+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 merge: the loading card already shows the link's text (=t.name= in =_mbPopCardShell()=), so the count could run while
 the request still waited for its rate slot. It passed 10/10 alone; the spec now waits for "Pitman pressing" (only the
 answer has it), as its sibling at :374 does, and the whole file then passed three times over.
+
+* 2026-11-23 — =npm run test:full= on =petri=, feat/title-style (WIP.1 + WIP.2)
+
+Env: 2026-11-23T12:12:37+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =eda6df0f=             |  3456 |      12 | *23 m 10 s* | =run-test-full.py=, 12:12:37–12:35:47 CET |
+
+3456 passed, no flake. This branch adds 3 tests (=title-diff-classes.spec.js=). A Wikidata probe
+(=probe-area-images.py=) ran alongside on the same machine, network only.
