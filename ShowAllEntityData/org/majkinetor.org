@@ -19,7 +19,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 - *Now (2026-11-23):* refreshed to =5d4d464= (=chore/refresh-majkinetor-5d4d464=), and on top of it
   =feat/eh-player-quiet= (9.99.1680, merged 2026-11-23): our fallback for "Event Horizon's player plays on under our page" is built and
   tested (fixtures and mutations), *vzell's browser check OK* (2026-11-23); the post ([[#post-938-player][On the
-  record]]) goes out after the merge. *Next:* "The shared gate at eight a second" (the 30 ms lock hold; keep 1000
+  record]]) went out 2026-11-23 16:48 CET, waiting on his answer. *Next:* "The shared gate at eight a second" (the 30 ms lock hold; keep 1000
   ms; maybe a question on the pace). After that the open half of "Entity pictures" (=areaClimb=/=flagI=).
 - *Shipped today:* "Title style": 9.99.1677 the guess-case word lists, 9.99.1678 the kinds of a track/recording
   name difference; "Entity pictures": 9.99.1679 an area's five Wikidata pictures with the flag badge, its links
@@ -53,8 +53,10 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   "Stale-while-revalidate"). The clone lives in
   =debug/majkinetor/= (not synced between hosts: on another host, clone it fresh as "Method" says).
 - *A new post* is drafted as a TODO entry under "On the record: posts to majkinetor"; vzell posts it, then it turns
-  DONE with its link. Last one sent: "thanks for =data-mbu-eh= and Apollo's =mbLastWrite=" (2026-11-21 17:13 CET,
-  [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7065483733][comment]]).
+  DONE with its link. Last one sent: "Event Horizon's player after V, and a mark for it" (2026-11-23 16:48 CET,
+  [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7106129624][comment]]). *Waiting on
+  majkinetor*: his answer on =plyPin()= in =setOn1()=, the =data-mbu-player-off= mark, and whether SAED may use his
+  player channel.
 
 * Status at a glance
 
@@ -91,7 +93,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
-| Posts to majkinetor: eleven posted                             | DONE  | —             | On the record |
+| Posts to majkinetor: twelve posted                             | DONE  | —             | On the record |
 
 * Working with majkinetor
 
@@ -2151,10 +2153,15 @@ Thanks for both. SAED 9.99.1676 uses the new mark:
 Nothing open from me on this thread now.
 #+end_src
 
-** TODO 2026-11-23 · Post: Event Horizon's player after V, and a mark for it (#938)
+** DONE 2026-11-23 16:48 · Post: Event Horizon's player after V, and a mark for it (#938)
 :PROPERTIES:
 :CUSTOM_ID: post-938-player
 :END:
+
+- *Posted* by vzell 2026-11-23T16:48:06+01:00:
+  https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7106129624 (checked through the
+  GitHub API: the block below word for word, one trailing blank line aside). Posted after 9.99.1680 was merged and
+  pushed (=c43f0966=).
 
 - *Draft* (petri, 2026-11-23, against his =main= at =5d4d464=, EH 2026.11.23.095945; the symptom seen by vzell with
   String Theory 2026.11.21.134804). For vzell to send on #938; never posted by Claude. *Post only after
