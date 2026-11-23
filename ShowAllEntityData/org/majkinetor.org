@@ -54,10 +54,12 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   "Stale-while-revalidate"). The clone lives in
   =debug/majkinetor/= (not synced between hosts: on another host, clone it fresh as "Method" says).
 - *A new post* is drafted as a TODO entry under "On the record: posts to majkinetor"; vzell posts it, then it turns
-  DONE with its link. Last one sent: "Event Horizon's player after V, and a mark for it" (2026-11-23 16:48 CET,
-  [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7106129624][comment]]). *Waiting on
+  DONE with its link. Last two sent: "Event Horizon's player after V, and a mark for it" (2026-11-23 16:48 CET,
+  [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7106129624][comment]]) and "the
+  gate's pace, eight a second against MusicBrainz's one" (2026-11-23 17:40 CET,
+  [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7107508014][comment]]). *Waiting on
   majkinetor*: his answer on =plyPin()= in =setOn1()=, the =data-mbu-player-off= mark, and whether SAED may use his
-  player channel.
+  player channel; and on the pace (why eight a second for one IP, for whom, and which number is the contract).
 
 * Status at a glance
 
@@ -94,7 +96,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
-| Posts to majkinetor: twelve posted                             | DONE  | —             | On the record |
+| Posts to majkinetor: thirteen posted                           | DONE  | —             | On the record |
 
 * Working with majkinetor
 
@@ -465,7 +467,7 @@ CLOSED: [2026-11-21 Sat]
   =feat/gate-lock-hold= (=_MBG_LOCK_HOLD_MS=, =_mbGateState()= answers from inside the lock callback and keeps the
   lock on a =_mbGateSleep()=; anchor =saed-gate-lock-hold=; spec =mb-shared-gate.spec.js=, 12. "the lock hold", three
   tests; mutations in =mb-shared-gate.json=; vzell's browser check OK, 2026-11-23), and =_MBG_GAP= stays 1000 ms. Open: candidate 2 (=search-shed=); the pace question is drafted ([[#post-938-pace][On the record]], vzell asked for it) and
-  is to be sent after 9.99.1681 is pushed; =search-shed= was not asked for.
+  went out 2026-11-23 17:40 CET, waiting on his answer; =search-shed= was not asked for.
 - *What changed* (=5d4d464=, String Theory 2026.11.23.125301, #1093–#1098; analysis "Request gate"): =MBN_GAP= 125 ms
   and =MBN_BURST= 4, eight starts a second sustained (was 1000 ms and 3); an interactive lane (=itat=/=ilast=); a
   =search-shed= 503 holds searches only (=scool=/=shot=); no =hot= factor on a 503 with =Retry-After= or
@@ -2192,10 +2194,15 @@ Until a build honours the mark, SAED (since 9.99.1680) does this when the tab it
 And a correction to my last comment: Apollo's alias edits don't set `mbLastWrite`. They go through `mbnFetch`, which moves the gate's `mbu:mb-gate-edit`, so they drop the gate's new cache but not Event Horizon's kept answers (`mbLastWrite()` reads only that key), and not SAED's either. If Apollo set `mbLastWrite` after its writes, as Group Therapy and Falcon do, both would follow.
 #+end_src
 
-** TODO 2026-11-23 · Post: the gate's pace, eight a second against MusicBrainz's one (#938)
+** DONE 2026-11-23 17:40 · Post: the gate's pace, eight a second against MusicBrainz's one (#938)
 :PROPERTIES:
 :CUSTOM_ID: post-938-pace
 :END:
+
+- *Posted* by vzell 2026-11-23T17:40:52+01:00:
+  https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7107508014 (checked through the
+  GitHub API: the block below word for word, one trailing blank line aside). Posted after 9.99.1681 was merged and
+  pushed (=60268597=).
 
 - *Draft* (petri, 2026-11-23T17:18:02+01:00; vzell: "formulate a question on the pace, and why he decided like that
   because the MB docu says 1s"). For vzell to send on #938; never posted by Claude. Item: "The shared gate at eight a
