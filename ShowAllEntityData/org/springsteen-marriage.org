@@ -739,5 +739,38 @@ vzell's own prompts and the answers they got.
 Is it possible to remove obsolete site fetches from @~/git/scripts/BruceParser/bb and leave only the last two
 successfull runs on disc. Do we have all the relevant information diffs between runs handy. Could this be handled
 automatically in bbp.sh.
+** what I did
 
+Regarding @org/springsteen-marriage.org
 
+1.)
+
+I fixed all the 24 MusicBrainz event titles on MB except
+
+#+begin_example
+2013‐07‐24: *first direct arena*, Leeds, England, UK ==> "first direct arena" is OK, see the annotation "The all-lowercase styling of the venue's name is intentional. Please do not alter it." at https://musicbrainz.org/place/d32fadcc-dfa9-407f-800c-aaf69b1a5231
+1974‐04‐09: Charlie’s Place, Cambridge ==> that one is OK, MB right now misses a couple of BB event entries which I will add later
+#+end_example
+
+2.)
+
+a.)
+
+read the Google Takeout export of the BruceBase chat in @debug/google-space-AAAAeGPY3Qo and check Dannys answers to my
+questions plus his other comments against what I have coded so far in my BruceParser shell scripts and what we have
+reimplemented in our userscript so far.
+
+b.)
+
+Create a summary file in @org about what you have found out after analysing the chat and our code (there are also
+comments in the BruceParser code which you should check if they are OK so far)
+
+3.)
+
+a.)
+
+handle the "One stale line in the Brucebase plan" and
+
+b.)
+
+tackle the "The last unfinished parity row: tag checks on venue, song, person and release pages"
