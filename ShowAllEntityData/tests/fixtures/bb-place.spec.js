@@ -226,6 +226,10 @@ test.describe('bb-relation: the bb-date-comma finding', () => {
         expect(row).toMatchObject({ label: 'Brucebase entry with a comma after its date', count: commaLinks.size });
         const cell = page.locator('td[data-mb-findings~="bb-date-comma"]').first();
         await expect(cell).toHaveAttribute('title', /Brucebase writes it "2015-04-30, Story Chapel, Mount Auburn Cemetery, Cambridge, MA"\./);
+        // The diff card (vzell, 2026-11-23): the entry over its usual form, the comma marked.
+        const cmp = await cell.evaluate(td => JSON.parse(td.getAttribute('data-mb-tip-cmp') || '{"c":[]}').c.find(c => c.la === 'Brucebase') || null);
+        expect(cmp).toMatchObject({ la: 'Brucebase', lb: 'Usual form', a: '2015-04-30, Story Chapel, Mount Auburn Cemetery, Cambridge, MA',
+            b: '2015-04-30 Story Chapel, Mount Auburn Cemetery, Cambridge, MA' });
         const look = await cell.evaluate(td => ({ bg: getComputedStyle(td).backgroundColor, after: getComputedStyle(td, '::after').content }));
         expect(look.bg).not.toBe('rgba(0, 0, 0, 0)');
         expect(look.after).toContain('⚠');

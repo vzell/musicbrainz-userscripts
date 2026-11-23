@@ -28734,6 +28734,32 @@
     }
 
     /**
+     * A name or title fact as pairs for the diff card (`_cmpHtml()`, vzell,
+     * 2026-11-23: "like the venue card, a diff that shows the letters"): per
+     * page, its name or title above the one it should have, the letters that
+     * differ marked. On a show, a pill names each of its pages whose title
+     * differs (a title does not name its page). Null for another kind.
+     *
+     * @param {Object} f - A fact of `_bbFeedFacts()` (with its `deps`).
+     * @param {string} name - The page it is about.
+     * @returns {?Array<{a: string, b: string, la: string, lb: string, pill?: string}>}
+     */
+    function _bbFeedFactPairs(f, name) {
+        if (!f || !Array.isArray(f.deps) || !f.deps.length) return null;
+        if (f.kind === 'dependent-name') {
+            return f.deps.map(d => (d.own
+                ? { la: 'This page', lb: 'A page of its show', a: name, b: d.expected }
+                : { la: 'Its page', lb: 'A page of this show', a: d.name, b: d.expected }));
+        }
+        if (f.kind === 'dependent-title') {
+            return f.deps.map(d => (d.own
+                ? { la: 'This page', lb: d.event ? 'Its show' : 'Its parent page', a: d.title, b: d.eventTitle }
+                : { la: 'Its page', lb: 'This show', a: d.title, b: d.eventTitle, pill: d.name }));
+        }
+        return null;
+    }
+
+    /**
      * One fact in words, for a cell's tooltip line and a mark's hover text.
      *
      * @param {Object} f - A fact of `_bbFeedFacts()`.
@@ -28774,7 +28800,12 @@
         const marks = facts.map((f) => {
             const k = _BB_FEED_KINDS[f.kind];
             const tip = `${k.label}. ${_bbFeedFactText(f, name)}\n${_bbFeedSource()}\nReport: ${k.report}.`;
-            return `<span class="mb-bb-feed-mark" data-mb-level="${k.level}" data-mb-feed-kind="${f.kind}" data-mb-tip title="${_mbttEscape(tip)}" ` +
+            // a name or title fact: its first line becomes the diff card
+            // (`_bbFeedFactPairs()`, vzell, 2026-11-23), as on the cells
+            const pairs = _bbFeedFactPairs(f, name);
+            const cmp = pairs ? (pairs.length === 1 ? [{ ...pairs[0], at: 0, head: k.label }] : [{ kind: 'pairs', p: pairs, at: 0, head: k.label }]) : null;
+            const cmpAttr = cmp ? ` data-mb-tip-cmp="${_mbttEscape(JSON.stringify({ t: tip, c: cmp }))}"` : '';
+            return `<span class="mb-bb-feed-mark" data-mb-level="${k.level}" data-mb-feed-kind="${f.kind}" data-mb-tip title="${_mbttEscape(tip)}"${cmpAttr} ` +
                 `tabindex="0" role="img" aria-label="${_mbttEscape(`${k.label}: ${_bbFeedFactText(f, name)}`)}">${k.level === 'error' ? '❌' : '⚠️'} ${k.glyph}</span>`;
         }).join(' ');
         return ` <span class="mb-bb-feed-marks" data-mb-bb-feed-page="${_mbttEscape(name)}" data-mb-bb-feed-live="${_mbttEscape(JSON.stringify(live || null))}">${marks}</span>`;
@@ -28970,6 +29001,19 @@
         const { name, facts } = _bbFeedCellFacts(cell);
         const f = facts.find(x => x.kind === kind);
         return f ? `${_bbFeedFactText(f, name)} ${_bbFeedSource()}` : '';
+    }
+
+    /**
+     * A name or title kind of a cell's page as the diff card's pairs (a
+     * finding's `compare()`, `_bbFeedFactPairs()`); null for the other kinds.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {string} kind
+     * @returns {?Array<Object>}
+     */
+    function _bbFeedCellCompare(cell, kind) {
+        const { name, facts } = _bbFeedCellFacts(cell);
+        return _bbFeedFactPairs(facts.find(x => x.kind === kind), name);
     }
 
     /**
@@ -79777,6 +79821,12 @@
             },
             test: cell => _findCellSlMojibake(cell).length > 0,
             detail: cell => _findCellSlMojibake(cell).slice(0, 4).map(m => `${m.bad} → ${m.fix}${m.section ? ` (${m.section})` : ''}`).join('; '),
+            // the diff card (vzell, 2026-11-23): each garbled text above what it
+            // means, at most eight
+            compare: (cell) => {
+                const ms = _findCellSlMojibake(cell).slice(0, 8);
+                return ms.length ? ms.map(m => ({ la: m.section ? `Site (${m.section})` : 'Site', lb: 'Meant', sa: 'the site', sb: 'meant', a: m.bad, b: m.fix })) : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_sl_double_utf8'),
         },
         // The Brucebase year table's MB-Event column (org/TODO.org "Some
@@ -79830,6 +79880,11 @@
             rowGate: row => !!row.querySelector('td[data-mb-bb-date-comma]'),
             test: cell => cell.dataset.mbBbDateComma === '1',
             detail: cell => `Brucebase writes it "${cell.dataset.mbBbEntry || ''}".`,
+            // the diff card (vzell, 2026-11-23): the entry above its usual form
+            compare: (cell) => {
+                const e = cell.dataset.mbBbEntry || '';
+                return e ? { la: 'Brucebase', lb: 'Usual form', a: e, b: e.replace(/^(\d{4}-\d\d-\d\d[a-z]?)\s*,\s*/, '$1 ') } : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_bb_date_comma'),
         },
         // vzell, 2026-11-12 (org/brucebase.org, Phase 16 batch 1): the cast tab
@@ -79875,6 +79930,12 @@
             rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
             test: cell => _bbHasCheck(cell, 'anchor-link'),
             detail: cell => `This entry's anchor is "${_bbEvDatum(cell, 'anchor')}", its page links "${_bbEvDatum(cell, 'info-href')}".`,
+            // the diff card (vzell, 2026-11-23): both as <year page>#<anchor>
+            compare: (cell) => {
+                const anchor = _bbEvDatum(cell, 'anchor');
+                const info = String(_bbEvDatum(cell, 'info-href') || '').match(/^(?:https?:\/\/[^/]+)?\/([\w-]+#\w+)$/);
+                return anchor && info ? { la: 'This entry', lb: 'Its page links', a: `${_bbYearRowSlug(_bbEvData(cell))}#${anchor}`, b: info[1] } : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_bb_anchor'),
         },
         // vzell, 2026-11-14: one anchor on two entries of a year page (1972's
@@ -79900,6 +79961,12 @@
             rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
             test: cell => _bbHasCheck(cell, 'name-variant'),
             detail: cell => `The event page is "${_bbEvDatum(cell, 'raw-title')}".`,
+            // the diff card (vzell, 2026-11-23): the bracket the event page adds
+            compare: (cell) => {
+                const t = _bbEvDatum(cell, 'raw-title');
+                const h = _bbEvDatum(cell, 'raw-heading');
+                return t && h ? { la: 'Year page', lb: 'Event page', a: h, b: t } : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_bb_name'),
         },
         {
@@ -80113,6 +80180,8 @@
             rowGate: row => _bbFeedHasData() && !!row.querySelector('a[href]'),
             test: cell => _bbFeedCellHas(cell, kind),
             detail: cell => _bbFeedCellDetail(cell, kind),
+            // the name and title kinds as the diff card (vzell, 2026-11-23)
+            compare: (kind === 'dependent-name' || kind === 'dependent-title') ? (cell => _bbFeedCellCompare(cell, kind)) : undefined,
             tint: _findingTintSetting('sa_findings_tint_bb_feed'),
         })),
         // The feed on MusicBrainz (feed 1.3; feed v2, branch 3): the Event
@@ -80573,7 +80642,8 @@
      *
      * @param {string[]} ids
      * @param {Object<string, string>} [details] - Per-cell detail text by id.
-     * @param {Object<string, object>} [compares] - Per-cell comparison by id.
+     * @param {Object<string, (object|Array<object>)>} [compares] - Per-cell comparison by id,
+     *   or several (since 2026-11-23).
      * @returns {{text: string, cmp: Array<object>}}
      */
     function _findingTitle(ids, details = {}, compares = {}) {
@@ -80581,7 +80651,13 @@
         const cmp = [];
         const text = ids.map((id, at) => {
             const f = _FINDING_BY_ID.get(id);
-            if (compares[id]) cmp.push({ ...compares[id], at, head: head(f) });
+            // a compare() may give several pairs (a show's pages named
+            // differently): one entry of kind "pairs", drawn one under another
+            const c = compares[id];
+            if (Array.isArray(c)) {
+                if (c.length === 1) cmp.push({ ...c[0], at, head: head(f) });
+                else if (c.length > 1) cmp.push({ kind: 'pairs', p: c, at, head: head(f) });
+            } else if (c) cmp.push({ ...c, at, head: head(f) });
             return `${head(f)}${details[id] ? `: ${details[id]}` : ''}`;
         }).join('\n');
         return { text, cmp };
@@ -130153,7 +130229,9 @@ a { color: #1565c0; }`;
      * line it belongs to (`at`, counting non-empty lines), optionally how
      * many lines it replaces (`span`, default 1) and the text the card shows
      * instead of them (`head`); a `kind: 'len'` entry replaces the whole card;
-     * a `kind: 'mark'` entry is one row with a run marked (`_cmpMarkHtml()`).
+     * a `kind: 'mark'` entry is one row with a run marked (`_cmpMarkHtml()`);
+     * a `kind: 'pairs'` entry holds several comparisons (`p`), drawn one
+     * under another (since 2026-11-23: a show's pages named differently).
      *
      * @param {?Element} el
      * @param {string} text
@@ -130173,6 +130251,8 @@ a { color: #1565c0; }`;
                   num(c.thresholdMs) && (c.severeMs === null || num(c.severeMs))
                 : c.kind === 'mark'
                     ? str(c.a) && str(c.la) && num(c.s) && num(c.e) && (c.sum === undefined || str(c.sum))
+                    : c.kind === 'pairs'
+                        ? Array.isArray(c.p) && c.p.length > 0 && c.p.every(x => x && str(x.a) && str(x.b) && str(x.la) && str(x.lb))
                     : c.kind === 'dup'
                         ? str(c.tier) && str(c.cut) && str(c.sig) && str(c.isrc) && Array.isArray(c.m) && Array.isArray(c.ap) &&
                           c.m.every(m => m && str(m.t) && str(m.c) && Array.isArray(m.i) && m.i.every(str) && (m.l === null || num(m.l))) &&
@@ -130272,7 +130352,7 @@ a { color: #1565c0; }`;
                 const pill = { strict: 'mb-recdup-strict', normal: 'mb-recdup-normal', loose: 'mb-recdup-loose' }[c.tier] || '';
                 return `<div class="mb-tt-title">${body} <span class="mb-tt-pill ${pill}">${_mbttEscape(c.tier)}</span></div>${_cmpDupHtml(c)}`;
             }
-            const after = c && !(opts.noOrigin && c.origin) ? (c.kind === 'mark' ? _cmpMarkHtml(c) : _cmpHtml(c)) : '';
+            const after = c && !(opts.noOrigin && c.origin) ? (c.kind === 'mark' ? _cmpMarkHtml(c) : c.kind === 'pairs' ? c.p.map(x => _cmpHtml(x)).join('') : _cmpHtml(c)) : '';
             if (i === 0 && (blocks.length > 1 || shown.length <= 60 || c)) {
                 return `<div class="mb-tt-title">${body}</div>${after}`;
             }

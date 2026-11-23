@@ -4157,8 +4157,9 @@ reads, is read again on the next press once it is an hour old.
   typo (`…palais-omnisport…`), a wrong date or a wrong show. A name Wikidot
   cut at its 60 characters, a `-1`/`-2` of two pages of one date and the
   `dl-` of a download's note are no error. The show is marked too, on its
-  rows, its page and its window, and the hover text names the page and the
-  name it would have; the page itself is marked on its rows (Recent
+  rows, its page and its window, and the hover card shows the page's name
+  over the name it would have, the letters that differ marked (a show with
+  several such pages: one pair each); the page itself is marked on its rows (Recent
   changes, the tag lists), as it has no head or window of its own. Since the
   feed of BruceParser 0.40.0 also a show's On stage, Off stage and soundcheck
   pages: they have no breadcrumb, so their show is the one show of their

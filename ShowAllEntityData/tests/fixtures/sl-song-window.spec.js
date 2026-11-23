@@ -234,6 +234,15 @@ test.describe('springsteenlyrics.com song window', () => {
         await expect(row.first().locator('td[data-mb-findings~="sl-double-utf8"]').first()).toBeVisible({ timeout: 5000 });
         // Only that song: its other versions were never read.
         await expect(page.locator('table.tbl tbody tr:has(td[data-mb-findings~="sl-double-utf8"])')).toHaveCount(await row.count());
+        // The diff card (vzell, 2026-11-23): each garbled text over what it
+        // means, the bytes that differ marked; "CalexÃ³ns" is the one we know.
+        const cmp = await row.first().locator('td[data-mb-findings~="sl-double-utf8"]').first().evaluate((td) => {
+            const c = JSON.parse(td.getAttribute('data-mb-tip-cmp') || '{"c":[]}').c.find(x => /Double-encoded/.test(x.head || '')) || null;
+            return c ? (c.kind === 'pairs' ? c.p : [c]).map(x => ({ lb: x.lb, a: x.a, b: x.b })) : [];
+        });
+        expect(cmp.length).toBeGreaterThan(0);
+        expect(cmp.every(x => x.lb === 'Meant' && x.a !== x.b)).toBe(true);
+        expect(cmp.some(x => x.a.includes('Ã³') && x.b.includes('ó'))).toBe(true);
         expect(errors).toEqual([]);
     });
 

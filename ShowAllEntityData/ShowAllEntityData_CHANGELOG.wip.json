@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-11-23",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase and springsteenlyrics.com: six findings that compare two texts now show them as the diff card, like the venue one (the two values one under the other, the letters that differ marked), instead of a sentence: \"Brucebase page named differently from its show\" and \"… titled differently from its show\" (on the cells and on a show's own head marks; a show with several such pages gets one pair each, a title pair names its page), \"Brucebase event page adds (Early), (Late), …\" (the year heading over the event page's name), \"Brucebase event page links another entry\" (both anchors as year#anchor), \"Brucebase entry with a comma after its date\" (the entry over its usual form) and \"Double-encoded text\" on springsteenlyrics.com (each garbled text over what it means). The plain text stays the fallback."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-11-23",
     "sections": [
