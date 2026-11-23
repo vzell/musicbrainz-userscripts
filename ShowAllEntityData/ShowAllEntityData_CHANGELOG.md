@@ -4,9 +4,49 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1854 versions; the month pages hold all of them.
+This page shows the newest 100 of 1859 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1688 — 2026-11-23
+
+**✨ Improve**
+
+- springsteenlyrics.com song window: the red "encoding error" banner now lists each spot, with its section and where in it ("Covers · 7 Lvvas · Note", "Lyrics · line 12") and the garbled word over the repaired one. It lists three, then "and N more · show all". A click on a spot opens its section and scrolls to it, which flashes. A section's heading says how many it holds, and its chip at the top carries a red count that goes to the section's first spot. The repaired text is easier to see: a light red tint, a wavy line and a small 🔤, and a red edge on its table cell. Saved song pages are read again once (parser version 38).
+
+
+## 9.99.1687 — 2026-11-23
+
+**🐛 Fix**
+
+- springsteenlyrics.com, Brucebase, brucespringsteen.it: a cell whose title is shown in MusicBrainz style (its tip "As written on the site") now shows its findings above that tip. Before, the tip hid them: the lyrics index's Title cell of "Backstreets" was tinted for double-encoded text, but its card showed only the site's title.
+- Comparison cards: a text that differs from the other only in letter case ("BACKSTREETS" and "Backstreets") is marked letter by letter, with the summary "10 letters in a different case", instead of "The two share little, so nothing is marked".
+
+**✨ Improve**
+
+- springsteenlyrics.com, the "Double-encoded text" card (9.99.1686): each spot shows the whole word, "CalexÃ³ns" over "Calexóns", not only "Ã³" over "ó". The song window's "Copy report for the site maintainer" names the word after each spot. Saved song pages are read again once (parser version 37).
+
+
+## 9.99.1686 — 2026-11-23
+
+**✨ Improve**
+
+- Brucebase and springsteenlyrics.com: six findings that compare two texts now show them as the diff card, like the venue one (the two values one under the other, the letters that differ marked), instead of a sentence: "Brucebase page named differently from its show" and "… titled differently from its show" (on the cells and on a show's own head marks; a show with several such pages gets one pair each, a title pair names its page), "Brucebase event page adds (Early), (Late), …" (the year heading over the event page's name), "Brucebase event page links another entry" (both anchors as year\#anchor), "Brucebase entry with a comma after its date" (the entry over its usual form) and "Double-encoded text" on springsteenlyrics.com (each garbled text over what it means). The plain text stays the fallback.
+
+
+## 9.99.1685 — 2026-11-23
+
+**🐛 Fix**
+
+- Brucebase: "the venue's own page names it differently" (⚠️ on a year table's Venue cell, after ▶ Pages) no longer flags the wiki's own conventions: today's name on the venue page ("ICC Berlin, West Berlin, West Germany" for "ICC Berlin, Berlin, Germany"), the generic "Unknown Location" page, a room or part named before the venue ("Spotify HQ, Adelphi (The), London, England"), and a description between the venue and a place of more than two parts ("Concert Hall, QPAC, South Brisbane, Brisbane, Queensland, Australia"). The same rules as BruceParser 0.41.0's venue report: on the Brucebase run of 2026-11-23 both flag the same 104 events (128 with the old rules on the run of 2026-11-21), among them MetLife ×12 and the Telegraph Hill recordings that link the Holmdel residence.
+
+
+## 9.99.1684 — 2026-11-23
+
+**✨ Improve**
+
+- Brucebase: "Brucebase page named differently from its show" (⚠️ ⇋) also covers a show's On stage, Off stage and soundcheck pages, as the Brucebase feed of BruceParser 0.40.0 lists them (76 pages, e.g. onstage:1988-05-06-tacoma-dome-tacoma-wa under gig:1988-05-06-dome-tacoma-wa). These pages have no breadcrumb, so their show is the one show of their date; a day with several shows is left out. The show is marked on its rows, head and window, the page itself on its rows, as for a Gallery or Notes page. Only the finding's description and its report text change here; the marks come from the feed.
+
 
 ## 9.99.1683 — 2026-11-23
 
@@ -815,45 +855,6 @@ This page shows the newest 100 of 1854 versions; the month pages hold all of the
 **🚀 Feature**
 
 - Links to an image revision of a Discogs release (…/images/history?rev=N, the "Images" links of image changes in a release's edit history, in the history's preview window and in the table of the edit history page) have their own preview window. Before, they showed the release itself. The window lists every revision that changed the release's images, newest first, with who changed them, when and the note, and highlights the revision the link points to. That revision shows its images and what changed since the revision before: + added, moved, → primary / → secondary, and removed images greyed out. A click on an image opens the image viewer. Every other revision shows its images when you press its "▸ Show images"; "Load the N other revisions" reads all of them, one request each (Stop ends it). To list every revision, the window reads every page of the release's edit history. A revision's images come from Discogs' image editor, so they are read with your Discogs session, as the Image history window already does; signed out, the revisions are still listed, each saying why its images are missing. Like the other Discogs history windows, it reads only when you press Space, never on a hover.
-
-
-## 9.99.1588 — 2026-11-10
-
-**✨ Improve**
-
-- The detail window (the one a link preview opens) can be made bigger on a phone. Its resize corner is the browser's own, and that answers a mouse only, so on a phone the window kept its size. A new ⤢ beside ✕ makes it fill what the screen shows, following when you zoom or pan; ⤡ gives it its size back, and the next window opens the way you left it. On a desktop a double-click on an empty part of its title bar does the same. On a touch screen a grip in the lower-right corner resizes it with a finger.
-
-
-## 9.99.1587 — 2026-11-10
-
-**🐛 Fix**
-
-- On a phone you can stop a fetch again. A narrow screen moves the fetch buttons into the ☰ SAED menu as its "Load" rows, and that also hid the button that turns into "■ Stop · n / N" while pages load, so a long paginated fetch could not be stopped. Now, while a fetch runs, that button comes back beside ☰ SAED with its progress, "Stopping…" and "Rendering…", and the bar is one line again when it is done. In the menu, the running row says Stop as well, and the other Load rows wait the way their buttons do.
-
-
-## 9.99.1586 — 2026-11-09
-
-**🐛 Fix**
-
-- springsteenlyrics.com: in a song's preview window (e.g. "For You" opened from an item page's tracklist), the release tables showed every MusicBrainz work icon at full size, several hundred pixels tall. They are now the same small icon, in the line before the title, as in an item's window.
-
-
-## 9.99.1585 — 2026-11-09
-
-**🐛 Fix**
-
-- A jump of the computer's clock no longer holds back link previews, the Relationships column and the other lookups. The script spaces its requests to MusicBrainz, to the foreign sites' pages and to each external site (setlist.fm, Wikidata, Discogs, …) by booking a time for each; it booked on the wall clock, so one booking made while the clock was off (an NTP correction, a virtual machine resyncing, waking from sleep) put every request after it that much later. Found on a WSL2 machine whose clock jumped 16.8 s ahead for a tenth of a second every 5 seconds, where an artist window's albums came after 25 s instead of 8.5 s. The bookings now follow the page's own steady clock. MusicBrainz's request budget shared with majkinetor's scripts keeps the wall clock, as all of them use it.
-
-
-## 9.99.1584 — 2026-11-09
-
-**🐛 Fix**
-
-- ? and / no longer open the keyboard shortcuts reference while you type into a drop-down or editable text. Before, only text boxes and text areas counted as typing: with the focus on a drop-down (such as the type next to MusicBrainz's search box, reached with Tab) the reference opened over it, and in editable text the key was also lost. Typing now means what Event Horizon's key guard already uses: a text box, a text area, a drop-down or editable text.
-
-**📝 Docs**
-
-- Help, Keyboard shortcuts: with direct Ctrl+letter shortcuts on and String Theory installed, Ctrl+K opens String Theory's command palette, not the shortcuts reference; use the prefix key and k, or ?, or give one side another key (String Theory: its settings, Command palette, Hotkey). The ? and / row says they do not work while typing in a field.
 
 
 ---

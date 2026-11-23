@@ -5465,7 +5465,9 @@ both **on** by default, under ⚙️ Settings → *🔤 Titles on the other site
 
 Rest the pointer on a title that changed to see it as the site writes it,
 above the title as shown, with the letters and marks that changed marked.
-The rules are applied by machine, so a title that needs judgement — a word
+When the cell is also flagged as a ⚠️ warning or ❌ error (double-encoded
+text on springsteenlyrics.com, say), the flags come first, above the
+site's text. The rules are applied by machine, so a title that needs judgement — a word
 used as part of a verb ("Stand on It"), an acronym nobody listed — can still
 come out differently from MusicBrainz; "up" is always capitalised ("Held Up
 Without a Gun"), and so is "on" in "Come On", "Hang On" and the like. A change
