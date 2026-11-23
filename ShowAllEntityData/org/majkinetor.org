@@ -16,10 +16,13 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-23)
 
-- *Now:* two adoptions, both mockups approved 2026-11-23 (https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o;
-  the area window's links, https://claude.ai/artifact/23mGArYVMW2bru1egjRDxR): "Title style" on =feat/title-style=
-  (WIP.1 the word lists, WIP.2 the title-difference classes, both built; test:full and vzell's browser check
-  before the merge), then "Entity pictures: … area map left" on =feat/area-pictures=.
+- *Now:* "Entity pictures: … area map left" on =feat/area-pictures= (mockups approved 2026-11-23:
+  https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o part A, the window's links
+  https://claude.ai/artifact/23mGArYVMW2bru1egjRDxR). Wikidata answers 429 after ~19 requests at 1/s
+  (=probe-area-images.py=, 2026-11-23): vzell chose five =wbgetclaims= per area as planned, with Wikidata
+  paused for every tab on a 429 (Retry-After), as Discogs' API is.
+- *Shipped today:* "Title style": 9.99.1677 the guess-case word lists, 9.99.1678 the kinds of a track/recording
+  name difference.
 - *Shipped today:* the two small ours from the 2026-11-20 refresh: 9.99.1674 the gate's write
   clamp, 9.99.1675 C3 with =data-mbu-keys-keep= (=feat/eh-keys-keep-gate-clamp=; vzell's browser check OK). The
   small ours from the 2026-11-21 answer shipped too: 9.99.1676, a standalone EH's =data-mbu-eh= counts for the keys
@@ -80,7 +83,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | In-page log window (=mbuLog=)                                  | TODO  | —             | Adoptions     |
 | Hide the native page until the render ("shine through")        | TODO  | —             | Adoptions     |
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1646     | Adoptions     |
-| Title style: guess-case lists, title-difference classes        | TODO  | WIP.2 branch  | Adoptions     |
+| Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
 | Posts to majkinetor: eleven posted                             | DONE  | —             | On the record |
@@ -699,7 +702,7 @@ CLOSED: [2026-11-20 Fri]
   - *Mind*: external requests are =anonymous= and first contact is on Space, never on hover (detail-pages.md); a new
     host needs =@connect=.
 
-** TODO Title style: guess-case word lists, title-difference classes
+** DONE Title style: guess-case word lists, title-difference classes
 
 - *Who fixes it*: *ours* (lists only). Apollo's word lists (adoption question 3) can be copied verbatim, with a
   credit.
@@ -725,7 +728,9 @@ CLOSED: [2026-11-20 Fri]
   edits / other) with =recFold='s punctuation half (accents kept, B1) and =recLev=; a pill heading the compare box,
   four 📊 entries =title-mismatch-<kind>=. Apollo's own default tolerance is 1 (=recTitleTol: 1=), not the 2 the
   mockup claimed; 2 kept as approved. Spec =title-diff-classes.spec.js= 3/3, mutations 11/11. Anchors =ap-rec-fold=,
-  =ap-rec-lev=, =saed-title-diff-class=. Next: test:full, the browser check, the merge.
+  =ap-rec-lev=, =saed-title-diff-class=.
+- *Shipped in 9.99.1677* (the word lists) *and 9.99.1678* (the classes), 2026-11-23: test:full 3456/3456 on the
+  branch, vzell's browser check OK.
 
 ** TODO Links: canonical page keys for =rel-multi-site=; Discogs MusicBrainz column barcode fallback
 

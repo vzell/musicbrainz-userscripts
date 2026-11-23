@@ -4,9 +4,24 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1847 versions; the month pages hold all of them.
+This page shows the newest 100 of 1849 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1678 — 2026-11-23
+
+**✨ Improve**
+
+- A track named differently from its recording (jesus2099's ≠ note) now says what kind of difference it is: the comparison box opens with a small label, Case only or Punctuation and spacing only (green; "&" counts as "and"), 1–2 characters (amber: a typo, a plural, an accent) or Different (red). The Title column's 📊 menu lists the same four kinds, indented under "≠ track/recording name", each with its count, so you can keep only the real differences. The punctuation fold and the edit distance follow majkinetor's Apollo Editor (recFold, recLev).
+
+
+## 9.99.1677 — 2026-11-23
+
+**✨ Improve**
+
+- Titles in MusicBrainz style (the Springsteen sites' converted titles and the title-style findings on MusicBrainz) now use MusicBrainz's own guess-case word lists, as majkinetor's Apollo Editor carries them: acronyms such as YMCA, USSR and NBA stay in capitals ("CORN IN THE USSR" becomes "Corn in the USSR", no longer "Corn in the Ussr"); iTunes, iPhone, iPad, iPod, iMac, YouTube, TikTok, DJs and OC ReMix are written that way whatever the source's case; and version phrases such as "official music video", "slowed", "sped up", "reverb" and "nightcore" count as extra title information, so "(Slowed + Reverb)" is written "(slowed + reverb)".
+- The title-style findings leave Armenian titles alone, as they already did Cyrillic and Greek ones: those scripts write titles in sentence case.
+
 
 ## 9.99.1676 — 2026-11-21
 
@@ -844,29 +859,6 @@ This page shows the newest 100 of 1847 versions; the month pages hold all of the
 **🐛 Fix**
 
 - ISRC Scout (majkinetor) no longer replaces the ISRC and Links columns of a rendered tracklist with bare copies that have no sort buttons and no 📊, and no longer widens its headings: every table this script renders now says it is this script's (the shared data-mbu-foreign mark), which ISRC Scout leaves alone, and its own hover tip no longer shows over the table. Needs the ISRC Scout with that mark (majkinetor's \#938); with an older one, press the Tracks button after its columns have appeared, as before.
-
-
-## 9.99.1578 — 2026-11-08
-
-**🐛 Fix**
-
-- Release tracklist with ISRC Scout (majkinetor) since its 2026.11.06 versions: the Links column lost its platform names (no "Links info - Platform" section in 📊, typing "Deezer" matched nothing), because the name moved out of the icons' title. The platform is read again, from ISRC Scout's new platform data first, then from its tip, then from the old title, so every ISRC Scout version works.
-
-**✨ Improve**
-
-- The Links icons of ISRC Scout get this script's own card: the platform, "(ended)" and the number of links, then the link addresses; ISRC Scout's own tip no longer shows next to it.
-
-
-## 9.99.1577 — 2026-11-08
-
-**🐛 Fix**
-
-- With majkinetor's Event Horizon (or String Theory) installed, its single-letter keys also worked on MusicBrainz's own page, even with Event Horizon switched off: a stray H went to the editing history (E to the edit page, R to the relationship editor, and so on), and the page was gone, a rendered table with it. On the pages this script runs on, before and after a button is pressed, those keys are now ignored. V (switching Event Horizon on or off), every key inside Event Horizon's own view and typing into a field keep working.
-- After a table was rendered, in majkinetor's Event Horizon (after V): clicking a link in its view, or pressing one of its keys such as H, brought up the script's "You are about to leave this page" question, even when Event Horizon opened the page in place and the table stayed; and when Event Horizon really left the page (a page it loads, or V after moving around in it, which reloads), the table could be lost without a word. Now inside Event Horizon's view nothing is asked on a click, and the browser's own "Leave site?" prompt comes when the page really unloads. On MusicBrainz's own page the script's question stays as it was.
-
-**✨ Improve**
-
-- New setting: ⚙️ Settings → 🎹 KEYBOARD SHORTCUTS → "Ignore Event Horizon's single-letter keys on MusicBrainz's page" (on). Turn it off to give those keys back to Event Horizon. Keys you rebound in Event Horizon are not known to this script.
 
 
 ---
