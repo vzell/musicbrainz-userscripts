@@ -4,8 +4,8 @@
 Track A idea 4 (org/springsteen-marriage.org; vzell, 2026-11-20: the feed kind
 "dependent-name" instead of BruceParser's URL-shortening report, a WARNING).
 Reads every gignote, gallery, eye, media and recnote page of BruceParser's
-mirror (news: is named by the article's date, story: has its own prefixes,
-onstage: has no breadcrumbs: all three left out), takes the LAST link of its
+mirror (news: is named by the article's date, story: has its own prefixes:
+both left out), takes the LAST link of its
 breadcrumbs as its parent, and judges a parent that is a show page (gig,
 nogig, rehearsal, recording, interview, nobruce):
 
@@ -22,8 +22,14 @@ nogig, rehearsal, recording, interview, nobruce):
   (media:1996-05-08-palacio-de-congresos-y-exposiciones-madri, 58), not at 60
   exactly, so the limit is 55.
 
-BruceParser's dependent-names.awk applies the same rule to the run's pages;
-its feed kind must equal this probe's --json.
+On stage, Off stage and soundcheck pages (since 2026-11-23, BruceParser
+0.40.0's stage-names.awk rows in the feed, vzell: "the 76 pages should go into
+the feed") have no breadcrumbs: their show is the one show page of their date
+(a day with several shows or none is not judged), then the same rule, plus a
+"-N" page whose base Wikidot cut to 60 minus the suffix.
+BruceParser's dependent-names.awk and stage-names.awk apply the same rules to
+the run's pages; its feed kind must equal this probe's --json (2026-11-23 on
+bb/2026-11-21: 36 + 76 = 112, equal).
 
 Read-only. No network.
 
@@ -44,6 +50,9 @@ b3 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(b3)
 
 KINDS = ('gignote', 'gallery', 'eye', 'media', 'recnote')
+STAGE_KINDS = ('onstage', 'offstage', 'soundcheck')
+SHOW_DIRS = ('gig', 'nogig', 'rehearsal', 'recording', 'interview', 'nobruce')
+DATE = re.compile(r'(\d{4}-\d{2}-\d{2})')
 SHOWS = re.compile(r'^(gig|nogig|rehearsal|recording|interview|nobruce):')
 LIMIT = 60
 CUT = 55
@@ -73,11 +82,32 @@ def judge(name, parent):
         return None, excuse + 'equal'
     if re.sub(r'-\d$', '', own) == expected:
         return None, excuse + '-N'
+    # a "-N" page whose base Wikidot cut to 60 minus the suffix (BruceParser's
+    # stage-names.awk and dependent-names.awk excuse it the same way)
+    m = re.search(r'-\d$', own)
+    if m and own[:m.start()] == (kind + ':' + pslug)[:LIMIT - len(m.group(0))].rstrip('-'):
+        return None, excuse + '-N cut'
     if len(name) >= CUT and pslug.startswith(slug):
         return None, excuse + 'page cut'
     if len(parent) >= CUT and slug.startswith(pslug):
         return None, excuse + 'parent cut'
     return expected, ''
+
+
+def shows_by_day(root):
+    """date -> the show pages of that day (gig, nogig, rehearsal, recording, interview, nobruce)."""
+    days = {}
+    for kind in SHOW_DIRS:
+        d = os.path.join(root, kind)
+        if not os.path.isdir(d):
+            continue
+        for fn in os.listdir(d):
+            if fn.startswith(kind + '_') and fn.endswith('.html'):
+                slug = fn[len(kind) + 1:-5]
+                m = re.match(r'(\d{4}-\d{2}-\d{2})[a-z]?-', slug)
+                if m:
+                    days.setdefault(m.group(1), []).append(f'{kind}:{slug}')
+    return days
 
 
 def main(argv):
@@ -110,9 +140,33 @@ def main(argv):
             if expected:
                 counts[(kind, 'flagged')] += 1
                 flagged[name] = {'event': parent, 'expected': expected}
+    # On stage, Off stage and soundcheck pages (BruceParser 0.40.0's stage-names.awk
+    # rows in the feed): no breadcrumbs, so their show is the one show page of
+    # their date; a day with several shows or none is not judged
+    days = shows_by_day(mirror.root)
+    for kind in STAGE_KINDS:
+        d = os.path.join(mirror.root, kind)
+        if not os.path.isdir(d):
+            continue
+        for fn in sorted(os.listdir(d)):
+            if not (fn.startswith(kind + '_') and fn.endswith('.html')):
+                continue
+            name = f'{kind}:{fn[len(kind) + 1:-5]}'
+            counts[(kind, 'pages')] += 1
+            m = DATE.search(name)
+            shows = days.get(m.group(1), []) if m else []
+            if len(shows) != 1:
+                counts[(kind, 'not judged')] += 1
+                continue
+            expected, excuse = judge(name, shows[0])
+            if excuse and excuse != 'equal':
+                excused.append((excuse, name, shows[0]))
+            if expected:
+                counts[(kind, 'flagged')] += 1
+                flagged[name] = {'event': shows[0], 'expected': expected}
     print(f'mirror {mirror.root}')
-    for kind in KINDS:
-        print(f'  {kind:8} pages {counts[(kind, "pages")]:5}  not judged {counts[(kind, "not judged")]:4}  '
+    for kind in KINDS + STAGE_KINDS:
+        print(f'  {kind:10} pages {counts[(kind, "pages")]:5}  not judged {counts[(kind, "not judged")]:4}  '
               f'flagged {counts[(kind, "flagged")]:4}')
     print(f'flagged: {len(flagged)} pages')
     if args.list:
