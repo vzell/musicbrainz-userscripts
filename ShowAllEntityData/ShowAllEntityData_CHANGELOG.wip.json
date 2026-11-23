@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-23",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews: a window now names an area's whole line (\"Long Branch, New Jersey, United States\") from one request instead of one request per level. It asks MusicBrainz's website for the area and everything above it (as majkinetor's Event Horizon does), about 1 KB, where the climb asked three lookups of about 30 KB together, each waiting for its one-a-second turn. Artist, label, place, event and recording windows all get it, and every area of the line is remembered, so a label in New Jersey asks nothing more. If the website does not answer, or answers with its browser check, the window climbs level by level as before, for the rest of that page. A hover card still asks nothing for the line."
+        ]
+      }
+    ]
+  }
+]

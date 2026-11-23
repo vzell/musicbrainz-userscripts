@@ -81026,9 +81026,10 @@
      * (GM_xmlhttpRequest, anonymous), as the MusicBrainz column's lookups
      * (`_dgMbAsk()`) and Brucebase's MB-Event card (`_bbMbevPopLoad()`) do;
      * the caller has taken the MusicBrainz rate slot. No retry: a failure
-     * is not kept, and the next hover asks again (`_mbLoad()`).
+     * is not kept, and the next hover asks again (`_mbLoad()`). Also the
+     * website's `/ws/js/...` JSON (an area's chain, `_mbPopWsJsGet()`).
      *
-     * @param {string} url - `/ws/2/...`.
+     * @param {string} url - `/ws/2/...` or `/ws/js/...`.
      * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
      */
     async function _mbWsGetForeign(url) {
@@ -84865,6 +84866,133 @@
     }
 
     /**
+     * musicbrainz-server's `area_type` ids of the three types
+     * `load_containment` keeps (`_MB_POP_CONTAINMENT_TYPES`): the website's
+     * `/ws/js/entity` answer names the area's own type (`typeName`) but gives
+     * its containment entries only a `typeID` (probe 2026-11-23, Long Branch).
+     * @type {Object<number, string>}
+     */
+    const _MB_AREA_TYPE_IDS = { 1: 'Country', 2: 'Subdivision', 3: 'City' };
+
+    /** Version of an area's chain record in IndexedDB (`_mbPopChainRecordFor()`). */
+    const _MB_POP_CHAIN_VERSION = 1;
+
+    /**
+     * Set by the first chain record that fails (`_mbPopChainRecordFor()`):
+     * from then on, for the page's life, every chain is climbed through the
+     * Web Service (`_mbPopAreaChainLoad()`). Without it a climb asked
+     * `/ws/js` again at each level it reached — three failures for one line
+     * while the endpoint is down or answering its browser check.
+     * @type {boolean}
+     */
+    let _mbPopChainOff = false;
+
+    /**
+     * The cache key of an area's chain record: the areas MusicBrainz names
+     * above it, from one `/ws/js/entity` request (`_mbPopChainRecordFor()`).
+     * @param {string} id - The area's MBID.
+     * @returns {string}
+     */
+    function _mbPopChainKey(id) {
+        return `pop:area:${id}:chain`;
+    }
+
+    /**
+     * One area of a `/ws/js/entity` answer in the Web Service's dialect, the
+     * one every reader of a chain takes (`_mbPopFlagHtml()`,
+     * `_mbPopIsState()`, `_mbPopIsCountry()`): `gid` → `id`, `typeName` or
+     * `typeID` → `type`, the underscored ISO code lists hyphenated.
+     *
+     * @param {Object} c - An area of the website's JSON.
+     * @returns {{id: string, name: string, type: string, 'iso-3166-1-codes': Array<string>,
+     *   'iso-3166-2-codes': Array<string>}}
+     */
+    function _mbPopChainNode(c) {
+        return {
+            id: String((c && c.gid) || '').toLowerCase(),
+            name: String((c && c.name) || ''),
+            type: (c && (c.typeName || _MB_AREA_TYPE_IDS[c.typeID])) || '',
+            'iso-3166-1-codes': ((c && c.iso_3166_1_codes) || []).map(String),
+            'iso-3166-2-codes': ((c && c.iso_3166_2_codes) || []).map(String),
+        };
+    }
+
+    /**
+     * One GET of the website's `/ws/js/...` JSON: this tab's MusicBrainz rate
+     * slot first (`_relAwaitRateSlot()`), then ONE try — not the shared
+     * gate, which paces /ws/2 only (`_mbGateGated()`, as upstream's
+     * `mbnGated()`), and no retry, because every caller has the Web Service
+     * to fall back on: an answer that is not JSON (MusicBrainz's browser
+     * check, `_mbIsBrowserCheck()`) is a failure at once instead of being
+     * asked again. On another site through `_mbWsGetForeign()` (anonymous).
+     *
+     * @param {string} path - `/ws/js/...`.
+     * @param {?function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, status?: number, data?: ?Object, detail?: string, skipped?: boolean}>}
+     */
+    async function _mbPopWsJsGet(path, wanted) {
+        await _relAwaitRateSlot();
+        if (wanted && !wanted()) return { skipped: true };
+        if (_foreignHost) return _mbWsGetForeign(path);
+        try {
+            const resp = await fetch(path, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            if (!resp.ok) return { ok: false, status: resp.status, data: null, detail: `HTTP ${resp.status}` };
+            const text = await resp.text();
+            try {
+                return { ok: true, status: resp.status, data: JSON.parse(text), detail: '' };
+            } catch (_) {
+                return { ok: false, status: resp.status, data: null,
+                    detail: _mbIsBrowserCheck(text) ? _MB_BROWSER_CHECK_NOTE : 'MusicBrainz did not answer JSON' };
+            }
+        } catch (err) {
+            Lib.debug('rg', `${path}: ${err.message || String(err)}`);
+            return { ok: false, status: 0, data: null, detail: 'the request failed' };
+        }
+    }
+
+    /**
+     * An area's chain record: the areas MusicBrainz names above it (City,
+     * Subdivision, Country — `_MB_POP_CONTAINMENT_TYPES`), nearest first,
+     * from ONE request to the website's `/ws/js/entity/<id>`, whose
+     * `containment` is musicbrainz-server's own `load_containment` (idea:
+     * majkinetor's Event Horizon, `areaChain()`). Probe 2026-11-23: Long
+     * Branch → New Jersey → United States with their ISO codes in 1,046
+     * bytes, the county already left out, where the Web Service climb asks
+     * three `area-rels` lookups of about 30 KB (`_mbPopAreaChainLoad()`).
+     * The endpoint is not in MusicBrainz's API documentation, so an answer of
+     * another shape (not this area, no containment list) is a failure and
+     * the chain is climbed as before. Each area of the line gets its own tail
+     * in memory, so a label in New Jersey asks nothing more.
+     *
+     * @param {string} id - The area's MBID.
+     * @param {function(): boolean} wanted
+     * @returns {Promise<{ok?: boolean, data?: {areas: Array<Object>}, detail?: string, skipped?: boolean}>}
+     */
+    async function _mbPopChainRecordFor(id, wanted) {
+        const res = await _mbPopWsJsGet(`/ws/js/entity/${id}`, wanted);
+        if (res.skipped) return { skipped: true };
+        const d = res.ok ? res.data : null;
+        const fail = !d ? (res.detail || `HTTP ${res.status}`)
+            : (String(d.gid || '').toLowerCase() !== id || d.entityType !== 'area' || !Array.isArray(d.containment))
+                ? 'MusicBrainz answered something other than this area' : '';
+        if (fail) {
+            _mbPopChainOff = true;
+            Lib.debug('rg', `_mbPopChainRecordFor ${id}: ${fail} — area chains climb the Web Service from now on`);
+            return { ok: false, detail: fail };
+        }
+        const areas = d.containment.map(_mbPopChainNode)
+            .filter(a => a.id && a.id !== id && _MB_POP_CONTAINMENT_TYPES.includes(a.type));
+        const at = Date.now();
+        areas.forEach((a, i) => {
+            const key = _mbPopChainKey(a.id);
+            if (_mbPop.get(key)) return;
+            _mbPop.set(key, { status: 'done', data: { areas: areas.slice(i + 1) }, at, cached: false, detail: '',
+                listeners: new Set(), wants: [] });
+        });
+        return { ok: true, data: { areas } };
+    }
+
+    /**
      * The areas MusicBrainz names for an area, read from memory only: the
      * area itself, then each parent of a type in `_MB_POP_CONTAINMENT_TYPES`,
      * up to a Country. Each step needs the area's `area-rels` lookup — the
@@ -84872,6 +85000,9 @@
      * engine (event, place, artist, label, recording) shares the steps — and
      * the walk stops at the first one not loaded (`next`). A Country is
      * never looked up: its child's relation names it (`_mbPopIsCountry()`).
+     * At any step an area whose chain record is in memory
+     * (`_mbPopChainRecordFor()`, one request for the whole line) ends the
+     * walk with that record's areas.
      *
      * @param {?Object} area - An area of the Web Service.
      * @returns {{areas: Array<Object>, next: string, complete: boolean}} `next`:
@@ -84883,6 +85014,11 @@
         areas.push(area);
         let cur = area;
         for (let depth = 0; depth < _MB_POP_AREA_DEPTH && !_mbPopIsCountry(cur); depth++) {
+            const ch = _mbPop.get(_mbPopChainKey(cur.id));
+            if (ch && ch.status === 'done' && ch.data && Array.isArray(ch.data.areas)) {
+                areas.push(...ch.data.areas);
+                return { areas, next: '', complete: true };
+            }
             const st = _mbPop.get(_mbPopLookup({ type: 'area', id: cur.id }, 'area-rels').key);
             if (!st || st.status !== 'done' || !st.data) return { areas, next: cur.id, complete: false };
             const parent = _mbPopAreaParent(st.data);
@@ -84905,10 +85041,16 @@
 
     /**
      * Starts the next step of each area's chain (`_mbPopAreaChain()`), from
-     * a window's `pin()`: one lookup per chain at a time, the next from the
-     * repaint its answer causes (`pin()` runs again); a failed step waits
-     * for ⟳ (`_mbPopPinLoad()`). Chains that meet (two studios in one city,
-     * an artist born where it is based) share their steps.
+     * a window's `pin()`: first the area's chain record (ONE `/ws/js/entity`
+     * request for the whole line, `_mbPopChainRecordFor()`, kept in
+     * IndexedDB); once any record has failed (`_mbPopChainOff`, for the
+     * page's life: ⟳ then forces the climb, never a record again), the Web
+     * Service climb: one
+     * `area-rels` lookup per chain at a time,
+     * the next from the repaint its answer causes (`pin()` runs again); a
+     * failed step waits for ⟳ (`_mbPopPinLoad()`). Chains that meet (two
+     * studios in one city, an artist born where it is based) share their
+     * steps.
      *
      * @param {object} t - The window's target.
      * @param {Array<?Object>} areas - The areas whose chains are shown.
@@ -84919,6 +85061,13 @@
     function _mbPopAreaChainLoad(t, areas, again, repaint) {
         const next = new Set(areas.map(a => _mbPopAreaChain(a).next).filter(Boolean));
         next.forEach(id => {
+            const ck = _mbPopChainKey(id);
+            const cs = _mbPop.get(ck);
+            if (!_mbPopChainOff && (!cs || cs.status !== 'failed')) {
+                _mbLoad(ck, (wanted) => _mbPopChainRecordFor(id, wanted),
+                    { force: again, repaint, wanted: _mbPopWanted(t), version: _MB_POP_CHAIN_VERSION });
+                return;
+            }
             const q = _mbPopLookup({ type: 'area', id }, 'area-rels');
             _mbPopPinLoad(t, q.key, q.url, again, repaint);
         });
@@ -195962,6 +196111,15 @@ a { color: #1565c0; }`;
              * @returns {string}
              */
             mbPopFlagHtml: (area, onMb) => _mbPopFlagHtml(area, onMb),
+            /**
+             * An area's chain as a card writes it (`_mbPopAreaChainText()`,
+             * memory only), so a spec can see what a chain record seeded for
+             * the other areas of its line.
+             *
+             * @param {Object} area - An area of the Web Service.
+             * @returns {string}
+             */
+            mbPopAreaChainText: (area) => _mbPopAreaChainText(area),
             /**
              * A "Play here" tile's markup (`_ytTileHtml()`, the shipping
              * builder, which also installs the one delegated handler), so a

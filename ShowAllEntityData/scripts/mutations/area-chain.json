@@ -1,0 +1,80 @@
+[
+  {
+    "name": "the chain record is never asked",
+    "why": "The feature itself: without the /ws/js branch every chain climbs area-rels as before. The text is the same, so only the request counts see it.",
+    "edits": [
+      {
+        "find": "            if (!_mbPopChainOff && (!cs || cs.status !== 'failed')) {",
+        "replace": "            if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "one /ws/js request, no area-rels lookup",
+    "expect": "fail"
+  },
+  {
+    "name": "the walk ignores a loaded chain record",
+    "why": "_mbPopAreaChain() must end the walk with the record's areas; without it the record is fetched and then never shown, and the chain stays incomplete.",
+    "edits": [
+      {
+        "find": "            if (ch && ch.status === 'done' && ch.data && Array.isArray(ch.data.areas)) {",
+        "replace": "            if (false && ch) {"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "one /ws/js request, no area-rels lookup",
+    "expect": "fail"
+  },
+  {
+    "name": "an answer for another area is accepted",
+    "why": "The endpoint is undocumented: an answer that is not this area must fall back to the climb.",
+    "edits": [
+      {
+        "find": "            : (String(d.gid || '').toLowerCase() !== id || d.entityType !== 'area' || !Array.isArray(d.containment))",
+        "replace": "            : (d.entityType !== 'area' || !Array.isArray(d.containment))"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "answering another area",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed record does not switch /ws/js off",
+    "why": "Without _mbPopChainOff the climb asks /ws/js again at every level it reaches: three failures for one line.",
+    "edits": [
+      {
+        "find": "            _mbPopChainOff = true;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "answering a 503",
+    "expect": "fail"
+  },
+  {
+    "name": "the area itself is kept in its own line",
+    "why": "A containment that lists the area would name it twice (Long Branch, Long Branch, …).",
+    "edits": [
+      {
+        "find": "            .filter(a => a.id && a.id !== id && _MB_POP_CONTAINMENT_TYPES.includes(a.type));",
+        "replace": "            .filter(a => a.id && _MB_POP_CONTAINMENT_TYPES.includes(a.type));"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "lists the area itself",
+    "expect": "fail"
+  },
+  {
+    "name": "the line's areas are not seeded",
+    "why": "Each area of a record's line gets its tail in memory, so New Jersey's own chain needs no request.",
+    "edits": [
+      {
+        "find": "        areas.forEach((a, i) => {\n            const key = _mbPopChainKey(a.id);",
+        "replace": "        [].forEach((a, i) => {\n            const key = _mbPopChainKey(a.id);"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "seeds the line",
+    "expect": "fail"
+  }
+]
