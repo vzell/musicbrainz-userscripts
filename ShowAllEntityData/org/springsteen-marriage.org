@@ -696,3 +696,16 @@ Whether to ask Eddy, Danny and Stefano before the launch is vzell's call; Claude
 Verification: run =publish.sh= locally against =bb/latest=. Check that its row counts equal the report counts in
 =run-history.md=. Load the SQL into a local MariaDB and serve the PHP with =php -S=, then upload to the live site once
 vzell has approved it.
+
+
+* vzell's notes
+
+vzell's own prompts and the answers they got.
+
+** remove obsolete site fetches
+
+Is it possible to remove obsolete site fetches from @~/git/scripts/BruceParser/bb and leave only the last two
+successfull runs on disc. Do we have all the relevant information diffs between runs handy. Could this be handled
+automatically in bbp.sh.
+
+
