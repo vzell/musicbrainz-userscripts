@@ -6,10 +6,11 @@ Usage:
 
 RUN_DIR is a BruceParser run directory (bb/<date>, 0.39.0 or later). Reads
 REPORTING/DIFFERENCES-titles-between-YEAR-and-YEAR-LIST-pages.org (0.39.0),
+DIFFERENCES-venues.org (0.41.0), differences-date-postfix-detail-and-year.org (0.42.0),
 NO-PARENT-detail-pages.org (0.38.0), MISSING-tags.txt,
 MISSING-first-character-tag-in-title.txt and MISMATCH-images-files-tag.org
 (0.37.0) and prints plain text:
-  --part email  the items for the e-mail draft in org/bbp-parity.org (short
+  --part email  the items 8-14 for the e-mail draft in org/bbp-parity.org (short
                 groups in full, long groups as a count, examples and the
                 volkerzell.de page that lists them);
   --part full   every page of every group (the draft's appendix).
@@ -98,6 +99,32 @@ def images(rep):
     return own_untagged, tagged_none
 
 
+def venues(rep):
+    """DIFFERENCES-venues.org (0.41.0): venue page url -> (its title, [(event url, event's venue part)])."""
+    groups = {}
+    for line in read(os.path.join(rep, 'DIFFERENCES-venues.org')):
+        if not line.startswith('|'):
+            continue
+        c = cells(line)
+        ev, vp = ORG_LINK.search(c[1]), ORG_LINK.search(c[2])
+        if not ev:
+            continue
+        key, title = (vp.group(1), vp.group(2)) if vp else ('', c[2])
+        groups.setdefault(key, (title, []))[1].append((ev.group(1), ev.group(2)))
+    return groups
+
+
+def date_letters(rep):
+    """differences-date-postfix-detail-and-year.org (0.42.0): (title, page url, anchor url, anchor letter)."""
+    out = []
+    for line in read(os.path.join(rep, 'differences-date-postfix-detail-and-year.org')):
+        if line.startswith('|'):
+            c = cells(line)
+            pg, an = ORG_LINK.search(c[1]), ORG_LINK.search(c[2])
+            out.append((c[0], pg.group(1), an.group(1), an.group(2)))
+    return out
+
+
 def by_category(rows):
     """'gallery 16, venue 36' for (category, ...) rows."""
     counts = {}
@@ -107,7 +134,7 @@ def by_category(rows):
 
 
 def email(rep):
-    """Print the e-mail items 8-12."""
+    """Print the e-mail items 8-14."""
     yl = year_list(rep)
     np_rows = no_parent(rep)
     story = [u for c, u in np_rows if c == 'story']
@@ -163,6 +190,21 @@ def email(rep):
     p('    (Pages that only show pictures stored on other pages, like the album covers on')
     p('    the retail pages, are fine without the tag.)')
     p('')
+    vg = venues(rep)
+    p(f'13. Venue names: {sum(len(v[1]) for v in vg.values())} events whose title names the venue otherwise than its')
+    p(f'    venue page, on {len(vg)} venue pages (descriptions between venue and city, today\'s names')
+    p('    and rooms named first are fine and not listed). Venue page, then what the events say:')
+    for url, (title, evs) in sorted(vg.items(), key=lambda kv: -len(kv[1][1])):
+        said = sorted({v for e, v in evs})
+        p(f'    {url or title}  "{title}"')
+        p(f'       {len(evs)} event(s): {" / ".join(said)}')
+    p('')
+    dl = date_letters(rep)
+    p(f'14. Date letters: {len(dl)} pages named without the letter their year-page anchor and the')
+    p('    other pages of their day have:')
+    for title, page, anchor, letter in dl:
+        p(f'    {page}  (anchor {anchor.rsplit("/", 1)[1]}: "{letter}")')
+    p('')
     p(f'Items 9 and 12 in full: {REPORT_PAGE} after my next upload.')
 
 
@@ -194,6 +236,15 @@ def full(rep):
     p(f'"files" tag, no own files ({len(tagged_none)}):')
     for c, u, own, shows in tagged_none:
         p(f'  {u}{"" if not shows else "  (shows pictures of other pages)"}')
+    vg = venues(rep)
+    p(f'Venue names ({sum(len(v[1]) for v in vg.values())} events on {len(vg)} venue pages):')
+    for url, (title, evs) in sorted(vg.items(), key=lambda kv: -len(kv[1][1])):
+        for e, v in evs:
+            p(f'  {e} | {v} | {url or title} | {title}')
+    p(f'Date letters ({len(date_letters(rep))}):')
+    for title, page, anchor, letter in date_letters(rep):
+        p(f'  {page} | anchor {anchor} ({letter})')
+
 
 
 def main():

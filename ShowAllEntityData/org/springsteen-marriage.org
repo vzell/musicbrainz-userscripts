@@ -15,6 +15,22 @@ left out by decision), NOT (not done, with the reason).
 
 * PICKUP HERE (2026-11-23)
 
+- *The evening of 2026-11-23: second run, second audit, 0.40.0–0.42.0* (vzell: "start the run and do the audit; the
+  76 pages should go into the feed; tackle also the 24 MusicBrainz event titles; also do 4."). Run 16:22 (46 min, no
+  failed step; the first full run of 0.35.0–0.39.0: same-day set-aside, probe check, comparison all live). 0.40.0: the
+  76 stage pages in the feed's =dependent-name= (36 → 112; feed 1.9 published =71266c0=, FORMAT.md =c8cc09a=;
+  =probe-bb-dependent-names.py= has the stage rule, equal). 0.40.1: "Bruce @" a certain rule (URL report 2,749 →
+  2,744), =bb/index.org='s count by =bbp.sh=, slimmed runs also lose top-level downloads (193 MB), same-day probe
+  baseline. 0.41.0: venues by the wiki's conventions (489 → 105), the "Venue" link read right. 0.42.0: date letters
+  per day (338 → 4), gig titles by group (22 → 0), the lone "or" (5 → 0). BruceParser =04cc153=.
+- *Branch =feat/bb-feed-stage-names= (WIP.1, WIP.2), not merged — vzell's browser check first:* the dependent-name
+  description for stage pages, and =_bbVenueCheck()= with 0.41.0's rules (=check-bb-batch2-findings.js= over 4,993
+  events: equal to the probe and BruceParser, 104). Specs bb-findings-batch2 + bb-feed-dependent-name 37/37; no
+  =test:full= yet.
+- *For vzell:* the 24 MusicBrainz titles, edit-ready (bbp-parity.org, "State on MusicBrainz, 2026-11-23": 19 to fix,
+  5 to check, notes from the Brucebase pages); the Danny draft now has items 8–14 (venues and date letters added).
+  The Google Chat with Danny: Claude cannot read it (no Chat connector); a Takeout or a paste into
+  =debug/brucebase-chat/= would do.
 - *The audit of the five flat reports, and 0.36.0–0.39.0* (vzell: "do 1 with 2 and 3", then "go ahead with your
   recommendations"). 0.36.0: =tests/check-probes.sh= after every run (warns only), a second run of the day moves the
   first to =bb/out/run-<date>-<HHMM>/=. 0.37.0: the images report pairs the =files= tag with the page's own files

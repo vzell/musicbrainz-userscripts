@@ -1376,7 +1376,52 @@ MusicBrainz too and have no Brucebase title to compare.
 possessive apostrophes (Hooligans, T‐Birds, Ripley, Macauley, Old Timer's), venue sub-names without a comma (Cipriani
 42nd Street, Barnes & Noble Union Square, …), =St=/=St.=.
 
-** Wiki fixes for Danny (draft for vzell to send, 2026-11-21; items 8–12 added 2026-11-23)
+*** State on MusicBrainz, 2026-11-23 (edit-ready)
+
+Env: 2026-11-23T18:41:55+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+(=python3 scripts/check-mb-event-title-fixes.py=: one MusicBrainz lookup per event, read-only, 1.1 s apart)
+
+vzell: "tackle also the 24 MusicBrainz event titles". Claude cannot edit MusicBrainz (no edit API for events,
+and the edits are vzell's): the links open each event's edit page; "Title after the fix" is the name to paste.
+19 still need their fix, 5 need a source first. Group C, from the Brucebase pages of the run =bb/2026-11-23=:
+
+- 1974‐04‐09 (=84ab5c59=): Brucebase's page is the /cancelled/ show: "Cancelled due to a fire destroying Joe's
+  Place. Show was rescheduled to the nearby Charlie's Place." MusicBrainz's event at Charlie's Place is right;
+  its Brucebase link (=1974#090474b=, the cancelled show) is the thing to check.
+- 1995‐08‐06 and 1995‐08‐10 (=f74adb5d=, =a212dc66=): one venue, two names. Brucebase's Metro page lists its
+  later shows as "Cheers" (1997); in 1995 it was The Metro. MusicBrainz names events by the venue's name at
+  the time, so "The Metro, Long Branch, NJ, USA" looks right; check the place entity's names first.
+- 1982‐02 and 1983‐07 (=d12c08c6=, =2b4dc146=): studio sessions; MusicBrainz links Power Station, Brucebase
+  says The Hit Factory and Record Plant. Needs an outside source (session credits).
+
+| Group | Event | Title now | Title after the fix | State | Note |
+|-------+-------+-----------+---------------------+-------+------|
+| A | [[https://musicbrainz.org/event/5ca9be81-4cc4-4dd0-8a07-9d932e6b4b23/edit][5ca9be81]] | 1992‐01: St. Charles Avenue Steetcar Line, New Orleans, LA, USA | 1992‐01: St. Charles Avenue Streetcar Line, New Orleans, LA, USA | to fix | place: St. Charles Streetcar Line |
+| A | [[https://musicbrainz.org/event/4713487c-62d6-4151-b628-8a5804fea9d3/edit][4713487c]] | 2017‐09‐19: Pollack Theatre, Monmouth University, West Long Branch, NJ, USA | 2017‐09‐19: Pollak Theatre, Monmouth University, West Long Branch, NJ, USA | to fix | place: Pollak Theatre |
+| A | [[https://musicbrainz.org/event/bb6c1d8c-1f4e-4675-ae5c-eafdb3edda81/edit][bb6c1d8c]] | 2017‐09‐22: Pollack Theatre, Monmouth University, West Long Branch, NJ, USA | 2017‐09‐22: Pollak Theatre, Monmouth University, West Long Branch, NJ, USA | to fix | place: Pollak Theatre |
+| A | [[https://musicbrainz.org/event/5a9c9a6d-1c74-422e-a27f-2a52c7aeb8eb/edit][5a9c9a6d]] | 1975‐12‐21: Convocation Hall, University of Toronto, Toronto, On, Canada | 1975‐12‐21: Convocation Hall, University of Toronto, Toronto, ON, Canada | to fix | place: Convocation Hall |
+| A | [[https://musicbrainz.org/event/57b91acb-7d48-44cb-9e46-8b1f0dfbef56/edit][57b91acb]] | 2013‐07‐24: first direct arena, Leeds, England, UK | 2013‐07‐24: First Direct Arena, Leeds, England, UK | to fix | place: first direct arena |
+| A | [[https://musicbrainz.org/event/d36cb15d-43df-41dc-b0ab-01d242bd0d6d/edit][d36cb15d]] | 2023‐09‐09: Oriole Park At Camden Yards, Baltimore, MD, USA | 2023‐09‐09: Oriole Park at Camden Yards, Baltimore, MD, USA | to fix | place: Oriole Park at Camden Yards |
+| A | [[https://musicbrainz.org/event/1fd3133f-6bd8-4a5f-a183-626fb00ad6cd/edit][1fd3133f]] | 2017‐12‐23: Walter Kerr Theatre, New York City, NY; USA | 2017‐12‐23: Walter Kerr Theatre, New York City, NY, USA | to fix | place: Walter Kerr Theatre |
+| A | [[https://musicbrainz.org/event/b85fb122-d690-4c64-91ea-2396c006a274/edit][b85fb122]] | 2021‐07‐09: St. James Theatre, New York, City NY, USA | 2021‐07‐09: St. James Theatre, New York City, NY, USA | to fix | place: St. James Theatre |
+| A | [[https://musicbrainz.org/event/e97fbe44-af64-4767-b857-d21e532d42bb/edit][e97fbe44]] | 2013‐07‐03: Stade de Genève, Geneve, Switzerland | 2013‐07‐03: Stade de Genève, Geneva, Switzerland | to fix | place: Stade de Genève |
+| A | [[https://musicbrainz.org/event/cff64fec-4c82-466d-ac24-8d6339b92e3d/edit][cff64fec]] | 1996‐08‐10: Grand Mountain Lodge, Whitefish, MT, USA | 1996‐08‐10: Grouse Mountain Lodge, Whitefish, MT, USA | to fix | place: Grand Mountain Lodge |
+| B | [[https://musicbrainz.org/event/ec63eb3c-f14d-4897-9cb0-523074ee2044/edit][ec63eb3c]] | 2008‐06‐16: LTU Arena, Dusseldorf, Germany | 2008‐06‐16: LTU Arena, Düsseldorf, Germany | to fix | place: Merkur Spiel‐Arena |
+| B | [[https://musicbrainz.org/event/6dc5adec-ea05-4ccf-b3a8-c46de9266b10/edit][6dc5adec]] | 2005‐06‐16: Philipshalle, Dusseldorf, Germany | 2005‐06‐16: Philipshalle, Düsseldorf, Germany | to fix | place: Mitsubishi Electric Halle |
+| B | [[https://musicbrainz.org/event/1fae7591-bd75-4618-9fa0-045fd2bd98a4/edit][1fae7591]] | 1996‐02‐18: Philipshalle, Dusseldorf, Germany | 1996‐02‐18: Philipshalle, Düsseldorf, Germany | to fix | place: Mitsubishi Electric Halle |
+| B | [[https://musicbrainz.org/event/4738997b-713b-4201-af76-ff998521a8d4/edit][4738997b]] | 1988‐10‐12: Parque Antártica, Sao Paulo, Brazil | 1988‐10‐12: Parque Antártica, São Paulo, Brazil | to fix | place: Estádio Palestra Itália |
+| B | [[https://musicbrainz.org/event/086d2f9d-8e65-4328-8c38-b0e46992b196/edit][086d2f9d]] | 2005‐06‐30: Keflavik International Airport, Keflavik, Iceland | 2005‐06‐30: Keflavík International Airport, Keflavík, Iceland | to fix | place: Keflavík International Airport |
+| B | [[https://musicbrainz.org/event/a0dfe2a3-9fef-407d-8f76-2f3f3eaf47e1/edit][a0dfe2a3]] | 2016‐05‐17: Estadio Anoeta, Donostia‐San Sebastian, Spain | 2016‐05‐17: Estadio Anoeta, Donostia‐San Sebastián, Spain | to fix | place: Estadio Municipal de Anoeta |
+| B | [[https://musicbrainz.org/event/bd5b9284-e097-4059-a803-01b6c174f483/edit][bd5b9284]] | 2012‐06‐02: Estadio Anoeta, Donostia‐San Sebastian, Spain | 2012‐06‐02: Estadio Anoeta, Donostia‐San Sebastián, Spain | to fix | place: Estadio Municipal de Anoeta |
+| B | [[https://musicbrainz.org/event/b8f1e69f-7834-491e-a93f-e4973eb6e100/edit][b8f1e69f]] | 2016‐05‐21: Estadio Santiago Bernabeu, Madrid, Spain | 2016‐05‐21: Estadio Santiago Bernabéu, Madrid, Spain | to fix | place: Estadio Santiago Bernabéu |
+| B | [[https://musicbrainz.org/event/ca016b8b-6657-404d-8950-00b11a5093ec/edit][ca016b8b]] | 1995‐07‐09: Cafe Eckstein, Berlin, Germany | 1995‐07‐09: Café Eckstein, Berlin, Germany | to fix | place: Cafe Eckstein |
+| C | [[https://musicbrainz.org/event/d12c08c6-1b5a-413c-b0d0-866a0426652b/edit][d12c08c6]] | 1982‐02: The Power Station, New York City, NY, USA | The Hit Factory (Brucebase) | check a source | place: Power Station at BerkleeNYC; http://brucebase.wikidot.com/1982#000282 |
+| C | [[https://musicbrainz.org/event/2b4dc146-46c4-450c-b3c9-f2b7e46ec0b5/edit][2b4dc146]] | 1983‐07: The Power Station, New York City, NY, USA | Record Plant (Brucebase) | check a source | place: Power Station at BerkleeNYC; http://brucebase.wikidot.com/1983#000783 |
+| C | [[https://musicbrainz.org/event/f74adb5d-c3a1-4058-880d-58b81eec41b8/edit][f74adb5d]] | 1995‐08‐06: Cheers, Long Branch, NJ, USA | The Metro (Brucebase) | check a source | place: Cheers; http://brucebase.wikidot.com/1995#060895 |
+| C | [[https://musicbrainz.org/event/a212dc66-4f02-47f6-b120-7dafe5c3b781/edit][a212dc66]] | 1995‐08‐10: Cheers, Long Branch, NJ, USA | The Metro (Brucebase) | check a source | place: Cheers; http://brucebase.wikidot.com/1995#100895 |
+| C | [[https://musicbrainz.org/event/84ab5c59-2e03-4071-884f-34a1090a332c/edit][84ab5c59]] | 1974‐04‐09: Charlie’s Place, Cambridge, MA, USA | Joe's Place (Brucebase) | check a source | place: Charlie’s Place; http://brucebase.wikidot.com/1974#090474b |
+
+** Wiki fixes for Danny (draft for vzell to send, 2026-11-21; items 8–14 added 2026-11-23)
 
 Env: 2026-11-21T02:19:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
 (BruceParser 0.28.1–0.32.0 reports over the run =bb/2026-11-21=)
@@ -1384,7 +1429,7 @@ Env: 2026-11-21T02:19:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 From BruceParser's fixed reports (0.28.0–0.32.0): what they show on the wiki now that the parser's own artefacts and
 the hand-coded exceptions that hid real rows are gone. vzell sends it; nothing here was posted.
 
-Items 8–12 (2026-11-23) come from the audit of the five reports whose counts never moved: BruceParser 0.37.0–0.39.0
+Items 8–14 (2026-11-23) come from the two audits of the reports whose counts never moved: BruceParser 0.37.0–0.42.0
 removed their parser artefacts (828 image rows judged by the wrong rule, 3 YEAR-LIST rows) and widened two checks
 (parents, the =files= tag), so every row left is a wiki issue. Run =bb/2026-11-23=; the full lists are in the
 subsection after the draft. Item 9's and 12's full lists point to =brucebase-report.html=, so upload first.
@@ -1677,6 +1722,119 @@ exceptions gone, a few real things on the wiki have surfaced. No hurry with any 
     (Pages that only show pictures stored on other pages, like the album covers on
     the retail pages, are fine without the tag.)
 
+13. Venue names: 105 events whose title names the venue otherwise than its
+    venue page, on 51 venue pages (descriptions between venue and city, today's names
+    and rooms named first are fine and not listed). Venue page, then what the events say:
+    https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj  "Metlife Stadium, East Rutherford, NJ"
+       12 event(s): MetLife Stadium, East Rutherford, NJ
+    https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj  "Springsteen Residence, Holmdel, NJ"
+       11 event(s): Telegraph Hill Studio, Holmdel, NJ
+    https://brucebase.wikidot.com/venue:nassau-coliseum-uniondale-ny  "Nassau Coliseum, Uniondale, NY"
+       8 event(s): Nassau Veterans Memorial Coliseum, Uniondale, NY
+    https://brucebase.wikidot.com/venue:unknown-location-new-york-city-ny  "Unknown Location, New York City, NY"
+       5 event(s): Atlantic Studios or Record Plant, New York City, NY
+    https://brucebase.wikidot.com/venue:clair-brothers-audio-lititz-pa  "Clair Brothers Audio Enterprises, Lititz, PA"
+       5 event(s): Clair Brothers Audio, Lititz, PA
+    https://brucebase.wikidot.com/venue:city-hall-newcastle-england  "Newcastle City Hall, Newcastle, England"
+       3 event(s): City Hall, Newcastle, England
+    https://brucebase.wikidot.com/venue:plaza-monumental-barcelona-spain  "Plaza Monumental De Barcelona, Barcelona, Spain"
+       3 event(s): Plaza Monumental, Barcelona, Spain
+    https://brucebase.wikidot.com/venue:estadio-olimpico-de-la-cartuja-seville-spain  "Estadio Olímpico De La Cartuja, Seville, Spain"
+       3 event(s): Estadio Olimpico De La Cartuja, Seville, Spain
+    https://brucebase.wikidot.com/venue:center-for-american-music-west-long-branch-nj  "Bruce Springsteen Center For American Music West, Long Branch, NJ"
+       3 event(s): Bruce Springsteen Center For American Music, Monmouth University, West Long Branch, NJ
+    https://brucebase.wikidot.com/venue:cbs-records-new-york-city-ny  "CBS, New York City, NY"
+       2 event(s): CBS Records, New York City, NY
+    https://brucebase.wikidot.com/venue:community-center-tucson-az  "Tucson Community Center, Tucson, AZ"
+       2 event(s): Tucson Community Center Arena, Tucson, AZ / Tucson Community Center Theater, Tucson, AZ
+    https://brucebase.wikidot.com/venue:war-memorial-trenton-nj  "Trenton War Memorial, Trenton, NJ"
+       2 event(s): War Memorial, Trenton, NJ
+    https://brucebase.wikidot.com/venue:municipal-stadium-cleveland-oh  "Municipal Stadium, Cleveland, OH"
+       2 event(s): Cleveland Municipal Stadium, Cleveland, OH
+    https://brucebase.wikidot.com/venue:thrill-hill-east-colts-neck-nj  "Thrill Hill East, Colts Neck, NJ"
+       2 event(s): Thrill Hill Bellevue Avenue, Rumson, NJ
+    https://brucebase.wikidot.com/venue:kennedy-center-washington-dc  "Kennedy Center, Washington, DC"
+       2 event(s): John F. Kennedy Center For The Performing Arts, Washington, DC
+    https://brucebase.wikidot.com/venue:commerzbank-arena-frankfurt-germany  "Commerzbank Arena, Frankfurt, Germany"
+       2 event(s): Commerzbank-Arena, Frankfurt, Germany
+    https://brucebase.wikidot.com/venue:movistar-arena-santiago-chile  "Moviestar Arena, Santiago, Chile"
+       2 event(s): Movistar Arena, Santiago, Chile
+    https://brucebase.wikidot.com/venue:hulu-theater-new-york-city-ny  "Hulu Theater, New York City, NY"
+       2 event(s): Hulu Theater At Madison Square Garden, New York City, NY
+    https://brucebase.wikidot.com/venue:pechanga-arena-san-diego-ca  "Pechanga Arena San Diego, San Diego, CA"
+       2 event(s): Pechanga Arena, San Diego, CA
+    https://brucebase.wikidot.com/venue:sir-morgan-s-cove-worcester-ma  "Sir Morgan' s Cove, Worcester, MA"
+       1 event(s): Sir Morgan's Cove, Worcester, MA
+    https://brucebase.wikidot.com/venue:tanglewood-lenox-ma  "Tanglewood, Lenox, MA"
+       1 event(s): Tanglewood Berkshire Festival, Lenox, MA
+    https://brucebase.wikidot.com/venue:student-center-new-brunswick-nj  "College Avenue Student Center, New Brunswick, NJ"
+       1 event(s): Student Center, Multipurpose Room, Rutgers University, New Brunswick, NJ
+    https://brucebase.wikidot.com/venue:public-theater-new-york-city-ny  "Public Theater (The), New York City, NY"
+       1 event(s): Public Theater, New York City, NY
+    https://brucebase.wikidot.com/venue:springsteen-residence-new-york-city-ny  "Springsteen Residence, New York City, NY"
+       1 event(s): Springsteen Apartment, New York City, NY
+    https://brucebase.wikidot.com/venue:county-bowl-santa-barbara-ca  "County Bowl, Santa Barbara, CA"
+       1 event(s): Santa Barbara County Bowl, Santa Barbara, CA
+    https://brucebase.wikidot.com/venue:shea-s-theatre-buffalo-ny  "Shea's Buffalo, Buffalo, NY"
+       1 event(s): Shea's Buffalo Theatre, Buffalo, NY
+    https://brucebase.wikidot.com/venue:music-hall-cleveland-oh  "Music Hall, Cleveland, OH"
+       1 event(s): Cleveland Music Hall, Cleveland, OH
+    https://brucebase.wikidot.com/venue:municipal-auditorium-mobile-al  "Mobile Municipal Auditorium, Mobile, AL"
+       1 event(s): Municipal Auditorium, Mobile, AL
+    https://brucebase.wikidot.com/venue:st-bartholomew-s-church-new-york-city-ny  "St. Bartholomew's Episcopal Church, New York City, NY"
+       1 event(s): St. Bartholomew's Church, New York City, NY
+    https://brucebase.wikidot.com/venue:unknown-location-philadelphia-pa  "Unknown Location, Philadelphia, PA"
+       1 event(s): Various Locations, Philadelphia, PA
+    https://brucebase.wikidot.com/venue:unknown-location-los-angeles-ca  "Unknown Location, Los Angeles, CA"
+       1 event(s): Various Locations, Los Angeles, CA
+    https://brucebase.wikidot.com/venue:palais-des-beaux-arts-brussels-belgium  "Palais Des Beaux Arts, Brussels, Belgium"
+       1 event(s): Palais Des Beaux-Arts, Brussels, Belgium
+    https://brucebase.wikidot.com/venue:great-northern-bar-and-grill-whitefish-mt  "Great Northern Bar & Grill, Whitefish, MT"
+       1 event(s): Great Northern Bar And Grill, Whitefish, MT
+    https://brucebase.wikidot.com/venue:congress-centre-prague-czech-republic  "Prague Congress Centre, Prague, Czech Republic"
+       1 event(s): Congress Centre, Prague, Czech Republic
+    https://brucebase.wikidot.com/venue:count-basie-theatre-red-bank-nj  "Count Basie Theatre, Red Bank, NJ"
+       1 event(s): Count Basie Learning Center, Red Bank, NJ
+    https://brucebase.wikidot.com/venue:continental-airlines-arena-east-rutherford-nj  "Continental Airlines Arena, East Rutherford, NJ"
+       1 event(s): Theater At The Continental Airlines Arena (The), East Rutherford, NJ
+    https://brucebase.wikidot.com/venue:keyarena-seattle-wa  "KeyArena, Seattle, WA"
+       1 event(s): KeyArena At Seattle Center, Seattle, WA
+    https://brucebase.wikidot.com/venue:pontiac-theatre-vancouver-bc  "Pontiac Theatre, Vancouver, BC"
+       1 event(s): Pontiac Theatre At GM Place, Vancouver, BC
+    https://brucebase.wikidot.com/venue:plaza-de-toros-granada-spain  "Plaza De Toros De Granda, Granada, Spain"
+       1 event(s): Plaza De Toros De Granada, Granada, Spain
+    https://brucebase.wikidot.com/venue:shepherds-bush-empire-london-england  "Shepherd's Bush Empire, London, England"
+       1 event(s): Shepherds Bush Empire, London, England
+    https://brucebase.wikidot.com/venue:soundstage-new-york-city-ny  "Soundstage Studio, New York City, NY"
+       1 event(s): Soundstage, New York City, NY
+    https://brucebase.wikidot.com/venue:florentine-gardens-river-vale-nj  "Estate At Florentine Gardens (The), River Vale, NJ"
+       1 event(s): Florentine Gardens, River Vale, NJ
+    https://brucebase.wikidot.com/venue:roadhouse-at-the-lakefront-milwaukee-wi  "Roadhouse At The Lakefront, Milwaukee, WI"
+       1 event(s): Roadhouse At The Lakefront (The), Milwaukee, WI
+    https://brucebase.wikidot.com/venue:allphones-arena-sydney-australia  "Allphones Arena, Sydney, New South Wales, Australia"
+       1 event(s): AllPhones Arena, Sydney, New South Wales, Australia
+    https://brucebase.wikidot.com/venue:midflorida-credit-union-amphitheatre-tampa-fl  "Midflorida Credit Union Amphitheatre, Tampa, FL"
+       1 event(s): MidFlorida Credit Union Amphitheatre, Tampa, FL
+    https://brucebase.wikidot.com/venue:mount-auburn-cemetary-cambridge-ma  "Mount Auburn Cemetary, Cambridge, MA"
+       1 event(s): Mount Auburn Cemetery, Story Chapel, Cambridge, MA
+    no link named Venue; links: venue:unknown-location-denver-co venue:unknown-location-golden-co venue:u-s-center-chapel-lebanon-ks venue:unknown-location-oronoque-ks venue:unknown-location-hastings-ne  "no link named Venue; links: venue:unknown-location-denver-co venue:unknown-location-golden-co venue:u-s-center-chapel-lebanon-ks venue:unknown-location-oronoque-ks venue:unknown-location-hastings-ne"
+       1 event(s): Various Locations, CO/KS/NE
+    https://brucebase.wikidot.com/venue:wtc-memorial-plaza-new-york-city-ny  "Ground Zero, New York City, NY"
+       1 event(s): World Trade Center Memorial Plaza, New York City, NY
+    https://brucebase.wikidot.com/venue:springsteen-residence-swimming-river-reservoir-nj  "Springsteen Residence, Swimming River Reservoir, NJ"
+       1 event(s): Former Springsteen Residence, Swimming River Reservoir, NJ
+    https://brucebase.wikidot.com/venue:dyrskueplads-odense-denmark  "Odense Dyrskueplads, Odense, Denmark"
+       1 event(s): Odense Dyrskuepladsen, Odense, Denmark
+    https://brucebase.wikidot.com/venue:streets-freehold-nj  "Streets, Freehold, NJ"
+       1 event(s): Intersection of Main and South, Freehold, NJ
+
+14. Date letters: 4 pages named without the letter their year-page anchor and the
+    other pages of their day have:
+    https://brucebase.wikidot.com/recording:1972-05-00-mediasound-studios-new-york-city-ny  (anchor 1972#000472b: "b")
+    https://brucebase.wikidot.com/recording:1972-07-00-914-sound-studios-blauvelt-ny  (anchor 1972#000772c: "c")
+    https://brucebase.wikidot.com/gig:1973-04-23-bushnell-memorial-hall-hartford-ct  (anchor 1973#230473b: "b")
+    https://brucebase.wikidot.com/gig:1974-12-14-student-center-new-brunswick-nj  (anchor 1974#141274b: "b")
+
 Items 9 and 12 in full: https://volkerzell.de/bruce/brucebase-report.html after my next upload.
 
 The setlist differences list (volkerzell.de/bruce/setlist-differences.txt) is down to 315
@@ -1687,9 +1845,9 @@ Thanks again for Brucebase!
 Volker
 #+end_example
 
-*** Full lists for items 8–12 (2026-11-23)
+*** Full lists for items 8–14 (2026-11-23)
 
-Env: 2026-11-23T15:31:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a (BruceParser 0.39.0 reports over the run =bb/2026-11-23=)
+Env: 2026-11-23T18:41:38+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a (BruceParser 0.42.0 reports over the run =bb/2026-11-23= of 16:22)
 
 Written by =python3 scripts/build-bb-wiki-fix-lists.py ~/git/scripts/BruceParser/bb/2026-11-23 --part full=; the
 e-mail items above by the same script without =--part=. Regenerate both after the next run before sending.
@@ -2097,4 +2255,115 @@ Own files, no "files" tag (99):
   https://brucebase.wikidot.com/venue:park-werchter-belgium
   https://brucebase.wikidot.com/venue:samson-stages-brooklyn-ny
   https://brucebase.wikidot.com/venue:synaxis-asbury-park-nj  (shows pictures of other pages)
+Venue names (105 events on 51 venue pages):
+  https://brucebase.wikidot.com/gig:2012-09-19-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2012-09-21-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2012-09-22-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2016-08-23-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2016-08-25-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2016-08-30-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2022-06-05-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2022-06-16-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2023-08-30-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2023-09-01-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2023-09-03-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2025-07-20-metlife-stadium-east-rutherford-nj | MetLife Stadium, East Rutherford, NJ | https://brucebase.wikidot.com/venue:metlife-stadium-east-rutherford-nj | Metlife Stadium, East Rutherford, NJ
+  https://brucebase.wikidot.com/recording:1979-03-00b-telegraph-hill-studio-holmdel-nj | Telegraph Hill Studio, Holmdel, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj | Springsteen Residence, Holmdel, NJ
+  https://brucebase.wikidot.com/recording:1979-03-25a-telegraph-hill-studio-holmdel-nj | Telegraph Hill Studio, Holmdel, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj | Springsteen Residence, Holmdel, NJ
+  https://brucebase.wikidot.com/recording:1979-03-30-telegraph-hill-studio-holmdel-nj | Telegraph Hill Studio, Holmdel, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj | Springsteen Residence, Holmdel, NJ
+  https://brucebase.wikidot.com/recording:1979-05-14-telegraph-hill-studio-holmdel-nj | Telegraph Hill Studio, Holmdel, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj | Springsteen Residence, Holmdel, NJ
+  https://brucebase.wikidot.com/recording:1979-05-16-telegraph-hill-studio-holmdel-nj | Telegraph Hill Studio, Holmdel, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj | Springsteen Residence, Holmdel, NJ
+  https://brucebase.wikidot.com/recording:1979-11-15-telegraph-hill-studio-holmdel-nj | Telegraph Hill Studio, Holmdel, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj | Springsteen Residence, Holmdel, NJ
+  https://brucebase.wikidot.com/recording:1980-01-10-telegraph-hill-studio-holmdel-nj | Telegraph Hill Studio, Holmdel, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj | Springsteen Residence, Holmdel, NJ
+  https://brucebase.wikidot.com/recording:1980-01-11-telegraph-hill-studio-holmdel-nj | Telegraph Hill Studio, Holmdel, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj | Springsteen Residence, Holmdel, NJ
+  https://brucebase.wikidot.com/recording:1980-01-16-telegraph-hill-studio-holmdel-nj | Telegraph Hill Studio, Holmdel, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj | Springsteen Residence, Holmdel, NJ
+  https://brucebase.wikidot.com/recording:1980-02-05-telegraph-hill-studio-holmdel-nj | Telegraph Hill Studio, Holmdel, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj | Springsteen Residence, Holmdel, NJ
+  https://brucebase.wikidot.com/recording:1980-02-22-telegraph-hill-studio-holmdel-nj | Telegraph Hill Studio, Holmdel, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-holmdel-nj | Springsteen Residence, Holmdel, NJ
+  https://brucebase.wikidot.com/gig:1978-06-03-nassau-coliseum-uniondale-ny | Nassau Veterans Memorial Coliseum, Uniondale, NY | https://brucebase.wikidot.com/venue:nassau-coliseum-uniondale-ny | Nassau Coliseum, Uniondale, NY
+  https://brucebase.wikidot.com/gig:1980-12-28-nassau-coliseum-uniondale-ny | Nassau Veterans Memorial Coliseum, Uniondale, NY | https://brucebase.wikidot.com/venue:nassau-coliseum-uniondale-ny | Nassau Coliseum, Uniondale, NY
+  https://brucebase.wikidot.com/gig:1980-12-29-nassau-coliseum-uniondale-ny | Nassau Veterans Memorial Coliseum, Uniondale, NY | https://brucebase.wikidot.com/venue:nassau-coliseum-uniondale-ny | Nassau Coliseum, Uniondale, NY
+  https://brucebase.wikidot.com/gig:1988-04-01-nassau-coliseum-uniondale-ny | Nassau Veterans Memorial Coliseum, Uniondale, NY | https://brucebase.wikidot.com/venue:nassau-coliseum-uniondale-ny | Nassau Coliseum, Uniondale, NY
+  https://brucebase.wikidot.com/gig:1988-04-02-nassau-coliseum-uniondale-ny | Nassau Veterans Memorial Coliseum, Uniondale, NY | https://brucebase.wikidot.com/venue:nassau-coliseum-uniondale-ny | Nassau Coliseum, Uniondale, NY
+  https://brucebase.wikidot.com/gig:1992-11-09-nassau-coliseum-uniondale-ny | Nassau Veterans Memorial Coliseum, Uniondale, NY | https://brucebase.wikidot.com/venue:nassau-coliseum-uniondale-ny | Nassau Coliseum, Uniondale, NY
+  https://brucebase.wikidot.com/gig:1992-11-10-nassau-coliseum-uniondale-ny | Nassau Veterans Memorial Coliseum, Uniondale, NY | https://brucebase.wikidot.com/venue:nassau-coliseum-uniondale-ny | Nassau Coliseum, Uniondale, NY
+  https://brucebase.wikidot.com/gig:2008-03-10-nassau-coliseum-uniondale-ny | Nassau Veterans Memorial Coliseum, Uniondale, NY | https://brucebase.wikidot.com/venue:nassau-coliseum-uniondale-ny | Nassau Coliseum, Uniondale, NY
+  https://brucebase.wikidot.com/recording:1977-08-23-unknown-location-new-york-city-ny | Atlantic Studios or Record Plant, New York City, NY | https://brucebase.wikidot.com/venue:unknown-location-new-york-city-ny | Unknown Location, New York City, NY
+  https://brucebase.wikidot.com/recording:1977-08-24-unknown-location-new-york-city-ny | Atlantic Studios or Record Plant, New York City, NY | https://brucebase.wikidot.com/venue:unknown-location-new-york-city-ny | Unknown Location, New York City, NY
+  https://brucebase.wikidot.com/recording:1977-08-26-unknown-location-new-york-city-ny | Atlantic Studios or Record Plant, New York City, NY | https://brucebase.wikidot.com/venue:unknown-location-new-york-city-ny | Unknown Location, New York City, NY
+  https://brucebase.wikidot.com/recording:1977-08-29-unknown-location-new-york-city-ny | Atlantic Studios or Record Plant, New York City, NY | https://brucebase.wikidot.com/venue:unknown-location-new-york-city-ny | Unknown Location, New York City, NY
+  https://brucebase.wikidot.com/recording:1977-08-30-unknown-location-new-york-city-ny | Atlantic Studios or Record Plant, New York City, NY | https://brucebase.wikidot.com/venue:unknown-location-new-york-city-ny | Unknown Location, New York City, NY
+  https://brucebase.wikidot.com/rehearsal:1980-09-00a-clair-brothers-audio-lititz-pa | Clair Brothers Audio, Lititz, PA | https://brucebase.wikidot.com/venue:clair-brothers-audio-lititz-pa | Clair Brothers Audio Enterprises, Lititz, PA
+  https://brucebase.wikidot.com/rehearsal:1980-09-00b-clair-brothers-audio-lititz-pa | Clair Brothers Audio, Lititz, PA | https://brucebase.wikidot.com/venue:clair-brothers-audio-lititz-pa | Clair Brothers Audio Enterprises, Lititz, PA
+  https://brucebase.wikidot.com/rehearsal:1980-09-00c-clair-brothers-audio-lititz-pa | Clair Brothers Audio, Lititz, PA | https://brucebase.wikidot.com/venue:clair-brothers-audio-lititz-pa | Clair Brothers Audio Enterprises, Lititz, PA
+  https://brucebase.wikidot.com/rehearsal:1980-09-00d-clair-brothers-audio-lititz-pa | Clair Brothers Audio, Lititz, PA | https://brucebase.wikidot.com/venue:clair-brothers-audio-lititz-pa | Clair Brothers Audio Enterprises, Lititz, PA
+  https://brucebase.wikidot.com/rehearsal:1984-06-00-clair-brothers-audio-lititz-pa | Clair Brothers Audio, Lititz, PA | https://brucebase.wikidot.com/venue:clair-brothers-audio-lititz-pa | Clair Brothers Audio Enterprises, Lititz, PA
+  https://brucebase.wikidot.com/nogig:1981-03-31-city-hall-newcastle-england | City Hall, Newcastle, England | https://brucebase.wikidot.com/venue:city-hall-newcastle-england | Newcastle City Hall, Newcastle, England
+  https://brucebase.wikidot.com/gig:1981-05-11-city-hall-newcastle-england | City Hall, Newcastle, England | https://brucebase.wikidot.com/venue:city-hall-newcastle-england | Newcastle City Hall, Newcastle, England
+  https://brucebase.wikidot.com/gig:1996-03-02-city-hall-newcastle-england | City Hall, Newcastle, England | https://brucebase.wikidot.com/venue:city-hall-newcastle-england | Newcastle City Hall, Newcastle, England
+  https://brucebase.wikidot.com/nogig:1992-07-02-plaza-monumental-barcelona-spain | Plaza Monumental, Barcelona, Spain | https://brucebase.wikidot.com/venue:plaza-monumental-barcelona-spain | Plaza Monumental De Barcelona, Barcelona, Spain
+  https://brucebase.wikidot.com/gig:1992-07-03-plaza-monumental-barcelona-spain | Plaza Monumental, Barcelona, Spain | https://brucebase.wikidot.com/venue:plaza-monumental-barcelona-spain | Plaza Monumental De Barcelona, Barcelona, Spain
+  https://brucebase.wikidot.com/gig:1992-07-04-plaza-monumental-barcelona-spain | Plaza Monumental, Barcelona, Spain | https://brucebase.wikidot.com/venue:plaza-monumental-barcelona-spain | Plaza Monumental De Barcelona, Barcelona, Spain
+  https://brucebase.wikidot.com/gig:2009-07-28-estadio-olimpico-de-la-cartuja-seville-spain | Estadio Olimpico De La Cartuja, Seville, Spain | https://brucebase.wikidot.com/venue:estadio-olimpico-de-la-cartuja-seville-spain | Estadio Olímpico De La Cartuja, Seville, Spain
+  https://brucebase.wikidot.com/rehearsal:2012-05-12-estadio-olimpico-de-la-cartuja-seville | Estadio Olimpico De La Cartuja, Seville, Spain | https://brucebase.wikidot.com/venue:estadio-olimpico-de-la-cartuja-seville-spain | Estadio Olímpico De La Cartuja, Seville, Spain
+  https://brucebase.wikidot.com/gig:2012-05-13-estadio-olimpico-de-la-cartuja-seville-spain | Estadio Olimpico De La Cartuja, Seville, Spain | https://brucebase.wikidot.com/venue:estadio-olimpico-de-la-cartuja-seville-spain | Estadio Olímpico De La Cartuja, Seville, Spain
+  https://brucebase.wikidot.com/interview:2026-06-03-center-for-american-music-west-long-bra | Bruce Springsteen Center For American Music, Monmouth University, West Long Branch, NJ | https://brucebase.wikidot.com/venue:center-for-american-music-west-long-branch-nj | Bruce Springsteen Center For American Music West, Long Branch, NJ
+  https://brucebase.wikidot.com/nogig:2026-06-06-center-for-american-music-west-long-branch | Bruce Springsteen Center For American Music, Monmouth University, West Long Branch, NJ | https://brucebase.wikidot.com/venue:center-for-american-music-west-long-branch-nj | Bruce Springsteen Center For American Music West, Long Branch, NJ
+  https://brucebase.wikidot.com/interview:2026-07-00-center-for-american-music-west-long-bra | Bruce Springsteen Center For American Music, Monmouth University, West Long Branch, NJ | https://brucebase.wikidot.com/venue:center-for-american-music-west-long-branch-nj | Bruce Springsteen Center For American Music West, Long Branch, NJ
+  https://brucebase.wikidot.com/gig:1972-05-02-cbs-records-new-york-city-ny | CBS Records, New York City, NY | https://brucebase.wikidot.com/venue:cbs-records-new-york-city-ny | CBS, New York City, NY
+  https://brucebase.wikidot.com/gig:1972-05-00-cbs-records-new-york-city-ny | CBS Records, New York City, NY | https://brucebase.wikidot.com/venue:cbs-records-new-york-city-ny | CBS, New York City, NY
+  https://brucebase.wikidot.com/gig:1974-07-28-community-center-theater-tucson-az | Tucson Community Center Theater, Tucson, AZ | https://brucebase.wikidot.com/venue:community-center-tucson-az | Tucson Community Center, Tucson, AZ
+  https://brucebase.wikidot.com/gig:1978-12-13-community-center-arena-tucson-az | Tucson Community Center Arena, Tucson, AZ | https://brucebase.wikidot.com/venue:community-center-tucson-az | Tucson Community Center, Tucson, AZ
+  https://brucebase.wikidot.com/gig:1974-11-29-war-memorial-trenton-nj | War Memorial, Trenton, NJ | https://brucebase.wikidot.com/venue:war-memorial-trenton-nj | Trenton War Memorial, Trenton, NJ
+  https://brucebase.wikidot.com/gig:1974-11-30-war-memorial-trenton-nj | War Memorial, Trenton, NJ | https://brucebase.wikidot.com/venue:war-memorial-trenton-nj | Trenton War Memorial, Trenton, NJ
+  https://brucebase.wikidot.com/gig:1985-08-07-municipal-stadium-cleveland-oh | Cleveland Municipal Stadium, Cleveland, OH | https://brucebase.wikidot.com/venue:municipal-stadium-cleveland-oh | Municipal Stadium, Cleveland, OH
+  https://brucebase.wikidot.com/gig:1995-09-02-municipal-stadium-cleveland-oh | Cleveland Municipal Stadium, Cleveland, OH | https://brucebase.wikidot.com/venue:municipal-stadium-cleveland-oh | Municipal Stadium, Cleveland, OH
+  https://brucebase.wikidot.com/recording:2001-01-00-thrill-hill-bellevue-avenue-rumson-nj | Thrill Hill Bellevue Avenue, Rumson, NJ | https://brucebase.wikidot.com/venue:thrill-hill-east-colts-neck-nj | Thrill Hill East, Colts Neck, NJ
+  https://brucebase.wikidot.com/recording:2001-01-28-thrill-hill-bellevue-avenue-rumson-nj | Thrill Hill Bellevue Avenue, Rumson, NJ | https://brucebase.wikidot.com/venue:thrill-hill-east-colts-neck-nj | Thrill Hill East, Colts Neck, NJ
+  https://brucebase.wikidot.com/gig:2008-06-18a-kennedy-center-washington-dc | John F. Kennedy Center For The Performing Arts, Washington, DC | https://brucebase.wikidot.com/venue:kennedy-center-washington-dc | Kennedy Center, Washington, DC
+  https://brucebase.wikidot.com/gig:2014-12-07-kennedy-center-washington-dc | John F. Kennedy Center For The Performing Arts, Washington, DC | https://brucebase.wikidot.com/venue:kennedy-center-washington-dc | Kennedy Center, Washington, DC
+  https://brucebase.wikidot.com/gig:2009-07-03-commerzbank-arena-frankfurt-germany | Commerzbank-Arena, Frankfurt, Germany | https://brucebase.wikidot.com/venue:commerzbank-arena-frankfurt-germany | Commerzbank Arena, Frankfurt, Germany
+  https://brucebase.wikidot.com/gig:2012-05-25-commerzbank-arena-frankfurt-germany | Commerzbank-Arena, Frankfurt, Germany | https://brucebase.wikidot.com/venue:commerzbank-arena-frankfurt-germany | Commerzbank Arena, Frankfurt, Germany
+  https://brucebase.wikidot.com/rehearsal:2013-09-10-movistar-arena-santiago-chile | Movistar Arena, Santiago, Chile | https://brucebase.wikidot.com/venue:movistar-arena-santiago-chile | Moviestar Arena, Santiago, Chile
+  https://brucebase.wikidot.com/gig:2013-09-12-movistar-arena-santiago-chile | Movistar Arena, Santiago, Chile | https://brucebase.wikidot.com/venue:movistar-arena-santiago-chile | Moviestar Arena, Santiago, Chile
+  https://brucebase.wikidot.com/gig:2018-11-05-hulu-theater-new-york-city-ny | Hulu Theater At Madison Square Garden, New York City, NY | https://brucebase.wikidot.com/venue:hulu-theater-new-york-city-ny | Hulu Theater, New York City, NY
+  https://brucebase.wikidot.com/gig:2019-11-04-hulu-theater-new-york-city-ny | Hulu Theater At Madison Square Garden, New York City, NY | https://brucebase.wikidot.com/venue:hulu-theater-new-york-city-ny | Hulu Theater, New York City, NY
+  https://brucebase.wikidot.com/nogig:2023-12-02-pechanga-arena-san-diego-ca | Pechanga Arena, San Diego, CA | https://brucebase.wikidot.com/venue:pechanga-arena-san-diego-ca | Pechanga Arena San Diego, San Diego, CA
+  https://brucebase.wikidot.com/gig:2024-03-25-pechanga-arena-san-diego-ca | Pechanga Arena, San Diego, CA | https://brucebase.wikidot.com/venue:pechanga-arena-san-diego-ca | Pechanga Arena San Diego, San Diego, CA
+  https://brucebase.wikidot.com/nogig:1973-12-22a-sir-morgan-s-cove-worcester-ma | Sir Morgan's Cove, Worcester, MA | https://brucebase.wikidot.com/venue:sir-morgan-s-cove-worcester-ma | Sir Morgan' s Cove, Worcester, MA
+  https://brucebase.wikidot.com/nogig:1974-08-09-tanglewood-lenox-ma | Tanglewood Berkshire Festival, Lenox, MA | https://brucebase.wikidot.com/venue:tanglewood-lenox-ma | Tanglewood, Lenox, MA
+  https://brucebase.wikidot.com/gig:1974-12-14-student-center-new-brunswick-nj | Student Center, Multipurpose Room, Rutgers University, New Brunswick, NJ | https://brucebase.wikidot.com/venue:student-center-new-brunswick-nj | College Avenue Student Center, New Brunswick, NJ
+  https://brucebase.wikidot.com/gig:1976-06-07-public-theater-new-york-city-ny | Public Theater, New York City, NY | https://brucebase.wikidot.com/venue:public-theater-new-york-city-ny | Public Theater (The), New York City, NY
+  https://brucebase.wikidot.com/interview:1976-06-13-private-residence-new-york-city-ny | Springsteen Apartment, New York City, NY | https://brucebase.wikidot.com/venue:springsteen-residence-new-york-city-ny | Springsteen Residence, New York City, NY
+  https://brucebase.wikidot.com/gig:1976-10-05-county-bowl-santa-barbara-ca | Santa Barbara County Bowl, Santa Barbara, CA | https://brucebase.wikidot.com/venue:county-bowl-santa-barbara-ca | County Bowl, Santa Barbara, CA
+  https://brucebase.wikidot.com/gig:1978-05-23-shea-s-theatre-buffalo-ny | Shea's Buffalo Theatre, Buffalo, NY | https://brucebase.wikidot.com/venue:shea-s-theatre-buffalo-ny | Shea's Buffalo, Buffalo, NY
+  https://brucebase.wikidot.com/nogig:1980-10-05-music-hall-cleveland-oh | Cleveland Music Hall, Cleveland, OH | https://brucebase.wikidot.com/venue:music-hall-cleveland-oh | Music Hall, Cleveland, OH
+  https://brucebase.wikidot.com/gig:1981-02-12-municipal-auditorium-mobile-al | Municipal Auditorium, Mobile, AL | https://brucebase.wikidot.com/venue:municipal-auditorium-mobile-al | Mobile Municipal Auditorium, Mobile, AL
+  https://brucebase.wikidot.com/gig:1993-01-06-st-bartholomew-s-church-new-york-city-ny | St. Bartholomew's Church, New York City, NY | https://brucebase.wikidot.com/venue:st-bartholomew-s-church-new-york-city-ny | St. Bartholomew's Episcopal Church, New York City, NY
+  https://brucebase.wikidot.com/recording:1993-12-06-unknown-location-philadelphia-pa | Various Locations, Philadelphia, PA | https://brucebase.wikidot.com/venue:unknown-location-philadelphia-pa | Unknown Location, Philadelphia, PA
+  https://brucebase.wikidot.com/recording:1995-03-00b-unknown-location-los-angeles-ca | Various Locations, Los Angeles, CA | https://brucebase.wikidot.com/venue:unknown-location-los-angeles-ca | Unknown Location, Los Angeles, CA
+  https://brucebase.wikidot.com/gig:1996-05-01-palais-des-beaux-arts-brussels-belgium | Palais Des Beaux-Arts, Brussels, Belgium | https://brucebase.wikidot.com/venue:palais-des-beaux-arts-brussels-belgium | Palais Des Beaux Arts, Brussels, Belgium
+  https://brucebase.wikidot.com/gig:1996-08-09-great-northern-bar-and-grill-whitefish-mt | Great Northern Bar And Grill, Whitefish, MT | https://brucebase.wikidot.com/venue:great-northern-bar-and-grill-whitefish-mt | Great Northern Bar & Grill, Whitefish, MT
+  https://brucebase.wikidot.com/gig:1997-05-12-congress-centre-prague-czech-republic | Congress Centre, Prague, Czech Republic | https://brucebase.wikidot.com/venue:congress-centre-prague-czech-republic | Prague Congress Centre, Prague, Czech Republic
+  https://brucebase.wikidot.com/nogig:1998-02-07-count-basie-theatre-red-bank-nj | Count Basie Learning Center, Red Bank, NJ | https://brucebase.wikidot.com/venue:count-basie-theatre-red-bank-nj | Count Basie Theatre, Red Bank, NJ
+  https://brucebase.wikidot.com/gig:2005-05-19-continental-airlines-arena-east-rutherford-nj | Theater At The Continental Airlines Arena (The), East Rutherford, NJ | https://brucebase.wikidot.com/venue:continental-airlines-arena-east-rutherford-nj | Continental Airlines Arena, East Rutherford, NJ
+  https://brucebase.wikidot.com/gig:2005-08-11-keyarena-seattle-wa | KeyArena At Seattle Center, Seattle, WA | https://brucebase.wikidot.com/venue:keyarena-seattle-wa | KeyArena, Seattle, WA
+  https://brucebase.wikidot.com/gig:2005-08-13-pontiac-theatre-vancouver-bc | Pontiac Theatre At GM Place, Vancouver, BC | https://brucebase.wikidot.com/venue:pontiac-theatre-vancouver-bc | Pontiac Theatre, Vancouver, BC
+  https://brucebase.wikidot.com/gig:2006-10-22-plaza-de-toros-granada-spain | Plaza De Toros De Granada, Granada, Spain | https://brucebase.wikidot.com/venue:plaza-de-toros-granada-spain | Plaza De Toros De Granda, Granada, Spain
+  https://brucebase.wikidot.com/gig:2006-11-10-shepherds-bush-empire-london-england | Shepherds Bush Empire, London, England | https://brucebase.wikidot.com/venue:shepherds-bush-empire-london-england | Shepherd's Bush Empire, London, England
+  https://brucebase.wikidot.com/recording:2007-04-18-soundstage-new-york-city-ny | Soundstage, New York City, NY | https://brucebase.wikidot.com/venue:soundstage-new-york-city-ny | Soundstage Studio, New York City, NY
+  https://brucebase.wikidot.com/gig:2007-06-24-florentine-gardens-river-vale-nj | Florentine Gardens, River Vale, NJ | https://brucebase.wikidot.com/venue:florentine-gardens-river-vale-nj | Estate At Florentine Gardens (The), River Vale, NJ
+  https://brucebase.wikidot.com/gig:2008-08-30-roadhouse-at-the-lakefront-milwaukee-wi | Roadhouse At The Lakefront (The), Milwaukee, WI | https://brucebase.wikidot.com/venue:roadhouse-at-the-lakefront-milwaukee-wi | Roadhouse At The Lakefront, Milwaukee, WI
+  https://brucebase.wikidot.com/gig:2014-02-19-allphones-arena-sydney-australia | AllPhones Arena, Sydney, New South Wales, Australia | https://brucebase.wikidot.com/venue:allphones-arena-sydney-australia | Allphones Arena, Sydney, New South Wales, Australia
+  https://brucebase.wikidot.com/gig:2014-05-01-midflorida-credit-union-amphitheatre-tampa-fl | MidFlorida Credit Union Amphitheatre, Tampa, FL | https://brucebase.wikidot.com/venue:midflorida-credit-union-amphitheatre-tampa-fl | Midflorida Credit Union Amphitheatre, Tampa, FL
+  https://brucebase.wikidot.com/gig:2015-04-30-mount-auburn-cemetery-cambridge-ma | Mount Auburn Cemetery, Story Chapel, Cambridge, MA | https://brucebase.wikidot.com/venue:mount-auburn-cemetary-cambridge-ma | Mount Auburn Cemetary, Cambridge, MA
+  https://brucebase.wikidot.com/recording:2021-01-00b-various-locations-co-ks-ne | Various Locations, CO/KS/NE | no link named Venue; links: venue:unknown-location-denver-co venue:unknown-location-golden-co venue:u-s-center-chapel-lebanon-ks venue:unknown-location-oronoque-ks venue:unknown-location-hastings-ne | no link named Venue; links: venue:unknown-location-denver-co venue:unknown-location-golden-co venue:u-s-center-chapel-lebanon-ks venue:unknown-location-oronoque-ks venue:unknown-location-hastings-ne
+  https://brucebase.wikidot.com/gig:2021-09-11-wtc-memorial-plaza-new-york-city-ny | World Trade Center Memorial Plaza, New York City, NY | https://brucebase.wikidot.com/venue:wtc-memorial-plaza-new-york-city-ny | Ground Zero, New York City, NY
+  https://brucebase.wikidot.com/gig:2023-04-00-private-residence-swimming-river-reservoir-nj | Former Springsteen Residence, Swimming River Reservoir, NJ | https://brucebase.wikidot.com/venue:springsteen-residence-swimming-river-reservoir-nj | Springsteen Residence, Swimming River Reservoir, NJ
+  https://brucebase.wikidot.com/gig:2024-07-09-dyrskuepladsen-odense-denmark | Odense Dyrskuepladsen, Odense, Denmark | https://brucebase.wikidot.com/venue:dyrskueplads-odense-denmark | Odense Dyrskueplads, Odense, Denmark
+  https://brucebase.wikidot.com/nogig:2025-01-10-streets-freehold-nj | Intersection of Main and South, Freehold, NJ | https://brucebase.wikidot.com/venue:streets-freehold-nj | Streets, Freehold, NJ
+Date letters (4):
+  https://brucebase.wikidot.com/recording:1972-05-00-mediasound-studios-new-york-city-ny | anchor https://brucebase.wikidot.com/1972#000472b (b)
+  https://brucebase.wikidot.com/recording:1972-07-00-914-sound-studios-blauvelt-ny | anchor https://brucebase.wikidot.com/1972#000772c (c)
+  https://brucebase.wikidot.com/gig:1973-04-23-bushnell-memorial-hall-hartford-ct | anchor https://brucebase.wikidot.com/1973#230473b (b)
+  https://brucebase.wikidot.com/gig:1974-12-14-student-center-new-brunswick-nj | anchor https://brucebase.wikidot.com/1974#141274b (b)
 #+end_example
