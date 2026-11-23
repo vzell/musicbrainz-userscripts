@@ -4467,8 +4467,11 @@ entry, with these columns:
   entry's venue page (one more request per venue, kept 30 days): a ⚠️ on
   the **Venue** cell says the entry's page names the venue differently
   from the venue's own page ("CBS Records" against "CBS"). "(Early)",
-  "(Late)" and the like, and a description between the venue and its city
-  ("Mediasound Studios, Studio C, New York City, NY"), are accepted. With
+  "(Late)" and the like, a description between the venue and its city
+  ("Mediasound Studios, Studio C, New York City, NY"), the venue page's name
+  of today ("West Germany" for "Germany"), the generic "Unknown Location"
+  page and a room named before the venue ("Spotify HQ, Adelphi (The), …")
+  are accepted, as in BruceParser 0.41.0's venue report. With
   ▶ Pages on, the year's listing (/1977-list) is read too, one more request
   a year: a ⚠️ on the **Event** cell says no line of the listing links the
   entry ("1977-07-29 - Atlantic Studios" is missing there). Each

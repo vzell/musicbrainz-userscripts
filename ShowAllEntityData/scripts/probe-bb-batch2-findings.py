@@ -77,7 +77,7 @@ def venue_part(title):
 
 
 def venue_check(part, venue):
-    """'' (equal), 'variant', 'detail' (accepted) or 'mismatch'.
+    """'' (equal), 'variant', 'detail', 'convention' (accepted) or 'mismatch'.
 
     BBP's findVenueDetailExtra(): a trailing "(Early)"… is a show of the day,
     and the parts between the venue's name and its city are a description the
@@ -98,9 +98,24 @@ def venue_check(part, venue):
         kind = 'variant'
         if bare == venue:
             return kind
-    parts = [p.strip() for p in bare.split(',') if p.strip()]
-    if len(parts) >= 4 and f'{parts[0]}, {parts[-2]}, {parts[-1]}' == venue:
-        return 'detail'
+    # BruceParser 0.41.0's venue_fits() (eefyp.sh), the same rules here since
+    # 2026-11-23: the venue pages carry today's names, a generic "Unknown
+    # Location" page, a description between name and place for a venue page
+    # of any length (a place of four parts: "Concert Hall, QPAC, South
+    # Brisbane, Brisbane, Queensland, Australia"), a room or part named first
+    hist = re.sub(r'\b(?:West|East) (Germany|Berlin)\b', r'\1', bare)
+    if hist == venue:
+        return 'convention'
+    if venue == 'Unknown Location' and bare.startswith('Unknown Location'):
+        return 'convention'
+    parts = hist.split(', ')
+    vparts = venue.split(', ')
+    ne, nv = len(parts), len(vparts)
+    if ne > nv >= 3:
+        if ', '.join([parts[0]] + parts[ne - nv + 1:]) == venue:
+            return 'detail'
+        if ', '.join(parts[ne - nv:]) == venue:
+            return 'convention'
     return 'mismatch'
 
 
@@ -398,7 +413,7 @@ def main():
     theirs = set(re.findall(r'https://brucebase\.wikidot\.com/([a-z]+:[^\]\s|]+)\]\[', read(os.path.join(rep, 'DIFFERENCES-venues.org'))))
     theirs = {t for t in theirs if not t.startswith('venue:')}
     ours = {r['event'] for r in flagged['bb-venue-mismatch']}
-    print(f'  bb-venue-mismatch vs DIFFERENCES-venues.org (before the accepted cases): ours {len(ours)}, theirs {len(theirs)}, both {len(ours & theirs)}')
+    print(f'  bb-venue-mismatch vs DIFFERENCES-venues.org (BruceParser 0.41.0: the same rules): ours {len(ours)}, theirs {len(theirs)}, both {len(ours & theirs)}')
     for x in sorted(ours - theirs)[:12]:
         print(f'    only ours: {x}')
     theirs = set()

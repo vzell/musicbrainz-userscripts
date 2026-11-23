@@ -29828,16 +29828,23 @@
      * (`_BB_NAME_VARIANTS`), and a description between the venue's name and
      * its city, which a venue page never has ("Crystal Ballroom, Hotel
      * Diplomat, New York City, NY" for "Crystal Ballroom, New York City,
-     * NY"); both at once too.
+     * NY"); both at once too. Since 2026-11-23 the rules of BruceParser
+     * 0.41.0's `venue_fits()` ('convention'): the description for a venue
+     * page of any length (a place of four parts, "Concert Hall, QPAC, South
+     * Brisbane, Brisbane, Queensland, Australia"), the venue pages' names of
+     * today ("West Berlin, West Germany" for "Berlin, Germany"), the generic
+     * "Unknown Location" page, and a room or part named before the venue
+     * ("Spotify HQ, Adelphi (The), London, England").
      *
-     * Probe (scripts/probe-bb-batch2-findings.py, mirror of 2026-11-13;
-     * Env: 2026-11-14T18:00+01:00 · petri · Python · n/a): 4,993 events
-     * with a venue page — equal 4,255, variant 271, detail 337, mismatch
-     * 130 (in 39 years; 128 of them in BruceParser's DIFFERENCES-venues.org).
+     * Probe (scripts/probe-bb-batch2-findings.py, run of 2026-11-23 16:22;
+     * Env: 2026-11-23T18:00+01:00 · NB-3641 · Python · n/a): equal 4,257,
+     * detail 339, convention 22, mismatch 104, the same 104 pages as
+     * BruceParser 0.41.0's DIFFERENCES-venues.org (which also lists the one
+     * event with several venue links and none named "Venue").
      *
      * @param {string} part  `_bbVenuePart()` of the event page's title.
      * @param {string} venue The venue page's title.
-     * @returns {string} '' (equal), 'variant', 'detail' or 'mismatch'.
+     * @returns {string} '' (equal), 'variant', 'detail', 'convention' or 'mismatch'.
      */
     function _bbVenueCheck(part, venue) {
         const v = String(venue || '').replace(/\s+/g, ' ').trim();
@@ -29848,8 +29855,17 @@
             bare = part.slice(0, sm.index).trim();
             if (bare === v) return 'variant';
         }
-        const parts = bare.split(',').map(s => s.trim()).filter(Boolean);
-        if (parts.length >= 4 && `${parts[0]}, ${parts[parts.length - 2]}, ${parts[parts.length - 1]}` === v) return 'detail';
+        const hist = bare.replace(/\b(?:West|East) (Germany|Berlin)\b/g, '$1');
+        if (hist === v) return 'convention';
+        if (v === 'Unknown Location' && bare.startsWith('Unknown Location')) return 'convention';
+        // parts at ", " as BruceParser and the probe split them (both titles squeezed)
+        const parts = hist.split(', ');
+        const vparts = v.split(', ');
+        const ne = parts.length, nv = vparts.length;
+        if (ne > nv && nv >= 3) {
+            if ([parts[0], ...parts.slice(ne - nv + 1)].join(', ') === v) return 'detail';
+            if (parts.slice(ne - nv).join(', ') === v) return 'convention';
+        }
         return 'mismatch';
     }
 
@@ -79920,7 +79936,7 @@
         {
             id: 'bb-venue-mismatch', level: 'warn', glyph: '📍', scope: 'cell',
             label: 'Brucebase event page names its venue differently from the venue page',
-            tip: 'The title of the entry\'s own page names the venue differently from the title of the venue\'s page it links ("Paramount Theatre" against "Paramount Theater"). A show of the day in brackets ("(Late)") and a description between the venue and its city ("Crystal Ballroom, Hotel Diplomat, New York City, NY") are accepted. Known once ▶ Pages has read the entry\'s page and its venue\'s page (one request per venue). Compared as written. The page to edit is the entry\'s, or the venue\'s.',
+            tip: 'The title of the entry\'s own page names the venue differently from the title of the venue\'s page it links ("Paramount Theatre" against "Paramount Theater"). A show of the day in brackets ("(Late)"), a description between the venue and its city ("Crystal Ballroom, Hotel Diplomat, New York City, NY"), today\'s name on the venue page ("West Germany" for "Germany"), the generic "Unknown Location" page and a room named before the venue are accepted. Known once ▶ Pages has read the entry\'s page and its venue\'s page (one request per venue). Compared as written. The page to edit is the entry\'s, or the venue\'s.',
             enabled: () => !!_isBbHost && _bbVenueOn(),
             cols: name => name === 'Venue',
             rowGate: row => !!row.querySelector('span.mb-bb-venue-data[data-mb-bb-venue-check]'),

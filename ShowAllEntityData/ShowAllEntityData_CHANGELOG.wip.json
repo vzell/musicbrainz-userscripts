@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase: \"the venue's own page names it differently\" (⚠️ on a year table's Venue cell, after ▶ Pages) no longer flags the wiki's own conventions: today's name on the venue page (\"ICC Berlin, West Berlin, West Germany\" for \"ICC Berlin, Berlin, Germany\"), the generic \"Unknown Location\" page, a room or part named before the venue (\"Spotify HQ, Adelphi (The), London, England\"), and a description between the venue and a place of more than two parts (\"Concert Hall, QPAC, South Brisbane, Brisbane, Queensland, Australia\"). The same rules as BruceParser 0.41.0's venue report: on the Brucebase run of 2026-11-23 both flag the same 104 events (128 with the old rules on the run of 2026-11-21), among them MetLife ×12 and the Telegraph Hill recordings that link the Holmdel residence."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-23",
     "sections": [
