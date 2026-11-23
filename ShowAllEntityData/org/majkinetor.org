@@ -21,9 +21,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   tested (fixtures and mutations), *vzell's browser check OK* (2026-11-23); the post ([[#post-938-player][On the
   record]]) went out 2026-11-23 16:48 CET, waiting on his answer. "The shared gate at eight a second": the 30 ms lock
   hold shipped in 9.99.1681, SAED stays at 1000 ms; =search-shed= and a question on the pace are open, not asked for.
-  *Next:* the open half of "Entity pictures" (=areaClimb=/=flagI=) — *built* on =feat/area-chain-flags=
-  (WIP.1 the chain in one =/ws/js= request, WIP.2 flagcdn.com flags off MB and the area window's "Part of"),
-  waiting on vzell's browser check before the merge.
+  "Entity pictures", its =areaClimb=/=flagI= half: *shipped* (=feat/area-chain-flags=, merged 2026-11-23,
+  vzell's browser check OK): 9.99.1682 the chain in one =/ws/js= request, 9.99.1683 flagcdn.com flags off MB and
+  the area window's "Part of". Left of the item: pictures for place/series/instrument.
 - *Shipped today:* "Title style": 9.99.1677 the guess-case word lists, 9.99.1678 the kinds of a track/recording
   name difference; "Entity pictures": 9.99.1679 an area's five Wikidata pictures with the flag badge, its links
   table, and Wikidata in the shared request gate (vzell's live check OK).
@@ -94,7 +94,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Stale-while-revalidate: popup engine done, =rel-ws2= left      | PART  | 9.99.1643     | Adoptions     |
 | In-page log window (=mbuLog=)                                  | TODO  | —             | Adoptions     |
 | Hide the native page until the render ("shine through")        | TODO  | —             | Adoptions     |
-| Entity pictures: EH's providers done, area map left            | PART  | 9.99.1679     | Adoptions     |
+| Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
@@ -816,7 +816,7 @@ CLOSED: [2026-11-20 Fri]
   credited in the header. Spec =pop-area-pictures.spec.js= 7/7, mutations 13/13. Anchors =eh-area-props=,
   =eh-area-badge=, =saed-area-pictures=. The area chain's ISO flags (=areaClimb=/=flagI=) and pictures for
   place/series/instrument beyond what they have stay open.
-- *Built, the chain and the flags* (=feat/area-chain-flags=, WIP.1 + WIP.2, 2026-11-23, petri; mockup
+- *Shipped in 9.99.1682 + 9.99.1683, the chain and the flags* (=feat/area-chain-flags=, 2026-11-23, petri; mockup
   https://claude.ai/artifact/CCkfRzZFpFGchmBDdMsxzm, approved with every recommendation). SAED already had
   =areaClimb='s result (=_mbPopAreaChain()=, a ws/2 =area-rels= lookup per level) and MusicBrainz's own flags; what
   it takes from EH is the *request*, =areaChain()='s =/ws/js/entity/<id>= containment: one ~1 KB answer for the
@@ -828,7 +828,9 @@ CLOSED: [2026-11-20 Fri]
   with Lotheric's Right Side Flags Everywhere: no, both his flag scripts =@match= musicbrainz.org only, and on
   MusicBrainz the window's markup stays the stamped one; =pop-area-chain.spec.js= pins his selectors finding
   nothing. Spec 8/8, mutations 15/15 (=area-chain.json=), three =poh-fixes.json= finds re-anchored (3/3). Anchors
-  =eh-area-chain=, =eh-flag-i=, =saed-area-chain=. Waiting on vzell's browser check.
+  =eh-area-chain=, =eh-flag-i=, =saed-area-chain=. =test:full= 3478/3480 on the branch (the two: a Discogs spec's
+  page log counting =/ws/js=, fixed); vzell's browser check OK (2026-11-23). Still open: pictures for
+  place/series/instrument beyond what they have.
 
 ** DONE Title style: guess-case word lists, title-difference classes
 

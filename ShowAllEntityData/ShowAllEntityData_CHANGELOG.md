@@ -4,9 +4,24 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1852 versions; the month pages hold all of them.
+This page shows the newest 100 of 1854 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1683 — 2026-11-23
+
+**✨ Improve**
+
+- Link previews on other sites (discogs.com, setlist.fm, archive.org, the Springsteen sites): a country in a window's area line now shows its real flag instead of its two-letter code in a box (images from flagcdn.com, as majkinetor's Event Horizon does, asked only once a window opens). Codes with no flag there, such as XE (Europe) and XW (Worldwide), keep the box, and so does a flag the site blocks. On musicbrainz.org MusicBrainz's own flags stay, and Lotheric's "Right Side Flags" and "More Flags Everywhere" still leave the windows alone.
+- Link previews: an area's window now starts its Facts with "Part of", the whole line above it with flags ("New Jersey, United States" for Long Branch), asked in one request (9.99.1682). Once a window has it, the area's hover card names that line too instead of only the nearest parent.
+
+
+## 9.99.1682 — 2026-11-23
+
+**✨ Improve**
+
+- Link previews: a window now names an area's whole line ("Long Branch, New Jersey, United States") from one request instead of one request per level. It asks MusicBrainz's website for the area and everything above it (as majkinetor's Event Horizon does), about 1 KB, where the climb asked three lookups of about 30 KB together, each waiting for its one-a-second turn. Artist, label, place, event and recording windows all get it, and every area of the line is remembered, so a label in New Jersey asks nothing more. If the website does not answer, or answers with its browser check, the window climbs level by level as before, for the rest of that page. A hover card still asks nothing for the line.
+
 
 ## 9.99.1681 — 2026-11-23
 
@@ -839,20 +854,6 @@ This page shows the newest 100 of 1852 versions; the month pages hold all of the
 **📝 Docs**
 
 - Help, Keyboard shortcuts: with direct Ctrl+letter shortcuts on and String Theory installed, Ctrl+K opens String Theory's command palette, not the shortcuts reference; use the prefix key and k, or ?, or give one side another key (String Theory: its settings, Command palette, Hotkey). The ? and / row says they do not work while typing in a field.
-
-
-## 9.99.1583 — 2026-11-09
-
-**🚀 Feature**
-
-- Shared MusicBrainz request budget: on musicbrainz.org, this script's Web Service requests (the Relationships column, link previews, entity pictures, millisecond lengths, release events, the release-group ▶ expand, the Recording of columns) now also book their place in mbu:mb-gate, the cross-tab schedule majkinetor's String Theory, Event Horizon, ISRC Scout and his other scripts share. A refusal (HTTP 503/429) seen by any of them makes all of them pause, in every tab, and this script no longer crowds their requests out. Its own pacing (one request per 1.1 s) stays, so it is never faster than before. Follows his protocol version 1, ported from his dev/net/mb-gate.mjs (9.99.1582). Setting: "Share MusicBrainz's request budget with other userscripts" (sa\_mb\_shared\_gate, on). Other sites are not affected.
-
-
-## 9.99.1582 — 2026-11-09
-
-**📝 Docs**
-
-- ShowAllEntityData is now licensed GPL-3.0-or-later (it was MIT up to 9.99.1581); the full text ships as LICENSE next to the script. Several of the scripts it builds on are GPL themselves, and majkinetor's Musicbrainz Toolset is now credited in the header, because the shared MusicBrainz request gate (9.99.1583) is ported from it.
 
 
 ---
