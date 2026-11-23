@@ -4159,7 +4159,11 @@ reads, is read again on the next press once it is an hour old.
   `dl-` of a download's note are no error. The show is marked too, on its
   rows, its page and its window, and the hover text names the page and the
   name it would have; the page itself is marked on its rows (Recent
-  changes, the tag lists), as it has no head or window of its own.
+  changes, the tag lists), as it has no head or window of its own. Since the
+  feed of BruceParser 0.40.0 also a show's On stage, Off stage and soundcheck
+  pages: they have no breadcrumb, so their show is the one show of their
+  date (`onstage:1988-05-06-tacoma-dome-tacoma-wa` for
+  `gig:1988-05-06-dome-tacoma-wa`); a day with several shows is left out.
 - **On MusicBrainz** (since the feed of BruceParser 0.21.0): BruceParser also
   compares the artist's MusicBrainz events with Brucebase. An event whose
   Brucebase link reaches no entry (❌; most often the wiki writes that date

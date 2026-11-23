@@ -28326,10 +28326,13 @@
         // Feed 1.6 (Track A idea 4; vzell, 2026-11-20: instead of the
         // URL-shortening report, a WARNING): a show's dependent page whose
         // name is not its show's, marked on that page and on the show as
-        // dependent-title is (`_bbFeed.byEventName`).
+        // dependent-title is (`_bbFeed.byEventName`). Since the feed of
+        // BruceParser 0.40.0 also the On stage, Off stage and soundcheck
+        // pages, whose show is the one show of their date (stage-names.awk;
+        // vzell, 2026-11-23: "the 76 pages should go into the feed").
         'dependent-name': { id: 'bb-feed-name', glyph: '⇋', level: 'warn', setting: 'sa_findings_bb_feed_name',
             label: 'Brucebase page named differently from its show',
-            report: 'the run\'s gignote, gallery, eye, media and recnote pages (dependent-names.awk)' },
+            report: 'the run\'s gignote, gallery, eye, media and recnote pages (dependent-names.awk) and its onstage, offstage and soundcheck pages (stage-names.awk)' },
     };
     /** @type {Set<string>} The columns that name a row's own page, on every Brucebase list (vzell, decision 5). */
     const _BB_FEED_COLS = new Set(['Event', 'Title', 'Name', 'Page']);
@@ -28683,7 +28686,8 @@
      *   are dropped.
      * The dependent-name kind (feed 1.6) is never dropped: a show's page
      * cannot see its dependents' names, and a dependent page (gignote,
-     * gallery, eye, media, recnote) has no head and no window of ours, only
+     * gallery, eye, media, recnote; onstage, offstage, soundcheck since the
+     * feed of BruceParser 0.40.0) has no head and no window of ours, only
      * rows, which know nothing of the page now.
      *
      * @param {Array<Object>} facts - `_bbFeedFacts()`.
@@ -80086,7 +80090,7 @@
                 'date-missing': 'A page that is no show lacks a tag of the date in its name ("22" for a page of 1978-08-22); a show\'s own date tags are the Tags findings\'. ',
                 'date-wrong': 'A page that is no show carries a date tag the date in its name does not have ("23" on a page of 1978-08-22). ',
                 'files-no-images': 'The page is tagged "files" but shows no picture. ',
-                'dependent-name': 'A page of a show (its Notes, Gallery, Eyewitness, Media or Recording notes page) is named differently from the show its breadcrumb names ("gallery:1967-11-00-…" under "gig:1967-11-00a-…": a missing day letter, a typo, a wrong date or show); marked on that page and on the show. ',
+                'dependent-name': 'A page of a show (its Notes, Gallery, Eyewitness, Media or Recording notes page, its show by its breadcrumb; its On stage, Off stage or soundcheck page, its show the one show of that date) is named differently from the show ("gallery:1967-11-00-…" under "gig:1967-11-00a-…": a missing day letter, a typo, a wrong date or show); marked on that page and on the show. ',
             }[kind] + 'From the Brucebase feed: BruceParser\'s full read of the wiki, published at github.com/vzell/brucebase-feed; the hover text names the run, and Brucebase may have been fixed since.',
             enabled: () => !!_isBbHost && _bbFeedKindOn(kind),
             cols: name => _BB_FEED_COLS.has(name),

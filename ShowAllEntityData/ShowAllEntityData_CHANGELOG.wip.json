@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-23",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase: \"Brucebase page named differently from its show\" (⚠️ ⇋) also covers a show's On stage, Off stage and soundcheck pages, as the Brucebase feed of BruceParser 0.40.0 lists them (76 pages, e.g. onstage:1988-05-06-tacoma-dome-tacoma-wa under gig:1988-05-06-dome-tacoma-wa). These pages have no breadcrumb, so their show is the one show of their date; a day with several shows is left out. The show is marked on its rows, head and window, the page itself on its rows, as for a Gallery or Notes page. Only the finding's description and its report text change here; the marks come from the feed."
+        ]
+      }
+    ]
+  }
+]

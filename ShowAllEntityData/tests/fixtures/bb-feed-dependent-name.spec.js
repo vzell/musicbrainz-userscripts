@@ -220,7 +220,27 @@ test.describe('the Brucebase feed 1.6: a page named differently from its show', 
         ]);
         const tip = await marks.nth(1).getAttribute('title');
         expect(tip).toContain('Brucebase page named differently from its show. Its page gallery:1978-07-07-roxy-west-hollywood-ca is named differently from this show: a page of it would be named gallery:1978-07-07-roxy-theatre-west-hollywood-ca.');
-        expect(tip).toContain('Report: the run\'s gignote, gallery, eye, media and recnote pages (dependent-names.awk).');
+        expect(tip).toContain('Report: the run\'s gignote, gallery, eye, media and recnote pages (dependent-names.awk) and its onstage, offstage and soundcheck pages (stage-names.awk).');
+    });
+
+    // BruceParser 0.40.0 (vzell, 2026-11-23: "the 76 pages should go into the
+    // feed"): stage-names.awk's On stage pages come as dependent-name rows
+    // whose show is the one show of their date; the script marks their show
+    // as it marks a gallery's (the kind does not ask the page's category).
+    test('an On stage page named differently: its show\'s head is ⚠️ ⇋ and names the On stage page', async ({ page }) => {
+        const STAGE = 'onstage:1978-07-07-roxy-west-hollywood-ca';
+        const feed = feedOf({
+            [STAGE]: { 'dependent-name': { event: ROXY, expected: 'onstage:1978-07-07-roxy-theatre-west-hollywood-ca' } },
+        });
+        await loadBbEventPage(page, 'gig-1978-07-07', { settingsOverride: feedOn(feed) });
+        await page.click('button[data-label="Show the event"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const marks = page.locator('p.mb-fd-sub .mb-bb-feed-mark');
+        await expect(marks).toHaveCount(1);
+        expect(await marks.evaluateAll(ms => ms.map(m => [m.dataset.mbFeedKind, m.dataset.mbLevel, m.textContent]))).toEqual([
+            ['dependent-name', 'warn', '⚠️ ⇋'],
+        ]);
+        expect(await marks.first().getAttribute('title')).toContain(`Its page ${STAGE} is named differently from this show: a page of it would be named onstage:1978-07-07-roxy-theatre-west-hollywood-ca.`);
     });
 
     test('Recent changes: the page\'s own row is ⚠️ ⇋ on its Page cell, naming its show', async ({ page }) => {
