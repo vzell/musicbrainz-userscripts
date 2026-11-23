@@ -13,8 +13,15 @@ browser checks) is [[file:bbp-parity.org][bbp-parity.org]]; this file holds the 
 Keywords: TODO (open), NEXT (the next one to start), WAIT (someone else's call), DONE, PART (partly done, the rest
 left out by decision), NOT (not done, with the reason).
 
-* PICKUP HERE (2026-11-21)
+* PICKUP HERE (2026-11-23)
 
+- *BruceParser 0.35.0 and the run of 2026-11-23* (Claude, on vzell's word; 49 min 53 s, no failed step; feed repo
+  =e3c4743=, only its =run= block changed). 0.33.0's browse ran live: 24 busy answers (two HTTP 000 = curl's new time
+  limit), each retried and answered. New in 0.35.0: =page-hashes.txt= per run (Wikidot's random ids normalised away),
+  =compare-runs.sh= (pages, counts, reports, feed between two runs → =bb/out/compare-*.txt=), =prune-runs.sh= (keeps
+  the newest two successful runs whole, deletes older runs' page directories). Applied with vzell's OK: 2026-10-17 to
+  2026-11-19 slimmed, 3,422 MB freed; =bb/latest= → =2026-11-23=. A SAED probe that needs pages must use =bb/latest=
+  or =bb/2026-11-21=; the fixture builders' =bb/2026-11-19/bb-feed.json= is still there. BruceParser =442986e=.
 - *BruceParser's open items are done* ("Still open in BruceParser" below): the seven blocks (0.28.0–0.32.0), the
   final run of 2026-11-21 01:57 (Claude, on vzell's word; 44 min, no failed step, the probes equal the offline
   values), the feed published (feed repo =0613c37=, FORMAT.md =82b4683=; feed 1.8.1). Then, on vzell's word: 0.32.1
@@ -25,8 +32,8 @@ left out by decision), NOT (not done, with the reason).
   go into the feed (the userscript would mark them; today a BruceParser report only); upload the volkerzell.de pages
   (=bb/index.org='s hand count "319" is 315 now); the 24 MusicBrainz event titles (bbp-parity.org). The
   =bb-place.spec.js= flake did not come back.
-- *Not live-tested yet:* 0.33.0's browse changes (timeouts, backoff, the distinct/count check) run first in the next
-  =bbp.sh=; and 0.34.0's =checkURLandTitles.sh= is not in the published feed (it feeds no kind).
+- *Not live-tested yet:* 0.35.0's end of =bbp.sh= (step =pages=, the comparison, the automatic pruning) runs first in
+  the next =bbp.sh=; 0.34.0's =checkURLandTitles.sh= is not in the published feed (it feeds no kind).
 
 - *Every row of the parity matrix is DONE or decided.* Batch 3b (the five tag families, each behind its own switch,
   off by default) and idea 3 (the lookup tables and the song and venue maps in the feed) are merged as
