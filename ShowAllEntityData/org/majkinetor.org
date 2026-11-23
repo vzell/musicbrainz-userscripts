@@ -14,11 +14,12 @@ Claude drafts, vzell sends.*
 Keywords: TODO (open), NEXT (the next one to start), WAIT (someone else's call, here mostly majkinetor's), DONE,
 PART (partly done, the rest left out by decision), NOT (not done, with the reason).
 
-* PICKUP HERE (2026-11-21)
+* PICKUP HERE (2026-11-23)
 
-- *Now:* two adoptions, one mockup for both (https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o, waiting for
-  vzell's approval): "Title style" on =feat/title-style= (WIP.1 the word lists built; WIP.2 the title-difference
-  classes after the mockup), then "Entity pictures: … area map left" on =feat/area-pictures=.
+- *Now:* two adoptions, both mockups approved 2026-11-23 (https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o;
+  the area window's links, https://claude.ai/artifact/23mGArYVMW2bru1egjRDxR): "Title style" on =feat/title-style=
+  (WIP.1 the word lists, WIP.2 the title-difference classes, both built; test:full and vzell's browser check
+  before the merge), then "Entity pictures: … area map left" on =feat/area-pictures=.
 - *Shipped today:* the two small ours from the 2026-11-20 refresh: 9.99.1674 the gate's write
   clamp, 9.99.1675 C3 with =data-mbu-keys-keep= (=feat/eh-keys-keep-gate-clamp=; vzell's browser check OK). The
   small ours from the 2026-11-21 answer shipped too: 9.99.1676, a standalone EH's =data-mbu-eh= counts for the keys
@@ -79,7 +80,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | In-page log window (=mbuLog=)                                  | TODO  | —             | Adoptions     |
 | Hide the native page until the render ("shine through")        | TODO  | —             | Adoptions     |
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1646     | Adoptions     |
-| Title style: guess-case lists, title-difference classes        | TODO  | WIP.1 branch  | Adoptions     |
+| Title style: guess-case lists, title-difference classes        | TODO  | WIP.2 branch  | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
 | Posts to majkinetor: eleven posted                             | DONE  | —             | On the record |
@@ -714,13 +715,17 @@ CLOSED: [2026-11-20 Fri]
 - *Decided* (vzell, 2026-11-21): all four lists (acronyms, fixed spellings, version phrases, Armenian); the classes as
   a headline in the compare box plus 📊 entries per class. The LCS diff is already there (=_cmpDiff()=,
   =_cmpCharBlocks()=, =_cmpSummary()=): only the class is new. Mockup (area pictures + classes):
-  https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o, waiting for approval.
+  https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o, approved 2026-11-23 with every recommendation.
 - *Built*, the lists (=feat/title-style=, WIP.1, 2026-11-21, petri): =_MBTC_ACRONYMS= + =UPPER_CASE_WORDS=,
   =_MBTC_BRANDS=, =_MBTC_ETI_PHRASES=, Armenian in =_MBTS_SKIP_SCRIPT_RE=; credited in the header. Cost on the whole
   sample (=check-mb-title-case.js --diff main=): 6 titles, all better. Cases 125/125 and 63/63 (15 new ones fail on
   the old code), specs 28/28, mutations +5 (25/25, 28/28). Anchors =ap-upper-case-words=,
-  =ap-postprocess-fixlist=, =ap-version-phrases=, =ap-cased-other=, =saed-guess-case-lists=. Next: WIP.2, the
-  classes, once the mockup is approved.
+  =ap-postprocess-fixlist=, =ap-version-phrases=, =ap-cased-other=, =saed-guess-case-lists=.
+- *Built*, the classes (=feat/title-style=, WIP.2, 2026-11-23, petri): =_titleDiffClass()= (case / punct / near ≤ 2
+  edits / other) with =recFold='s punctuation half (accents kept, B1) and =recLev=; a pill heading the compare box,
+  four 📊 entries =title-mismatch-<kind>=. Apollo's own default tolerance is 1 (=recTitleTol: 1=), not the 2 the
+  mockup claimed; 2 kept as approved. Spec =title-diff-classes.spec.js= 3/3, mutations 11/11. Anchors =ap-rec-fold=,
+  =ap-rec-lev=, =saed-title-diff-class=. Next: test:full, the browser check, the merge.
 
 ** TODO Links: canonical page keys for =rel-multi-site=; Discogs MusicBrainz column barcode fallback
 

@@ -1,0 +1,145 @@
+[
+  {
+    "name": "case-only differences are not told apart",
+    "why": "Without the case test a case change falls to punctuation. Must fail on the classifier test (Spirit In The Night).",
+    "edits": [
+      {
+        "find": "            k = track.toLowerCase() === rec.toLowerCase() ? 'case'\n",
+        "replace": "            k = false ? 'case'\n"
+      }
+    ],
+    "spec": "tests/fixtures/title-diff-classes.spec.js",
+    "grep": "the classifier",
+    "expect": "fail"
+  },
+  {
+    "name": "the fold keeps punctuation",
+    "why": "Then only a case change is punctuation-equal; Rosalita and Rock & Roll fall to 1–2 characters or different. Must fail on the classifier test.",
+    "edits": [
+      {
+        "find": "        return String(s || '').normalize('NFC').toLowerCase().replace(/&/g, ' and ')\n            .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();",
+        "replace": "        return String(s || '').normalize('NFC').toLowerCase();"
+      }
+    ],
+    "spec": "tests/fixtures/title-diff-classes.spec.js",
+    "grep": "the classifier",
+    "expect": "fail"
+  },
+  {
+    "name": "the fold strips accents",
+    "why": "Question B1 put Café/Cafe under 1–2 characters; an NFD fold that drops the marks makes it punctuation. Must fail on the classifier test.",
+    "edits": [
+      {
+        "find": "        return String(s || '').normalize('NFC').toLowerCase().replace(/&/g, ' and ')",
+        "replace": "        return String(s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/&/g, ' and ')"
+      }
+    ],
+    "spec": "tests/fixtures/title-diff-classes.spec.js",
+    "grep": "the classifier",
+    "expect": "fail"
+  },
+  {
+    "name": "the 1–2 characters threshold is 3",
+    "why": "Nightttt/Night (three edits) must be different. Must fail on the classifier test.",
+    "edits": [
+      {
+        "find": "    const _TITLE_DIFF_NEAR_MAX = 2;",
+        "replace": "    const _TITLE_DIFF_NEAR_MAX = 3;"
+      }
+    ],
+    "spec": "tests/fixtures/title-diff-classes.spec.js",
+    "grep": "the classifier",
+    "expect": "fail"
+  },
+  {
+    "name": "the edit distance stops too early",
+    "why": "An early stop at the row minimum must stop only past max; stopping at max turns every two-edit pair into different. Must fail on the classifier test (Nighttt/Night).",
+    "edits": [
+      {
+        "find": "            if (low > max) return max + 1;",
+        "replace": "            if (low >= max) return max + 1;"
+      }
+    ],
+    "spec": "tests/fixtures/title-diff-classes.spec.js",
+    "grep": "the classifier",
+    "expect": "fail"
+  },
+  {
+    "name": "the 📊 kinds are never listed",
+    "why": "The entries under the flag must be built. Must fail on the 📊 test.",
+    "edits": [
+      {
+        "find": "            if (!titleMismatchCount) return;\n            Object.keys(_TITLE_DIFF_CLASSES).forEach((k) => {",
+        "replace": "            if (titleMismatchCount >= 0) return;\n            Object.keys(_TITLE_DIFF_CLASSES).forEach((k) => {"
+      }
+    ],
+    "spec": "tests/fixtures/title-diff-classes.spec.js",
+    "grep": "📊 lists each kind",
+    "expect": "fail"
+  },
+  {
+    "name": "the 📊 kinds are not indented",
+    "why": "The mockup draws the kinds under the flag. Must fail on the 📊 test.",
+    "edits": [
+      {
+        "find": "_TITLE_DIFF_CLASSES[k].entry, titleDiffClassCounts[k], 'mb-uniq-syn-sub');",
+        "replace": "_TITLE_DIFF_CLASSES[k].entry, titleDiffClassCounts[k]);"
+      }
+    ],
+    "spec": "tests/fixtures/title-diff-classes.spec.js",
+    "grep": "📊 lists each kind",
+    "expect": "fail"
+  },
+  {
+    "name": "a kind entry matches every ≠ row",
+    "why": "Its filter must keep only its kind, not the whole flag. Must fail on the 📊 test's filter steps.",
+    "edits": [
+      {
+        "find": "        if (mode.startsWith('title-mismatch-')) return !!cell && _titleCellDiffClass(cell) === mode.slice(15);",
+        "replace": "        if (mode.startsWith('title-mismatch-')) return !!cell && _titleHasRecNameMismatch(cell);"
+      }
+    ],
+    "spec": "tests/fixtures/title-diff-classes.spec.js",
+    "grep": "📊 lists each kind",
+    "expect": "fail"
+  },
+  {
+    "name": "a one-title note is counted as a kind",
+    "why": "Question B3: a ≠ note naming one title has no kind. Counting it as different must fail on the 📊 test's counts.",
+    "edits": [
+      {
+        "find": "                    if (_tdc) titleDiffClassCounts[_tdc]++;",
+        "replace": "                    titleDiffClassCounts[_tdc || 'other']++;"
+      }
+    ],
+    "spec": "tests/fixtures/title-diff-classes.spec.js",
+    "grep": "📊 lists each kind",
+    "expect": "fail"
+  },
+  {
+    "name": "the compare box has no headline",
+    "why": "The kind must head the compare box. Must fail on the compare-box test.",
+    "edits": [
+      {
+        "find": "        if (k) Object.assign(c, { pill: _TITLE_DIFF_CLASSES[k].head, tone: _TITLE_DIFF_CLASSES[k].tone });",
+        "replace": "        if (k && false) Object.assign(c, { pill: _TITLE_DIFF_CLASSES[k].head, tone: _TITLE_DIFF_CLASSES[k].tone });"
+      }
+    ],
+    "spec": "tests/fixtures/title-diff-classes.spec.js",
+    "grep": "the compare box opens with the kind",
+    "expect": "fail"
+  },
+  {
+    "name": "the headline pill has one colour",
+    "why": "Green for case and punctuation, amber for 1–2 characters, red for different (question B4). Must fail on the compare-box test.",
+    "edits": [
+      {
+        "find": "        const tone = ['ok', 'warn', 'severe'].includes(c.tone) ? c.tone : 'warn';",
+        "replace": "        const tone = 'warn';"
+      }
+    ],
+    "spec": "tests/fixtures/title-diff-classes.spec.js",
+    "grep": "the compare box opens with the kind",
+    "expect": "fail"
+  }
+]

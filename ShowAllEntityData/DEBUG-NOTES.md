@@ -30958,3 +30958,34 @@ Env: 2026-11-21T18:12:19+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
   against the old userscript 11 + 4 fail, now 125/125 and 63/63; `mb-title-case.spec.js` +
   `findings-title-style.spec.js` 28/28. Mutations: `foreign-titles.json` +4 (25/25), `title-style.json` +1 (28/28);
   two older finds updated (the ETI line and the acronym list's end moved).
+
+## 2026-11-23 — The kinds of a track/recording name difference (feat/title-style, WIP.2)
+
+Env: 2026-11-23T11:58:10+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+What: jesus2099's ≠ note on a Title cell now has a kind, `_titleDiffClass()`:
+case / punct / near (≤ 2 edits) / other. It heads the compare box as a pill
+(`_dpOriginCmp()` → `_cmpHtml()`'s `pill`) and gives four 📊 entries under
+"≠ track/recording name" (`title-mismatch-<kind>`). Mockup part B of
+https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o, approved 2026-11-23.
+
+Found on the way:
+- **Apollo's default tolerance is 1, not 2.** The mockup's question B2 gave
+  "2 edits (Apollo's default tolerance)" as the reason; his `loadSettings()`
+  has `recTitleTol: 1`. vzell approved 2, so 2 stays; the reason is
+  corrected in docs/claude/findings.md.
+- **The fold must be NFC and keep accents.** Apollo's `recFold()` folds
+  accents (`fold()`, NFD + strip); B1 put Café/Cafe under 1–2 characters,
+  so `_titleDiffFold()` takes only its punctuation half. NFD without the
+  strip would be worse: a combining mark is `\p{M}`, not `\p{L}`, and would
+  become a space.
+- **A space inside a word is an edit**, not spacing: "Jungleland" /
+  "Jungle land" is 1–2 characters, as the mockup's own `classOf()` gave.
+  The first spec draft expected punctuation; the spec was corrected, not the
+  code.
+
+Tests: `tests/fixtures/title-diff-classes.spec.js` 3/3 (classifier borders,
+📊 counts and filters and a sort's clones, the compare box's pills), plus
+tooltip-diff, popup-mb and release-rg-main-event 169/169 alongside.
+Mutations `scripts/mutations/title-diff-classes.json` 11/11 OK, userscript
+restored and verified. test:full deferred to the merge.

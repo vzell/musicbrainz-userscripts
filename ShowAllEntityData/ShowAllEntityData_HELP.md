@@ -786,6 +786,15 @@ the part that differs is marked, down to a single letter or a hyphen ‐ against
 -, and a line under them says in words what differs. Two lengths line up digit
 by digit, with the gap in a small amber (⚠️) or red (❌) label.
 
+A track name that differs from its recording name says first what kind of
+difference it is, in a small label: **Case only** or **Punctuation and spacing
+only** (green; "&" counts as "and"), **1–2 characters** (amber: a typo, a
+plural, an accent) or **Different** (red: more words, another version). The
+📊 menu of the Title column lists the same four kinds, indented under *≠
+track/recording name*, so you can keep only, say, the real differences. A ≠
+note that names only one of the titles has no kind, so the four can add up to
+fewer than the flag.
+
 Problems with a known MusicBrainz form show the title over that form: a live
 title, event name or recording comment whose date uses "-" over the same text
 with "‐" (only the date's hyphens marked — a hyphen in the venue stays), and
@@ -3006,7 +3015,8 @@ userscript lists that host, so Tampermonkey does not ask first).
   own small box over the card. Now it is a box stacked just above the card,
   with the two names one under the other and **only what differs marked**
   (one letter in another case, ' against ’, added text such as "(single
-  version)"), plus a line saying what it is. Once pinned, a maroon badge
+  version)"), plus a line saying what it is, under the kind of difference
+  (*Case only*, *1–2 characters*, …). Once pinned, a maroon badge
   next to the window's title says it again ("from track “…” ≠ recording
   “…”"). The window shows the recording, but always says which track it came
   from.
