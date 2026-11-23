@@ -31131,3 +31131,9 @@ another owner's mark kept). Mutations `scripts/mutations/eh-player-quiet.json`
 11/11; `eh-keys-off.json` 17/17 (two finds re-pointed for the new call) and
 `eh-interop-markers.json` 15/15 re-run clean. test:full deferred to the
 merge.
+
+Browser check (feat/eh-player-quiet): 2026-11-23T16:00:28+01:00 · vzell's
+browser (version and Tampermonkey version not recorded) · String Theory as
+installed: "tested live, OK, all behave as predicted" — the player stopped
+after the render on release 22a6802f-…, nothing shown later, EH's own view
+untouched, the setting off leaves it playing.

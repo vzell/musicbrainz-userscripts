@@ -18,7 +18,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 - *Now (2026-11-23):* refreshed to =5d4d464= (=chore/refresh-majkinetor-5d4d464=), and on top of it
   =feat/eh-player-quiet= (WIP.1): our fallback for "Event Horizon's player plays on under our page" is built and
-  tested (fixtures and mutations), *waiting for vzell's browser check*; the post ([[#post-938-player][On the
+  tested (fixtures and mutations), *vzell's browser check OK* (2026-11-23); the post ([[#post-938-player][On the
   record]]) goes out after the merge. *Next:* "The shared gate at eight a second" (the 30 ms lock hold; keep 1000
   ms; maybe a question on the pace). After that the open half of "Entity pictures" (=areaClimb=/=flagI=).
 - *Shipped today:* "Title style": 9.99.1677 the guess-case word lists, 9.99.1678 the kinds of a track/recording
@@ -453,7 +453,7 @@ CLOSED: [2026-11-21 Sat]
   queue. Nothing on the IP (same scope as the keys marks), nothing in EH's view, nothing resumed.
 - *Tests*: =tests/fixtures/eh-interop-markers.spec.js= "Event Horizon's player while our table shows" (6), against
   =eh-body-swap.js='s new player (=play()=, =plyNext()=, the channel, =__EH_SIM_PLY_DEAF__=); mutations
-  =scripts/mutations/eh-player-quiet.json=. Live: the pre-test above in vzell's browser.
+  =scripts/mutations/eh-player-quiet.json=. Live: the pre-test above in vzell's browser, *OK* (vzell, 2026-11-23 ~16:00 CET: "tested live, OK, all behave as predicted"; the four checks of the request: stopped after the render, nothing seen later, EH's own view untouched, setting off leaves it).
 
 ** TODO The shared gate at eight a second (majkinetor's 2026.11.23 gate)
 
@@ -2518,7 +2518,7 @@ Maybe the test failers have to do with what I sometimes experience in the detail
 
   If you like, I'll keep the clock check as a reusable script (scripts/check-clock-jumps.js, with a line in tests/README.org), so a "flaky" run on a freshly booted machine can be checked in 30 seconds.
 
-** player
+** DONE player
 
 On e.g. https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 when on the Event Horizon page of String Theory and the majkinetor player is active and playing
 
