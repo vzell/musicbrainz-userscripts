@@ -434,8 +434,11 @@ async function answerArtistCards(page) {
  * anonymous request; with the cookies a documentation page (`/doc/…`), a
  * tag page (`/tag/…`) or, for anything else, an artist's editing history.
  * Every page request is logged in `window.__mbPageAsked` (path, anonymous).
- * MusicBrainz's entity glyphs are served too (a card drops an image that
- * does not load).
+ * The website's `/ws/js/` JSON is not a page (an area's chain since
+ * 2026-11-23, `_mbPopChainRecordFor()`; anonymous curl gets JSON, no browser
+ * check): it goes to the stub's default, as `/ws/2/` does, and the window
+ * climbs the Web Service. MusicBrainz's entity glyphs are served too (a card
+ * drops an image that does not load).
  *
  * @param {import('@playwright/test').Page} page
  * @returns {Promise<void>}
@@ -450,7 +453,7 @@ async function answerMbPages(page) {
         window.__mbPageAsked = [];
         window.__gmXhrResponder = (opts) => {
             const u = new URL(opts.url);
-            if (u.origin === 'https://musicbrainz.org' && !/^\/(?:ws\/2|static)\//.test(u.pathname)) {
+            if (u.origin === 'https://musicbrainz.org' && !/^\/(?:ws\/2|ws\/js|static)\//.test(u.pathname)) {
                 window.__mbPageAsked.push({ path: u.pathname, anonymous: opts.anonymous === true });
                 const body = opts.anonymous
                     ? '<html><head><title>Verifying your browser</title></head><body><form action="/__meb_verify"></form></body></html>'

@@ -31242,8 +31242,17 @@ selectors finding nothing in the area window's Facts.
 
 Not this branch: `popup-ext.spec.js` "G8: before the record has arrived, a
 link in a Discogs window opens in the window" fails 3/3 here AND with main's
-userscript and main's `loadPage.js` (2026-11-23T19:09+01:00, petri): it is
-already broken on main.
+userscript and main's `loadPage.js` (2026-11-23T19:09+01:00, petri), so it is
+not this branch's; it PASSED inside the `test:full` below (12 workers), so it
+is timing-dependent (its window answer is held back 15 s), not plainly broken.
+
+`test:full` (2026-11-23T19:43:26+01:00 → 20:06:13, petri, `11fadabc`, 3,480
+tests, 22 m 47 s): 3,478 passed, 2 failed, both in `discogs-mb-column.spec.js`
+— its `__mbPageAsked` log counted every musicbrainz.org request that is not
+`/ws/2/` as a PAGE, so the artist window's `/ws/js/entity/<Long Branch>`
+showed up in it (and got the stub's browser-check answer, so the window
+climbed, which is the fallback working). The log now leaves `/ws/js/` out as
+it leaves `/ws/2/` out; the spec 22/22.
 
 Results: `pop-area-chain.spec.js` 8/8, `pop-area-flags.spec.js` 4/4 (its
 discogs.com box expectation updated to the flag image),
