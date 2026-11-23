@@ -1421,6 +1421,22 @@ and the edits are vzell's): the links open each event's edit page; "Title after 
 | C | [[https://musicbrainz.org/event/a212dc66-4f02-47f6-b120-7dafe5c3b781/edit][a212dc66]] | 1995‐08‐10: Cheers, Long Branch, NJ, USA | The Metro (Brucebase) | check a source | place: Cheers; http://brucebase.wikidot.com/1995#100895 |
 | C | [[https://musicbrainz.org/event/84ab5c59-2e03-4071-884f-34a1090a332c/edit][84ab5c59]] | 1974‐04‐09: Charlie’s Place, Cambridge, MA, USA | Joe's Place (Brucebase) | check a source | place: Charlie’s Place; http://brucebase.wikidot.com/1974#090474b |
 
+*** State on MusicBrainz, 2026-11-24: done
+
+Env: 2026-11-24T00:55:07+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+(=python3 scripts/check-mb-event-title-fixes.py=, read-only)
+
+vzell fixed 22 of the 24 on MusicBrainz; the script agrees: all of A and B but one read "fixed already", and four of
+C now carry Brucebase's venue (1982‐02 The Hit Factory, 1983‐07 Record Plant, 1995‐08‐06 and 1995‐08‐10 The Metro;
+each event's place link changed with it). 1992‐01 reads "St. Charles Streetcar Line", the place's own name. Two stay
+as they are, by vzell's decision:
+- =57b91acb= "first direct arena": right. The place's annotation says "The all-lowercase styling of the venue's
+  name is intentional. Please do not alter it."
+  (https://musicbrainz.org/place/d32fadcc-dfa9-407f-800c-aaf69b1a5231). The script's "to fix" there is wrong.
+- =84ab5c59= 1974‐04‐09 Charlie’s Place: right. MusicBrainz misses some of Brucebase's entries around it (the
+  cancelled Joe's Place show among them); vzell adds them later.
+Nothing is left to do for this list.
+
 ** Wiki fixes for Danny (draft for vzell to send, 2026-11-21; items 8–14 added 2026-11-23)
 
 Env: 2026-11-21T02:19:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
