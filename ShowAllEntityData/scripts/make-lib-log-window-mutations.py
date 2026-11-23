@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Writes scripts/mutations/lib-log-window.json: the planted defects for
+VZ_MBLibrary's activity log (4.7.0, section 1b), each naming the one test in
+tests/fixtures/lib-log-window.spec.js that must fail on it.
+
+Kept as a generator because several finds contain backticks and quotes that
+are easy to get wrong by hand in JSON. Run: python3 scripts/make-lib-log-window-mutations.py
+"""
+import json
+import pathlib
+
+LIB = '../lib/VZ_MBLibrary.user.js'
+SPEC = 'tests/fixtures/lib-log-window.spec.js'
+
+M = [
+    ('a suppressed debug line is recorded anyway',
+     'A debug line while debug logging is off must cost nothing: not even a buffer entry.',
+     "                if (!isDebugEnabled() && level === 'debug') return;",
+     "                if (!isDebugEnabled() && level === 'debug') { _logRecord(level, cat, msg, data); return; }",
+     'a debug line is recorded only while debug logging is on'),
+    ('extra data is kept as the live value',
+     'The buffer must never hold a page element or a row map alive, and a line must not change after it was logged.',
+     "                data: data === '' ? '' : _logDescribe(data, 0),",
+     "                data: data === '' ? '' : data,",
+     'extra data is kept as a short text'),
+    ('the buffer is never trimmed',
+     'A buffer that grows for ever is a leak on a long session.',
+     '            if (_logBuf.length > _logMax + Math.ceil(_logMax / 10)) {',
+     '            if (false) {',
+     'past the cap the oldest lines go'),
+    ('the copy hides that lines were dropped',
+     'A report that looks complete when its start is gone misleads whoever reads it.',
+     '            if (_logDropped) lines.unshift(',
+     '            if (false) lines.unshift(',
+     'past the cap the oldest lines go'),
+    ('error() loses its channel again',
+     "error() passed 'error' as the icon, so every error would land in one channel.",
+     "            error(icon, msg, data) { this.log('error', 'error', msg, data, icon); }",
+     "            error(icon, msg, data) { this.log('error', 'error', msg, data); }",
+     'keeps its channel in the log'),
+    ('Escape closes the window with the filter still filled',
+     'Escape empties a filled filter first, as every other filter box of the script.',
+     '                if (a === input && input.value) {',
+     '                if (false) {',
+     'the text filter narrows; Esc empties it first'),
+    ('Clear does not ask',
+     'Every destructive action asks first, inside the same panel.',
+     '                confirm.hidden = false;\n                noBtn.focus();',
+     '                confirm.hidden = false;\n                yesBtn.click();',
+     'Clear asks first inside the window'),
+    ('the Markdown fence is always three backticks',
+     'A line quoting a fenced block would end the fence early and break the pasted report.',
+     "            const fence = '`'.repeat(Math.max(3, ...runs.map((r) => r.length + 1)));",
+     "            const fence = '```';",
+     'Copy as Markdown copies a <details> block'),
+    ('a line is put in as HTML',
+     'A line can quote anything a page sent; it must stay text.',
+     '                _logLinkify(m, e.msg);',
+     '                m.innerHTML = e.msg;',
+     'line text is never markup'),
+    ('the chips row shows with nothing to choose',
+     'The chips appear only when there is a choice, as in the approved mockup.',
+     '                chipsRow.hidden = !showL && !showC;',
+     '                chipsRow.hidden = false;',
+     'chips appear only when there is a choice'),
+    ('an open window stops receiving lines',
+     'The window must follow the page as it works.',
+     '                queue: (e, trimmed) => { if (trimmed) needRedraw = true; else pending.push(e); schedule(); },',
+     '                queue: () => {},',
+     'shows the lines and appends new ones live'),
+    ('the configured host is ignored',
+     "Under Event Horizon document.body is its body, which V removes: the window must go where the consumer says.",
+     '            (host && host.isConnected ? host : document.body).appendChild(el);',
+     '            document.body.appendChild(el);',
+     'the window goes into the configured host'),
+    ('no Tampermonkey menu entry',
+     'The menu entry is how every consumer, and the library-only browser check, reaches the window.',
+     "                GM_registerMenuCommand('🧾 Activity log', () => logWindow.toggle());",
+     '',
+     'the Tampermonkey menu entry toggles the window'),
+    ('Record detail changes nothing',
+     "The switch must turn detail lines on for this page, without touching the consumer's own flag.",
+     '                _logDebugOverride = dbg.checked;',
+     '',
+     'Record detail turns debug lines on for this page only'),
+    ('onCounts is called for every warning',
+     'A burst of warnings must report once, or a consumer repaints its menu row per line.',
+     "            if (typeof _logCfg.onCounts !== 'function' || _logCountsTimer) return;",
+     "            if (typeof _logCfg.onCounts !== 'function') return;",
+     'onCounts hears about warnings once per burst'),
+    ('no full screen on a phone',
+     'Under 600 px a floating window would cover part of the page and hide its own controls.',
+     '                @media (max-width: 600px) {\n                    .vz-log, .vz-log.vz-log-full {',
+     '                @media (max-width: 6px) {\n                    .vz-log, .vz-log.vz-log-full {',
+     'under 600 px the window is full screen'),
+]
+
+out = [{'name': n, 'why': w, 'file': LIB, 'edits': [{'find': f, 'replace': r}],
+        'spec': SPEC, 'grep': g, 'expect': 'fail'} for n, w, f, r, g in M]
+path = pathlib.Path(__file__).resolve().parent / 'mutations' / 'lib-log-window.json'
+path.write_text(json.dumps(out, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+print(f'wrote {path} ({len(out)} mutations)')

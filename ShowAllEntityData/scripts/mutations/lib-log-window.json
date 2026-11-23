@@ -1,0 +1,226 @@
+[
+  {
+    "name": "a suppressed debug line is recorded anyway",
+    "why": "A debug line while debug logging is off must cost nothing: not even a buffer entry.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                if (!isDebugEnabled() && level === 'debug') return;",
+        "replace": "                if (!isDebugEnabled() && level === 'debug') { _logRecord(level, cat, msg, data); return; }"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "a debug line is recorded only while debug logging is on",
+    "expect": "fail"
+  },
+  {
+    "name": "extra data is kept as the live value",
+    "why": "The buffer must never hold a page element or a row map alive, and a line must not change after it was logged.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                data: data === '' ? '' : _logDescribe(data, 0),",
+        "replace": "                data: data === '' ? '' : data,"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "extra data is kept as a short text",
+    "expect": "fail"
+  },
+  {
+    "name": "the buffer is never trimmed",
+    "why": "A buffer that grows for ever is a leak on a long session.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "            if (_logBuf.length > _logMax + Math.ceil(_logMax / 10)) {",
+        "replace": "            if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "past the cap the oldest lines go",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy hides that lines were dropped",
+    "why": "A report that looks complete when its start is gone misleads whoever reads it.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "            if (_logDropped) lines.unshift(",
+        "replace": "            if (false) lines.unshift("
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "past the cap the oldest lines go",
+    "expect": "fail"
+  },
+  {
+    "name": "error() loses its channel again",
+    "why": "error() passed 'error' as the icon, so every error would land in one channel.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "            error(icon, msg, data) { this.log('error', 'error', msg, data, icon); }",
+        "replace": "            error(icon, msg, data) { this.log('error', 'error', msg, data); }"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "keeps its channel in the log",
+    "expect": "fail"
+  },
+  {
+    "name": "Escape closes the window with the filter still filled",
+    "why": "Escape empties a filled filter first, as every other filter box of the script.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                if (a === input && input.value) {",
+        "replace": "                if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "the text filter narrows; Esc empties it first",
+    "expect": "fail"
+  },
+  {
+    "name": "Clear does not ask",
+    "why": "Every destructive action asks first, inside the same panel.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                confirm.hidden = false;\n                noBtn.focus();",
+        "replace": "                confirm.hidden = false;\n                yesBtn.click();"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "Clear asks first inside the window",
+    "expect": "fail"
+  },
+  {
+    "name": "the Markdown fence is always three backticks",
+    "why": "A line quoting a fenced block would end the fence early and break the pasted report.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "            const fence = '`'.repeat(Math.max(3, ...runs.map((r) => r.length + 1)));",
+        "replace": "            const fence = '```';"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "Copy as Markdown copies a <details> block",
+    "expect": "fail"
+  },
+  {
+    "name": "a line is put in as HTML",
+    "why": "A line can quote anything a page sent; it must stay text.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                _logLinkify(m, e.msg);",
+        "replace": "                m.innerHTML = e.msg;"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "line text is never markup",
+    "expect": "fail"
+  },
+  {
+    "name": "the chips row shows with nothing to choose",
+    "why": "The chips appear only when there is a choice, as in the approved mockup.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                chipsRow.hidden = !showL && !showC;",
+        "replace": "                chipsRow.hidden = false;"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "chips appear only when there is a choice",
+    "expect": "fail"
+  },
+  {
+    "name": "an open window stops receiving lines",
+    "why": "The window must follow the page as it works.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                queue: (e, trimmed) => { if (trimmed) needRedraw = true; else pending.push(e); schedule(); },",
+        "replace": "                queue: () => {},"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "shows the lines and appends new ones live",
+    "expect": "fail"
+  },
+  {
+    "name": "the configured host is ignored",
+    "why": "Under Event Horizon document.body is its body, which V removes: the window must go where the consumer says.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "            (host && host.isConnected ? host : document.body).appendChild(el);",
+        "replace": "            document.body.appendChild(el);"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "the window goes into the configured host",
+    "expect": "fail"
+  },
+  {
+    "name": "no Tampermonkey menu entry",
+    "why": "The menu entry is how every consumer, and the library-only browser check, reaches the window.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                GM_registerMenuCommand('🧾 Activity log', () => logWindow.toggle());",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "the Tampermonkey menu entry toggles the window",
+    "expect": "fail"
+  },
+  {
+    "name": "Record detail changes nothing",
+    "why": "The switch must turn detail lines on for this page, without touching the consumer's own flag.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                _logDebugOverride = dbg.checked;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "Record detail turns debug lines on for this page only",
+    "expect": "fail"
+  },
+  {
+    "name": "onCounts is called for every warning",
+    "why": "A burst of warnings must report once, or a consumer repaints its menu row per line.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "            if (typeof _logCfg.onCounts !== 'function' || _logCountsTimer) return;",
+        "replace": "            if (typeof _logCfg.onCounts !== 'function') return;"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "onCounts hears about warnings once per burst",
+    "expect": "fail"
+  },
+  {
+    "name": "no full screen on a phone",
+    "why": "Under 600 px a floating window would cover part of the page and hide its own controls.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                @media (max-width: 600px) {\n                    .vz-log, .vz-log.vz-log-full {",
+        "replace": "                @media (max-width: 6px) {\n                    .vz-log, .vz-log.vz-log-full {"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "under 600 px the window is full screen",
+    "expect": "fail"
+  }
+]
