@@ -19,8 +19,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 - *Now (2026-11-23):* refreshed to =5d4d464= (=chore/refresh-majkinetor-5d4d464=), and on top of it
   =feat/eh-player-quiet= (9.99.1680, merged 2026-11-23): our fallback for "Event Horizon's player plays on under our page" is built and
   tested (fixtures and mutations), *vzell's browser check OK* (2026-11-23); the post ([[#post-938-player][On the
-  record]]) went out 2026-11-23 16:48 CET, waiting on his answer. *Next:* "The shared gate at eight a second" (the 30 ms lock hold; keep 1000
-  ms; maybe a question on the pace). After that the open half of "Entity pictures" (=areaClimb=/=flagI=).
+  record]]) went out 2026-11-23 16:48 CET, waiting on his answer. "The shared gate at eight a second": the 30 ms lock
+  hold shipped in 9.99.1681, SAED stays at 1000 ms; =search-shed= and a question on the pace are open, not asked for.
+  *Next:* the open half of "Entity pictures" (=areaClimb=/=flagI=).
 - *Shipped today:* "Title style": 9.99.1677 the guess-case word lists, 9.99.1678 the kinds of a track/recording
   name difference; "Entity pictures": 9.99.1679 an area's five Wikidata pictures with the flag badge, its links
   table, and Wikidata in the shared request gate (vzell's live check OK).
@@ -74,7 +75,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | C3: adopt =data-mbu-keys-off= + =keys-keep= (EH's new keys)    | DONE  | 9.99.1675     | Interop       |
 | Standalone EH: use =data-mbu-eh= for the keys marks            | DONE  | 9.99.1676     | Interop       |
 | Event Horizon's player plays on under our page                 | DONE  | 9.99.1680     | Interop       |
-| The shared gate at eight a second (2026.11.23)                 | TODO  | —             | Interop       |
+| The shared gate at eight a second (2026.11.23)                 | PART  | 9.99.1681     | Interop       |
 | C7 =mbLastWrite=, C8 =MBU.artistImage=                         | DONE  | 9.99.1643, 46 | Adoptions     |
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions     |
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions     |
@@ -457,14 +458,14 @@ CLOSED: [2026-11-21 Sat]
   =eh-body-swap.js='s new player (=play()=, =plyNext()=, the channel, =__EH_SIM_PLY_DEAF__=); mutations
   =scripts/mutations/eh-player-quiet.json=. Live: the pre-test above in vzell's browser, *OK* (vzell, 2026-11-23 ~16:00 CET: "tested live, OK, all behave as predicted"; the four checks of the request: stopped after the render, nothing seen later, EH's own view untouched, setting off leaves it). Step 2: back in EH's view no player at all, so EH took our =close= on its channel across Tampermonkey's script worlds, not only the backstop.
 
-** TODO The shared gate at eight a second (majkinetor's 2026.11.23 gate)
+** PART The shared gate at eight a second (majkinetor's 2026.11.23 gate)
 
 - *Who fixes it*: *ours* for the port; possibly a question *upstream* about the pace (vzell decides).
-- *Decided* (vzell, 2026-11-23: "port the 30 ms lock hold, keep 1000 ms"): candidate 1 is ported on
+- *Decided* (vzell, 2026-11-23: "port the 30 ms lock hold, keep 1000 ms"): candidate 1 shipped in 9.99.1681, from
   =feat/gate-lock-hold= (=_MBG_LOCK_HOLD_MS=, =_mbGateState()= answers from inside the lock callback and keeps the
   lock on a =_mbGateSleep()=; anchor =saed-gate-lock-hold=; spec =mb-shared-gate.spec.js=, 12. "the lock hold", three
-  tests; mutations in =mb-shared-gate.json=; vzell's browser check OK, 2026-11-23), and =_MBG_GAP= stays 1000 ms. Open: candidate 2 (=search-shed=) and
-  whether to ask about the pace; neither was asked for.
+  tests; mutations in =mb-shared-gate.json=; vzell's browser check OK, 2026-11-23), and =_MBG_GAP= stays 1000 ms. Open: candidate 2 (=search-shed=); the pace question is drafted ([[#post-938-pace][On the record]], vzell asked for it) and
+  is to be sent after 9.99.1681 is pushed; =search-shed= was not asked for.
 - *What changed* (=5d4d464=, String Theory 2026.11.23.125301, #1093–#1098; analysis "Request gate"): =MBN_GAP= 125 ms
   and =MBN_BURST= 4, eight starts a second sustained (was 1000 ms and 3); an interactive lane (=itat=/=ilast=); a
   =search-shed= 503 holds searches only (=scool=/=shot=); no =hot= factor on a 503 with =Retry-After= or
@@ -2189,6 +2190,45 @@ Two asks:
 Until a build honours the mark, SAED (since 9.99.1680) does this when the tab itself plays (a source inside `#eh-ply`; a tab that only mirrors a player window is left alone): it posts your own `{type: 'control', action: 'close'}` on `mbu-event-horizon-player-v1`, hides `#eh-ply` and `#eh-ply-menu`, and removes any iframe or audio that turns up in `#eh-ply` while its table is shown. If you would rather SAED stayed off that channel, say so and I will drop that part. A pause instead of a close would be nicer for the user, but from the outside I could not find one that works for every source (Spotify's is a toggle, Apple Music has none).
 
 And a correction to my last comment: Apollo's alias edits don't set `mbLastWrite`. They go through `mbnFetch`, which moves the gate's `mbu:mb-gate-edit`, so they drop the gate's new cache but not Event Horizon's kept answers (`mbLastWrite()` reads only that key), and not SAED's either. If Apollo set `mbLastWrite` after its writes, as Group Therapy and Falcon do, both would follow.
+#+end_src
+
+** TODO 2026-11-23 · Post: the gate's pace, eight a second against MusicBrainz's one (#938)
+:PROPERTIES:
+:CUSTOM_ID: post-938-pace
+:END:
+
+- *Draft* (petri, 2026-11-23T17:18:02+01:00; vzell: "formulate a question on the pace, and why he decided like that
+  because the MB docu says 1s"). For vzell to send on #938; never posted by Claude. Item: "The shared gate at eight a
+  second". Facts, each checked today:
+  - MusicBrainz's rate-limit page (https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting, read 2026-11-23):
+    "Currently that rate is (on average) 1 request per second" per IP; beyond it "all your requests will be declined
+    (http 503) until the rate drops again". Also 50/s per anonymous User-Agent and 300/s globally. It says nothing
+    about =X-RateLimit-*= headers (one ws/2 answer of 2026-11-23 carried =x-ratelimit-limit: 1900=,
+    =-remaining=, =-reset=, no =-who=; left out of the post: what they count is not documented).
+  - His commits on =dev/net/mb-gate.mjs= (GitHub API): =d6b539ba6= (2026-11-23 00:25 CET, two a second after a burst
+    of four), =fb43fcf23= (00:45, eight a second, "so Credit Hoarder through it keeps up with its own four in
+    flight"), =3c88fb311= (00:53, four a second), =337c95dd0= (01:13, "eight requests a second after its burst again;
+    four a second only made Credit Hoarder slower"). The constant's comment cites #1095 (the issue is about Mission
+    Control's lag; the pace commits are not linked to it on GitHub) and Credit Hoarder's preflight, 52 s instead of
+    173 s.
+  - His DEVELOP.md "Shared request-gate protocol" at =5d4d464=: "The sustained gap is 1,000 ms, with a burst of
+    three". The gate's own log text still says "pacing, four requests a second".
+  - Our probe, case D (2026-11-23 14:5x CET, petri, EH 2026.11.23.095945 + SAED 9.99.1679): up to nine responses in one
+    second, six 503s, five on EH's =release-group?query=arid:…= search, one on SAED's =artist/…?inc=url-rels=.
+  - SAED books at 1000 ms in the same schedule (9.99.1681 keeps it; the lock hold ported).
+
+#+begin_src markdown
+A question about the gate's pace, not a request.
+
+Since last night (`d6b539ba6` → `fb43fcf23` → `3c88fb311` → `337c95dd0`) the gate lets eight requests a second through after its burst of four (`MBN_GAP = 125`). MusicBrainz's own page still says one: "The rate at which your IP address is making requests is measured. If that rate is too high, all your requests will be declined (http 503) until the rate drops again. Currently that rate is (on average) 1 request per second." (https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting)
+
+I read the reasoning in the comment above `MBN_GAP`: the 503s you see come from MusicBrainz's own load (`X-RateLimit-Who: global`) whatever the pace, and Credit Hoarder's preflight takes 52 s instead of 173 s. So my questions:
+
+1. **Why is eight a second fine for one IP?** Did someone at MetaBrainz tell you the per-IP limit is not enforced as written any more, or is it what your runs showed? If there is a source, I would like to cite it in SAED's notes.
+2. **Is it meant for every caller, or for Credit Hoarder's bulk runs?** With String Theory on a release page, several members plus Event Horizon go through it at once. In my probe today (Event Horizon on an artist page, SAED fetching the same page's 31 pages) MusicBrainz answered up to nine requests in one second, and six got a 503: five on Event Horizon's `release-group?query=arid:…` search, one on SAED's `artist/…?inc=url-rels`.
+3. **Which number is the contract for other scripts?** `DEVELOP.md`'s "Shared request-gate protocol" still says "The sustained gap is 1,000 ms, with a burst of three", and the gate's log line says "pacing, four requests a second".
+
+SAED stays at one a second in the shared schedule (its slot moves `tat` by 1000 ms, yours by 125 ms), and since 9.99.1681 it keeps the lock 30 ms after a booking, as yours does. If one a second from SAED gets in your scripts' way in the same schedule, tell me.
 #+end_src
 
 * vzell's notes

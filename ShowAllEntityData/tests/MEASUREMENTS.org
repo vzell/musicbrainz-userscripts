@@ -4987,3 +4987,13 @@ Env: 2026-11-23T16:04:47+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 
 3469 passed. The merge (with =chore/refresh-majkinetor-5d4d464=) adds 6 tests (=eh-interop-markers.spec.js=,
 "Event Horizon's player while our table shows").
+
+* 2026-11-23 — =npm run test:full= on =petri=, main after merging feat/gate-lock-hold (9.99.1681)
+
+Env: 2026-11-23T17:14:53+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =79b100d3=             |  3472 |      12 | *22 m 38 s* | =run-test-full.py=, 17:14:53–17:37:31 CET |
+
+3472 passed. The branch adds 3 tests (=mb-shared-gate.spec.js=, "the lock hold").

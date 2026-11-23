@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1851 versions; the month pages hold all of them.
+This page shows the newest 100 of 1852 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1681 — 2026-11-23
+
+**✨ Improve**
+
+- The request budget shared with majkinetor's scripts (mbu:mb-gate) no longer lets two tabs take the same request slot. After booking a slot this script now keeps the shared lock 30 ms longer, as majkinetor's scripts do since String Theory 2026.11.23, so the booking reaches every other MusicBrainz tab before the next one reads the schedule. The request itself is not delayed, and this script's own pace (one request per 1.1 s, never faster than one a second in the shared schedule) stays as it was, although majkinetor's scripts now go faster.
+
 
 ## 9.99.1680 — 2026-11-23
 
@@ -846,17 +853,6 @@ This page shows the newest 100 of 1851 versions; the month pages hold all of the
 **📝 Docs**
 
 - ShowAllEntityData is now licensed GPL-3.0-or-later (it was MIT up to 9.99.1581); the full text ships as LICENSE next to the script. Several of the scripts it builds on are GPL themselves, and majkinetor's Musicbrainz Toolset is now credited in the header, because the shared MusicBrainz request gate (9.99.1583) is ported from it.
-
-
-## 9.99.1581 — 2026-11-08
-
-**🚀 Feature**
-
-- With majkinetor's Event Horizon (String Theory) showing: on a page this script supports, Event Horizon's More (⋯) menu in the page header now has "Open in ShowAllEntityData" (what V does) and one "SAED: &lt;button&gt;" item per button of that page, e.g. "SAED: Show all Tracks for Release". Such an item switches to MusicBrainz's page and presses that button, also after Event Horizon navigated to another page inside its view (it reloads into MusicBrainz's page of that one first). The items follow the page Event Horizon shows. Needs the String Theory with the menu protocol (majkinetor's \#938); as with V, Event Horizon then stays off for the next pages until you switch it on again.
-
-**🐛 Fix**
-
-- With direct Ctrl+letter shortcuts on, Ctrl+L (Load from disk) also made Event Horizon go forward in the browser history. It is now this script's alone there; with direct shortcuts off (the default) Ctrl+L stays Event Horizon's, and inside Event Horizon's view it is always its own.
 
 
 ---
