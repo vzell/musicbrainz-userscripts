@@ -31195,3 +31195,7 @@ Found on the way (both older than this branch):
   merge). Count and claim updated.
 - New helper `scripts/add-mutation-entries.py`: appends entries to a mutation
   list without reflowing its hand layout.
+
+Browser check (feat/gate-lock-hold): 2026-11-23 · vzell's browser (versions
+not recorded): "tested live, OK" — two tabs on a release group, Relationships
+loading in both, nothing changed.
