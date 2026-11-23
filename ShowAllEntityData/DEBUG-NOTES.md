@@ -31137,3 +31137,61 @@ browser (version and Tampermonkey version not recorded) · String Theory as
 installed: "tested live, OK, all behave as predicted" — the player stopped
 after the render on release 22a6802f-…, nothing shown later, EH's own view
 untouched, the setting off leaves it playing.
+
+## 2026-11-23 — The shared gate's 30 ms lock hold, ported (feat/gate-lock-hold, WIP.1)
+
+Env: 2026-11-23T16:58:21+01:00 (last spec run) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
+
+vzell, 2026-11-23: "port the 30 ms lock hold, keep 1000 ms" (org/majkinetor.org,
+"The shared gate at eight a second"). Upstream `mbnState()` at `5d4d464`
+keeps the Web Lock `MBN_LOCK_HOLD` (30 ms) after a booking: Chromium hands a
+localStorage write to another tab's process a moment later, and two tabs had
+booked one slot ("four in a burst of three").
+
+Port (`_mbGateState()`): the answer comes from inside the lock callback
+(`answered`, resolved with `rw()`), and the callback then returns
+`_mbGateSleep(_MBG_LOCK_HOLD_MS)`, so the lock is held until the hold ends
+while the caller already has its answer. Our own parts:
+- **The hold is `_mbGateSleep()`, not a page timer** — the existing rule
+  (#999); upstream does the same with `mbnSleep()`. A held-back timer would
+  keep the lock, and every tab and script behind it, waiting (new spec "not
+  held back with the page's timers": page timers delayed 8 s, the second
+  write still comes within 1.5 s).
+- **A late grant still books nothing**: the callback returns `undefined` at
+  once when `expired`, so the stuck-lock spec's "late grant runs nothing" is
+  unchanged; its mutation was re-pointed to the new line.
+- **`answered.catch(() => {})`**: a rejection after the race is decided (an
+  aborted late lock) would otherwise be an unhandled rejection. No spec sees
+  it (recorded as `"expect": "pass"` with the reason).
+- `_MBG_GAP` stays 1000 ms (upstream: 125 ms).
+
+Wakers: one sleeper (the hold) now lives 30 ms after each write, so
+"its wakers rest afterwards" asserts at most one sleeper right after a write
+(a lock timer left asleep would make two), then all at rest. Cost: the frame
+loop, the observer and the worker tick run 30 ms longer per booking; this
+tab's own bookings are 1.1 s apart, so a second write waiting 30 ms costs
+nothing in practice. Not on the filter/sort/render path.
+
+Tests: `tests/fixtures/mb-shared-gate.spec.js` 30/30 (three new: the lock
+still held when the write has answered and let go after; a second write
+waits ≥ ~30 ms; the hold not held back with the page's timers). Two real
+tabs booking one slot cannot be reproduced in Playwright (one storage
+process), so the hold itself is pinned.
+
+Found on the way (both older than this branch):
+- **Seven `mb-shared-gate.json` entries had gone blind since 9.99.1674**: the
+  read-side caps of a far-future `cool` ("the booking reads cool uncapped",
+  "the wait reads cool uncapped", "… each re-read's now", "… its own now",
+  "the tab forgets when it first saw the value", "the answer reads the stored
+  cool raw", "the tab forgets its own 503's hold") passed with their defect
+  planted, on `main` at `0304c281` too (checked in a separate worktree): the
+  write clamp (`_mbGateClampWrite()`, 9.99.1674) lowers the far-future value
+  in storage before anything reads it, so the specs see a 60 s hold either
+  way. With the clamp ALSO planted off, all seven fail. They now plant both
+  (`scripts/mutation-add-edit.py`, new), so each still proves its own guard,
+  the second line of defence behind the clamp. The list: 52/52.
+- **Anchor `saed-mbu-awareness`** counted 6 `root.hasAttribute('data-mbu-…')`
+  reads; 9.99.1680's `_mbuPlayerSync()` made it 7 (not re-checked at that
+  merge). Count and claim updated.
+- New helper `scripts/add-mutation-entries.py`: appends entries to a mutation
+  list without reflowing its hand layout.

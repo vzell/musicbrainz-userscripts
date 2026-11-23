@@ -275,9 +275,17 @@ version 1 (on his `main` since `7eb7c563`). Anchors `gate-version`,
   `cancelled`, so a hover that moved on during a shared hold makes no request;
   `_ws2GetJson()` then resolves `{skipped: true}`, which `_mbLoad()` and the
   other `_rgWsGet()` callers already treat as "not asked".
-- **Lock:** held only for the synchronous read-modify-write; after 3 s (a
-  stuck holder) it is given up on and the write is done unlocked, like no Web
-  Locks at all. The 3 s timer is RACED against the lock request
+- **Lock:** held for the synchronous read-modify-write and
+  `_MBG_LOCK_HOLD_MS` (30 ms) after it (upstream's `MBN_LOCK_HOLD` since
+  `5d4d464`, 2026-11-23): Chromium hands a localStorage write to another
+  tab's process a moment later, so a tab taking the lock right after ours
+  could read the schedule from before our booking and book the same slot.
+  The answer comes from inside the lock callback (`answered`), so the caller
+  has it at once; only the next holder waits the hold out. The hold is a
+  `_mbGateSleep()`, never a page timer: a timer held back (#999) would keep
+  the lock, and every tab and script behind it, waiting (spec "not held back
+  with the page's timers"). After 3 s (a stuck holder) the lock is given up
+  on and the write is done unlocked, like no Web Locks at all. The 3 s timer is RACED against the lock request
   (`Promise.race`), never left to the abort signal alone: some userscript
   bridges never settle the request on abort, and the booking would hang. A
   grant that arrives after the timeout runs nothing (`expired`), so nothing is

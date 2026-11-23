@@ -70839,6 +70839,13 @@
     const _MBG_MAX_LEAD = 10000;
     /** A lock held longer than this is stuck: go unlocked, as upstream does, ms. */
     const _MBG_LOCK_ABORT_MS = 3000;
+    /**
+     * How long the lock is kept after a booking, so the write reaches every
+     * other tab before the next holder reads, ms (upstream's `MBN_LOCK_HOLD`
+     * since `5d4d464`: Chromium hands a localStorage write to another tab's
+     * process a moment later, and two tabs booked one slot).
+     */
+    const _MBG_LOCK_HOLD_MS = 30;
     /** Waits are cut into slices this long, so a cancel and a new hold land promptly, ms. */
     const _MBG_SLICE_MS = 250;
     /** After this long without a throttle, `hot` counts as 0 again, ms. */
@@ -71042,9 +71049,17 @@
      * - Before `fn` runs, a `cool` or `leadUntil` past what any writer sets
      *   is lowered (`_mbGateClampWrite()`, upstream's write clamp since
      *   `a1e8f54`), so the write repairs it for every tab after this one.
-     * - The lock is held only for that synchronous moment; one that does not
-     *   come within `_MBG_LOCK_ABORT_MS` is stuck, and the write goes ahead
-     *   unlocked, as with no Web Locks at all (an insecure context).
+     * - The lock is held for that synchronous moment and `_MBG_LOCK_HOLD_MS`
+     *   after it (upstream's lock hold since `5d4d464`): Chromium hands a
+     *   localStorage write to another tab's process a moment later, so a tab
+     *   taking the lock right after this one could read the schedule from
+     *   before our booking and book the same slot. The caller has its answer
+     *   at once; only the next holder waits the hold out. The hold is a
+     *   `_mbGateSleep()`: a page timer held back would keep the lock, and
+     *   every tab and script behind it, waiting.
+     * - A lock that does not come within `_MBG_LOCK_ABORT_MS` is stuck, and
+     *   the write goes ahead unlocked, as with no Web Locks at all (an
+     *   insecure context).
      * - That timeout is raced against the lock request rather than left to
      *   the abort signal (upstream's "lock race"): some userscript bridges
      *   never settle the request on abort, which would hang the request
@@ -71097,9 +71112,20 @@
                     try { if (ctrl) ctrl.abort(); } catch (_) { /* aborted already */ }
                     throw new Error('shared request gate: lock timed out');
                 });
-                const locked = navigator.locks.request(_MBG_LOCK, ctrl ? { signal: ctrl.signal } : {},
-                    () => (expired ? undefined : rw()));
-                return await Promise.race([locked, timeout]);
+                // The answer comes from inside the lock callback, which then
+                // keeps the lock for the hold: the request's own promise only
+                // settles once the hold is over.
+                let done = null;
+                const answered = new Promise((res, rej) => { done = { res, rej }; });
+                // A rejection after the race is decided (the abort of a lock
+                // that came too late) has no one left to hear it.
+                answered.catch(() => {});
+                navigator.locks.request(_MBG_LOCK, ctrl ? { signal: ctrl.signal } : {}, () => {
+                    if (expired) return undefined; // a late grant books nothing
+                    try { done.res(rw()); } catch (e) { done.rej(e); return undefined; }
+                    return _mbGateSleep(_MBG_LOCK_HOLD_MS);
+                }).catch((e) => done.rej(e));
+                return await Promise.race([answered, timeout]);
             }
         } catch (_) {
             /* no Web Locks here, or the lock is stuck: unlocked, like a lone script */
