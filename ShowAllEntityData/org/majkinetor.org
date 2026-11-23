@@ -453,7 +453,7 @@ CLOSED: [2026-11-21 Sat]
   queue. Nothing on the IP (same scope as the keys marks), nothing in EH's view, nothing resumed.
 - *Tests*: =tests/fixtures/eh-interop-markers.spec.js= "Event Horizon's player while our table shows" (6), against
   =eh-body-swap.js='s new player (=play()=, =plyNext()=, the channel, =__EH_SIM_PLY_DEAF__=); mutations
-  =scripts/mutations/eh-player-quiet.json=. Live: the pre-test above in vzell's browser, *OK* (vzell, 2026-11-23 ~16:00 CET: "tested live, OK, all behave as predicted"; the four checks of the request: stopped after the render, nothing seen later, EH's own view untouched, setting off leaves it).
+  =scripts/mutations/eh-player-quiet.json=. Live: the pre-test above in vzell's browser, *OK* (vzell, 2026-11-23 ~16:00 CET: "tested live, OK, all behave as predicted"; the four checks of the request: stopped after the render, nothing seen later, EH's own view untouched, setting off leaves it). Step 2: back in EH's view no player at all, so EH took our =close= on its channel across Tampermonkey's script worlds, not only the backstop.
 
 ** TODO The shared gate at eight a second (majkinetor's 2026.11.23 gate)
 
