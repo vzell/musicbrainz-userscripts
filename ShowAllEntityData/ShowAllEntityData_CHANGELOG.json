@@ -1,5 +1,19 @@
 [
   {
+    "version": "9.99.1679",
+    "date": "2026-11-23",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "An area's link preview now shows its pictures, as majkinetor's Event Horizon does: press Space on an area link and the window shows its Wikidata locator map with the area's flag on its corner, then the flag, coat of arms, seal and image (five small requests to Wikidata, \"2 of 5 asked\" while they come). The card then shows the map with a small flag, also after a reload, and the area's own page shows the pictures beside its name once a window has asked for them (the page itself asks nothing). The switch is now called \"Pictures in artist, label, place and area previews\".",
+          "An area's window also lists its links (Wikidata, GeoNames) in a table under the facts, as a place's window does.",
+          "When Wikidata says too many requests, every tab now pauses its Wikidata requests for as long as Wikidata asks and then tries again, so a window waits for its pictures instead of failing (as already for Discogs)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1678",
     "date": "2026-11-23",
     "sections": [

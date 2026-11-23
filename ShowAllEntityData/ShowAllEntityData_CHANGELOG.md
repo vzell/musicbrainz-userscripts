@@ -4,9 +4,18 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1849 versions; the month pages hold all of them.
+This page shows the newest 100 of 1850 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1679 — 2026-11-23
+
+**✨ Improve**
+
+- An area's link preview now shows its pictures, as majkinetor's Event Horizon does: press Space on an area link and the window shows its Wikidata locator map with the area's flag on its corner, then the flag, coat of arms, seal and image (five small requests to Wikidata, "2 of 5 asked" while they come). The card then shows the map with a small flag, also after a reload, and the area's own page shows the pictures beside its name once a window has asked for them (the page itself asks nothing). The switch is now called "Pictures in artist, label, place and area previews".
+- An area's window also lists its links (Wikidata, GeoNames) in a table under the facts, as a place's window does.
+- When Wikidata says too many requests, every tab now pauses its Wikidata requests for as long as Wikidata asks and then tries again, so a window waits for its pictures instead of failing (as already for Discogs).
+
 
 ## 9.99.1678 — 2026-11-23
 
@@ -852,13 +861,6 @@ This page shows the newest 100 of 1849 versions; the month pages hold all of the
 **✨ Improve**
 
 - New setting: ⚙️ Settings → 🎨 UI FEATURES → "Hide String Theory's corner launchers while a table is shown" (on).
-
-
-## 9.99.1579 — 2026-11-08
-
-**🐛 Fix**
-
-- ISRC Scout (majkinetor) no longer replaces the ISRC and Links columns of a rendered tracklist with bare copies that have no sort buttons and no 📊, and no longer widens its headings: every table this script renders now says it is this script's (the shared data-mbu-foreign mark), which ISRC Scout leaves alone, and its own hover tip no longer shows over the table. Needs the ISRC Scout with that mark (majkinetor's \#938); with an older one, press the Tracks button after its columns have appeared, as before.
 
 
 ---

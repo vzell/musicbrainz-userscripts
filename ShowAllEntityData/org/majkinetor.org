@@ -16,13 +16,11 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-23)
 
-- *Now:* "Entity pictures: … area map left" on =feat/area-pictures= (mockups approved 2026-11-23:
-  https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o part A, the window's links
-  https://claude.ai/artifact/23mGArYVMW2bru1egjRDxR). Wikidata answers 429 after ~19 requests at 1/s
-  (=probe-area-images.py=, 2026-11-23): vzell chose five =wbgetclaims= per area as planned, with Wikidata
-  paused for every tab on a 429 (Retry-After), as Discogs' API is.
+- *Now:* nothing in progress. *Next:* =refresh-majkinetor= to the clone's latest (the analysis still reads
+  d8c0030); the open half of "Entity pictures" (the area chain's ISO flags, =areaClimb=/=flagI=).
 - *Shipped today:* "Title style": 9.99.1677 the guess-case word lists, 9.99.1678 the kinds of a track/recording
-  name difference.
+  name difference; "Entity pictures": 9.99.1679 an area's five Wikidata pictures with the flag badge, its links
+  table, and Wikidata in the shared request gate (vzell's live check OK).
 - *Shipped today:* the two small ours from the 2026-11-20 refresh: 9.99.1674 the gate's write
   clamp, 9.99.1675 C3 with =data-mbu-keys-keep= (=feat/eh-keys-keep-gate-clamp=; vzell's browser check OK). The
   small ours from the 2026-11-21 answer shipped too: 9.99.1676, a standalone EH's =data-mbu-eh= counts for the keys
@@ -82,7 +80,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Stale-while-revalidate: popup engine done, =rel-ws2= left      | PART  | 9.99.1643     | Adoptions     |
 | In-page log window (=mbuLog=)                                  | TODO  | —             | Adoptions     |
 | Hide the native page until the render ("shine through")        | TODO  | —             | Adoptions     |
-| Entity pictures: EH's providers done, area map left            | PART  | 9.99.1646     | Adoptions     |
+| Entity pictures: EH's providers done, area map left            | PART  | 9.99.1679     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
@@ -706,7 +704,7 @@ CLOSED: [2026-11-20 Fri]
   off; no badge in the viewer, 16 px on the card. Mockups https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o part A
   and https://claude.ai/artifact/23mGArYVMW2bru1egjRDxR. Wikidata 429s after 10–19 requests at 1/s
   (=Retry-After: 42=): five =wbgetclaims= as EH does, with =www.wikidata.org= in the shared request gate.
-- *Built* (=feat/area-pictures=, WIP.1, 2026-11-23, petri): =_MB_POP_IMG_PROPS.area=, =_MB_POP_IMG_ALL=, the badge
+- *Shipped in 9.99.1679* (=feat/area-pictures=, 2026-11-23, petri; vzell's live check OK): =_MB_POP_IMG_PROPS.area=, =_MB_POP_IMG_ALL=, the badge
   in =_mbPopImageRecordFor()=, =_MB_WD_IMG_LABEL=, the area kind's =pin()=/=cardAside=/links, =_eiStartKnown()=;
   credited in the header. Spec =pop-area-pictures.spec.js= 7/7, mutations 13/13. Anchors =eh-area-props=,
   =eh-area-badge=, =saed-area-pictures=. The area chain's ISO flags (=areaClimb=/=flagI=) and pictures for
