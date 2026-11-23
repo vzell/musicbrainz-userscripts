@@ -1,0 +1,171 @@
+[
+  {
+    "name": "areas ask no picture properties",
+    "why": "Without the area's properties the window has no pictures. Must fail on the Space test.",
+    "edits": [
+      {
+        "find": "        area: ['P242', 'P41', 'P94', 'P158', 'P18'],\n    };",
+        "replace": "    };"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "Space asks the five in order",
+    "expect": "fail"
+  },
+  {
+    "name": "an area stops at the first picture",
+    "why": "The area keeps every property that names a file, not the first. Must fail on the Space test (one picture, one request).",
+    "edits": [
+      {
+        "find": "        const all = _MB_POP_IMG_ALL.has(t.type);\n        if (images.length && !all)",
+        "replace": "        const all = false;\n        if (images.length && !all)"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "Space asks the five in order",
+    "expect": "fail"
+  },
+  {
+    "name": "the badge is never set",
+    "why": "The flag belongs on the map's corner. Must fail on the Space test.",
+    "edits": [
+      {
+        "find": "        if (images[0] && images[0].prop === 'P242' && flag) images[0] = { ...images[0], badge: flag.thumb };",
+        "replace": "        if (false && images[0] && flag) images[0] = { ...images[0], badge: flag.thumb };"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "Space asks the five in order",
+    "expect": "fail"
+  },
+  {
+    "name": "the badge sits on any first picture",
+    "why": "Only a locator map carries the flag (Event Horizon's rule). Must fail on the no-map test.",
+    "edits": [
+      {
+        "find": "        if (images[0] && images[0].prop === 'P242' && flag) images[0] = { ...images[0], badge: flag.thumb };",
+        "replace": "        if (images[0] && flag) images[0] = { ...images[0], badge: flag.thumb };"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "the badge only ever sits on a map",
+    "expect": "fail"
+  },
+  {
+    "name": "the window draws no badge",
+    "why": "The record has it; the large picture must show it. Must fail on the Space test.",
+    "edits": [
+      {
+        "find": "            link(cur, pick, img(cur, 'mb-dp-xcover') + badge(cur), cur.badge ? ' class=\"mb-ei-big\"' : '') +",
+        "replace": "            link(cur, pick, img(cur, 'mb-dp-xcover'), cur.badge ? ' class=\"mb-ei-big\"' : '') +"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "Space asks the five in order",
+    "expect": "fail"
+  },
+  {
+    "name": "the card draws no badge",
+    "why": "The card's map carries the 16 px flag (question A2). Must fail on the card test.",
+    "edits": [
+      {
+        "find": "        return `<div class=\"mb-pop-pic\"><img src=\"${_rgEsc(ok[0].thumb)}\" alt=\"\" referrerpolicy=\"no-referrer\">${badge}` +",
+        "replace": "        return `<div class=\"mb-pop-pic\"><img src=\"${_rgEsc(ok[0].thumb)}\" alt=\"\" referrerpolicy=\"no-referrer\">` +"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "afterwards the card shows",
+    "expect": "fail"
+  },
+  {
+    "name": "the card never reads the stored record",
+    "why": "After a reload the card shows the picture from IndexedDB. Must fail on the card test's reload half.",
+    "edits": [
+      {
+        "find": "                if (start && spec.cardAside) _mbPopImagePeek(t, repaint);",
+        "replace": "                if (false && start && spec.cardAside) _mbPopImagePeek(t, repaint);"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "afterwards the card shows",
+    "expect": "fail"
+  },
+  {
+    "name": "the caption names every property image",
+    "why": "The labels name the property (locator map, flag, coat of arms, seal). Must fail on the Space test's strip labels.",
+    "edits": [
+      {
+        "find": "        if (im.prop) return `Wikidata ${im.prop} (${_MB_WD_IMG_LABEL[im.prop] || 'image'})`;",
+        "replace": "        if (im.prop) return `Wikidata ${im.prop} (${im.prop === 'P154' ? 'logo' : 'image'})`;"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "Space asks the five in order",
+    "expect": "fail"
+  },
+  {
+    "name": "the area page heading looks the links up",
+    "why": "Decided: the heading shows a known record only and never asks. Without the area branch it does the url-rels lookup. Must fail on the heading test.",
+    "edits": [
+      {
+        "find": "        if (_MB_POP_IMG_ALL.has(ent.type)) {\n            _eiStartKnown(ent, sidebar);",
+        "replace": "        if (false) {\n            _eiStartKnown(ent, sidebar);"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "own page shows them",
+    "expect": "fail"
+  },
+  {
+    "name": "the heading's badge stays on every picture",
+    "why": "The flag belongs to the map; stepped to the flag it must go. Must fail on the heading test.",
+    "edits": [
+      {
+        "find": "        box.querySelectorAll('img.mb-ei-badge').forEach((b) => { b.hidden = Number(b.dataset.mbEiFor) !== i; });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "own page shows them",
+    "expect": "fail"
+  },
+  {
+    "name": "Wikidata is not a shared host",
+    "why": "Outside the shared gate a 429 gets one retry 1.5 s later; refused twice, the window fails. Must fail on the 429 test.",
+    "edits": [
+      {
+        "find": "    const _EXT_SHARED_SLOT_HOSTS = new Set(['api.discogs.com', 'www.wikidata.org']);",
+        "replace": "    const _EXT_SHARED_SLOT_HOSTS = new Set(['api.discogs.com']);"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "429",
+    "expect": "fail"
+  },
+  {
+    "name": "the area window has no links table",
+    "why": "The links mockup's answer A: the place window's table under the facts. Must fail on the pictures-off test.",
+    "edits": [
+      {
+        "find": "                const links = ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksTableHtml(t, 'links', ps.data.relations) : '';",
+        "replace": "                const links = '';"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "pictures off",
+    "expect": "fail"
+  },
+  {
+    "name": "Space asks no url-rels for an area",
+    "why": "The links and the pictures both need them; asked even with pictures off (the links mockup's question 3). Must fail on the pictures-off test.",
+    "edits": [
+      {
+        "find": "                const pin = _mbPopLookup(t, 'url-rels');\n                _mbPopPinLoad(t, pin.key, pin.url, again, repaint);\n                _mbPopImageLoad(t, _mbPopLoadedRels(_mbPop.get(pin.key)), again, repaint);",
+        "replace": "                const pin = _mbPopLookup(t, 'url-rels');\n                _mbPopImageLoad(t, _mbPopLoadedRels(_mbPop.get(pin.key)), again, repaint);"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "pictures off",
+    "expect": "fail"
+  }
+]

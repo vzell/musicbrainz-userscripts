@@ -465,11 +465,54 @@ do, and only on Space.
 `_MB_POP_IMG_VERSION`, `_mbTtlMs()`. "No picture" is kept too, so a second
 Space asks nothing. A failure is retried only by ⟳ or "Try again".
 
-**When.** Only from the kinds' `pin()` (artist, label, place), once their
+**When.** Only from the kinds' `pin()` (artist, label, place, area), once their
 url-rels answer is there: the artist's and label's window lookups, the place's
 own card lookup. `relations` is null before that; a ⟳ that comes while the
 url-rels reload is remembered in `_mbPopImgAgain`, so the next start skips the
-caches. Not area (locator maps), not event (event art).
+caches. Not event (event art). Areas since feat/area-pictures, below.
+
+**Areas** (feat/area-pictures WIP.1, 2026-11-23; mockups
+https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o part A and, for the window's
+links, https://claude.ai/artifact/23mGArYVMW2bru1egjRDxR; both approved with
+every recommendation). Event Horizon's `areaImages()` (majkinetor) is the
+model:
+
+- `_MB_POP_IMG_PROPS.area` is its five, in its order: P242 locator map, P41
+  flag, P94 coat of arms, P158 seal, P18 image. A kind in `_MB_POP_IMG_ALL`
+  (only `area`) keeps EVERY property that names a file, after its links'
+  pictures, instead of stopping at the first; one `wbgetclaims` each, in
+  turn through the gate (one `wbgetentities` with all claims is 1.6–2.5 MB
+  for a country). `_mbPopImgAsked` counts the answers for the window's
+  "N of 5 asked".
+- **The badge**: when the first picture is the map and a flag was found, the
+  map carries the flag's thumbnail as `badge` (EH's rule). Drawn 40 px on the
+  window's large picture (`a.mb-ei-big`), 16 px on the card, 12 px on the
+  heading's 34 px box (hidden while it shows another picture, `_eiStep()`);
+  never in the strip or the viewer, which show each file as it is
+  (question A1). Shown only once the flag itself is known to load.
+- **Labels**: `_MB_WD_IMG_LABEL` names each property ("locator map", "coat
+  of arms"), for the caption, the strip's `aria-label` and `_eiOrigin()`.
+- **The area kind**: `pin()` asks the url-rels (`_mbPopLookup(t,
+  'url-rels')`, the key the Subdivision flags already share), even with
+  pictures off, then `_mbPopImageLoad()`; the window shows the picture after
+  the pills and the place window's links table (`_mbPopUrlLinksTableHtml()`)
+  under the facts; `cardAside: _mbPopCardPicture`.
+- **The area page** (`_eiStartKnown()`): the heading shows the window's
+  record when memory or IndexedDB has it, and asks nothing, not even the
+  url-rels (`data-mb-ei` `known`/`none`).
+- **Wikidata's budget**: `www.wikidata.org` is in `_EXT_SHARED_SLOT_HOSTS`
+  since this branch (vzell, 2026-11-23): its API answered 429 with
+  `Retry-After: 42` after 10–19 requests at one a second and refused for
+  about 40 s (`scripts/probe-area-images.py`, `scripts/probe-wikidata-429.py`).
+  A 429 now pauses every tab's Wikidata requests (the longer of
+  `_extRateLimitPauseMs` and `Retry-After`) and is asked up to
+  `_EXT_SHARED_TRIES` times, so a window waits instead of failing.
+- What areas have (probe 2026-11-23, 32 areas answered whole before the
+  429s; DEBUG-NOTES): every country a map and a flag; 1 of 32 nothing.
+  Their url-rels are GeoNames and Wikidata only, 2–4 each
+  (`scripts/probe-area-url-rels.py`).
+- Spec `tests/fixtures/pop-area-pictures.spec.js`; mutations
+  `scripts/mutations/area-pictures.json`.
 
 **The card never asks.** `_mbPopImagePeek()` reads the record from memory,
 else ONE IndexedDB read per key per page load, and repaints on a hit. The

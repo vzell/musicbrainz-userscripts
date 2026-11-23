@@ -69,8 +69,8 @@
     "why": "Every picture of the links, not the first Commons one.",
     "edits": [
       {
-        "find": "        if (images.length) return { ok: true, data: { images, file: images[0].file, from: 'rels', item } };",
-        "replace": "        if (images.length) return { ok: true, data: { images: images.slice(0, 1), file: images[0].file, from: 'rels', item } };"
+        "find": "        if (images.length && !all) return { ok: true, data: { images, file: images[0].file, from: 'rels', item } };",
+        "replace": "        if (images.length && !all) return { ok: true, data: { images: images.slice(0, 1), file: images[0].file, from: 'rels', item } };"
       }
     ],
     "spec": "tests/fixtures/pop-mb-image.spec.js",

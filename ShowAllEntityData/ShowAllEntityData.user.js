@@ -311,6 +311,10 @@
 //   titles as the punctuation half of Apollo Editor's recFold() does ("&" as "and", other
 //   non-letters as spaces; accents kept) and measure them with his recLev() edit distance,
 //   as _titleDiffFold() and _titleDiffLev().
+//   Added 2026-11-23: an area's pictures (_MB_POP_IMG_PROPS.area) follow Event Horizon's
+//   areaImages(): its five Wikidata properties in its order (P242 locator map, P41 flag, P94
+//   coat of arms, P158 seal, P18 image), one wbgetclaims each, and the flag as a badge on the
+//   locator map's corner when the map comes first.
 // ============================================================================================================================================
 
 (function() {
@@ -6139,14 +6143,16 @@
         },
 
         sa_pop_mb_image: {
-            label: 'Pictures in artist, label and place previews',
+            label: 'Pictures in artist, label, place and area previews',
             type: 'checkbox',
             default: true,
             description: 'On by default. When Space opens the window on an artist, a label or a place, it shows ' +
                          'the entity\'s picture: the Wikimedia Commons file MusicBrainz links as its image or ' +
                          'logo, else the one its Wikidata item names (one or two small requests to Wikidata). ' +
+                         'An area\'s window shows its locator map with the flag on its corner, then the flag, ' +
+                         'coat of arms, seal and image its Wikidata item names (five small requests). ' +
                          'Click it for the viewer. Asked only on Space, never on a hover; afterwards the card ' +
-                         'shows it too, from this browser\'s storage.'
+                         'and an area\'s own page show it too, from this browser\'s storage.'
         },
 
         sa_pop_mb_eh_images: {
@@ -6156,7 +6162,7 @@
             // Greyed out while the picture setting is off (VZ_MBLibrary 4.6.0; an
             // older library shows it as usual, and _ehArtistImage() ignores it then).
             enabledBy: 'sa_pop_mb_image',
-            description: 'On by default; needs "Pictures in artist, label and place previews" above. When ' +
+            description: 'On by default; needs "Pictures in artist, label, place and area previews" above. When ' +
                          'majkinetor\'s Event Horizon is installed, an artist\'s or a label\'s window also shows ' +
                          'the pictures Event Horizon finds (Discogs, Deezer, Tidal, Apple Music, SoundCloud, ' +
                          'Bandcamp, YouTube Music, Wikipedia), after this script\'s own, in the order you set in ' +
@@ -53218,6 +53224,15 @@
             #mb-dp-peek .mb-pop-pic img { display: block; width: 64px; height: 80px; object-fit: cover; border: 1px solid #d9cfbd; border-radius: 2px; background: #f3eee3; }
             /* More pictures than the card shows (2026-10-29): "+N" on its corner. */
             #mb-dp-peek .mb-pop-pic { position: relative; }
+            /* An area's flag on its map's corner (mockup part A of
+               https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o): 16 px on the
+               card, 40 px on the window's large picture. */
+            #mb-dp-peek .mb-pop-pic img.mb-ei-badge { position: absolute; left: 3px; top: 3px; width: 16px; height: auto;
+                border: 0; border-radius: 1px; background: none; object-fit: contain; box-shadow: 0 1px 2px rgba(60, 40, 20, 0.45); pointer-events: none; }
+            .mb-dp-dialog .mb-ei-win a.mb-ei-big { position: relative; display: inline-block; max-width: 100%; }
+            .mb-dp-dialog .mb-ei-win img.mb-ei-badge { position: absolute; left: 8px; top: 8px; width: 40px; height: auto;
+                border-radius: 2px; box-shadow: 0 1px 4px rgba(60, 40, 20, 0.45); pointer-events: none; }
+            .mb-dp-dialog .mb-ei-asked { font-variant-numeric: tabular-nums; }
             #mb-dp-peek .mb-pop-pic-more { position: absolute; right: 2px; bottom: 2px; padding: 0 4px; border-radius: 3px;
                 font: 700 10px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; background: rgba(43, 38, 34, 0.82); color: #fbf8f1; }
             #mb-dp-peek .mb-pop-main { min-width: 0; }
@@ -85109,10 +85124,41 @@
      * The kinds that show a picture, and the Wikidata properties each asks,
      * in order. A label asks its logo first: Columbia's P18 is a photograph
      * of something else (scripts/probe-wikidata-image.py, 2026-10-11), where
-     * MusicBrainz's server would ask P18 first.
+     * MusicBrainz's server would ask P18 first. An area asks Event
+     * Horizon's five (its `areaImages()`, majkinetor): the locator map, the
+     * flag, the coat of arms, the seal, the image (mockup
+     * https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o part A, approved
+     * 2026-11-23).
      * @type {Object<string, string[]>}
      */
-    const _MB_POP_IMG_PROPS = { artist: ['P18', 'P154'], label: ['P154', 'P18'], place: ['P18', 'P154'] };
+    const _MB_POP_IMG_PROPS = {
+        artist: ['P18', 'P154'], label: ['P154', 'P18'], place: ['P18', 'P154'],
+        area: ['P242', 'P41', 'P94', 'P158', 'P18'],
+    };
+
+    /**
+     * The kinds whose record keeps EVERY property of `_MB_POP_IMG_PROPS`
+     * that names a file, in order (an area's five pictures); the others stop
+     * at the first.
+     * @type {Set<string>}
+     */
+    const _MB_POP_IMG_ALL = new Set(['area']);
+
+    /**
+     * What each Wikidata picture property is, in words: the caption's "from
+     * Wikidata Q… (locator map)" and the viewer's origin line.
+     * @type {Object<string, string>}
+     */
+    const _MB_WD_IMG_LABEL = {
+        P18: 'image', P154: 'logo', P242: 'locator map', P41: 'flag', P94: 'coat of arms', P158: 'seal',
+    };
+
+    /**
+     * How many of an area's properties its record has asked so far, by
+     * record key, while it loads: the window's "2 of 5 asked".
+     * @type {Map<string, number>}
+     */
+    const _mbPopImgAsked = new Map();
 
     /** Picture records read from IndexedDB for a card (`_mbPopImagePeek()`), by key; `null` while reading or when none. */
     const _mbPopImgPeek = new Map();
@@ -85253,15 +85299,17 @@
     }
 
     /**
-     * A picture from the entity's Wikidata item (P18 image, P154 logo): one
-     * Commons file, in the shape of `_eiImagesFrom()`'s.
+     * A picture from the entity's Wikidata item (P18 image, P154 logo; an
+     * area's P242 locator map, P41 flag, P94 coat of arms, P158 seal): one
+     * Commons file, in the shape of `_eiImagesFrom()`'s, its `type` the
+     * property in words (`_MB_WD_IMG_LABEL`).
      * @param {string} file
-     * @param {string} prop - 'P18' or 'P154'.
+     * @param {string} prop - A key of `_MB_WD_IMG_LABEL`.
      * @returns {Object}
      */
     function _eiWikidataImage(file, prop) {
         const u = _mbPopImgUrls(file);
-        return { src: u.thumb, thumb: u.thumb, large: u.large, page: u.page, url: u.page, type: prop === 'P154' ? 'logo' : 'image', file, host: 'commons.wikimedia.org', prop };
+        return { src: u.thumb, thumb: u.thumb, large: u.large, page: u.page, url: u.page, type: _MB_WD_IMG_LABEL[prop] || 'image', file, host: 'commons.wikimedia.org', prop };
     }
 
     /**
@@ -85498,7 +85546,7 @@
      */
     function _eiOrigin(im) {
         if (im.via === 'eh') return `${im.from} · via Event Horizon`;
-        if (im.prop) return `Wikidata ${im.prop} (${im.prop === 'P154' ? 'logo' : 'image'})`;
+        if (im.prop) return `Wikidata ${im.prop} (${_MB_WD_IMG_LABEL[im.prop] || 'image'})`;
         if (im.file) return 'Wikimedia Commons';
         return `${im.type} link · ${im.host.replace(/^www\./, '')}`;
     }
@@ -85531,8 +85579,13 @@
         _ehImagesLoad(t, relations, force, repaint);
         const s = _mbPop.get(key);
         if (!force && s && s.status === 'failed') return;
-        _mbLoad(key, async (wanted) => _mbPopImageRecordFor(t, relations, wanted),
-            { force, repaint, wanted: _mbPopWanted(t), version: _MB_POP_IMG_VERSION });
+        _mbLoad(key, async (wanted) => {
+            _mbPopImgAsked.delete(key);
+            return _mbPopImageRecordFor(t, relations, wanted, (n) => {
+                _mbPopImgAsked.set(key, n);
+                if (repaint) repaint();
+            });
+        }, { force, repaint, wanted: _mbPopWanted(t), version: _MB_POP_IMG_VERSION });
     }
 
     /**
@@ -85545,28 +85598,48 @@
      * record, so a heading that found no picture in the links never stands
      * in for the window's Wikidata answer.
      *
+     * A kind of `_MB_POP_IMG_ALL` (an area) keeps its links' pictures AND
+     * every property that names a file, in `_MB_POP_IMG_PROPS` order, one
+     * `wbgetclaims` each as Event Horizon's `areaImages()` asks them (one
+     * `wbgetentities` with every claim is 1.6–2.5 MB for a country, probe
+     * 2026-11-21); the locator map, when it is first and a flag was found,
+     * carries the flag's thumbnail as `badge`. The shape only adds fields,
+     * so `_MB_POP_IMG_VERSION` stays: no area had a record before.
+     *
      * @param {object} t
      * @param {Array<Object>} relations
      * @param {function(): boolean} wanted
+     * @param {?function(number, number): void} [onAsked] - After each answer:
+     *   how many properties are asked, of how many (the window's progress).
      * @returns {Promise<{ok?: boolean, data?: Object, detail?: string, skipped?: boolean}>}
      */
-    async function _mbPopImageRecordFor(t, relations, wanted) {
+    async function _mbPopImageRecordFor(t, relations, wanted, onAsked = null) {
         const images = _eiImagesFrom(relations);
         const item = _mbPopWikidataItem(relations);
-        if (images.length) return { ok: true, data: { images, file: images[0].file, from: 'rels', item } };
-        for (const prop of item ? (_MB_POP_IMG_PROPS[t.type] || []) : []) {
+        const all = _MB_POP_IMG_ALL.has(t.type);
+        if (images.length && !all) return { ok: true, data: { images, file: images[0].file, from: 'rels', item } };
+        const props = item ? (_MB_POP_IMG_PROPS[t.type] || []) : [];
+        for (let i = 0; i < props.length; i++) {
+            const prop = props[i];
             const url = `https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&entity=${item}&property=${prop}`;
             const res = await _extGet(url, { wanted, fetchOpts: { accept: /\bjson\b/i, headers: { 'Api-User-Agent': _EXT_AGENT } } });
             if (res.skipped) return { skipped: true };
             if (res.error || res.status !== 200) return { ok: false, detail: _extFailText(res) };
             const d = _extJson(res);
             if (!d) return { ok: false, detail: 'Wikidata answered, but not with JSON' };
+            if (onAsked) onAsked(i + 1, props.length);
             // An item Wikidata does not have (deleted, never existed): no picture.
             if (d.error) break;
             const f = _mbPopClaimFile(d, prop);
-            if (f) return { ok: true, data: { images: [_eiWikidataImage(f, prop)], file: f, from: prop, item } };
+            if (!f) continue;
+            if (!all) return { ok: true, data: { images: [_eiWikidataImage(f, prop)], file: f, from: prop, item } };
+            if (!images.some(im => im.file === f)) images.push(_eiWikidataImage(f, prop));
         }
-        return { ok: true, data: { images: [], file: '', from: '', item } };
+        // The flag on the locator map's corner, as Event Horizon's
+        // areaImages() puts it: only when the map is first and a flag exists.
+        const flag = images.find(im => im.prop === 'P41');
+        if (images[0] && images[0].prop === 'P242' && flag) images[0] = { ...images[0], badge: flag.thumb };
+        return { ok: true, data: { images, file: images.length ? images[0].file : '', from: images.length ? (images[0].prop || 'rels') : '', item } };
     }
 
     /**
@@ -85625,7 +85698,10 @@
         }
         const ok = images.filter(im => _eiLoadState.get(im.src) === 'ok');
         if (!ok.length) return '';
-        return `<div class="mb-pop-pic"><img src="${_rgEsc(ok[0].thumb)}" alt="" referrerpolicy="no-referrer">` +
+        // An area's map carries its flag on the corner, 16 px (mockup part A, question 2).
+        const badge = ok[0].badge && _eiLoadState.get(ok[0].badge) === 'ok'
+            ? `<img class="mb-ei-badge" src="${_rgEsc(ok[0].badge)}" alt="" referrerpolicy="no-referrer">` : '';
+        return `<div class="mb-pop-pic"><img src="${_rgEsc(ok[0].thumb)}" alt="" referrerpolicy="no-referrer">${badge}` +
             `${ok.length > 1 ? `<span class="mb-pop-pic-more">+${ok.length - 1}</span>` : ''}</div>`;
     }
 
@@ -85671,7 +85747,13 @@
         if (!_mbPopImgOn(t)) return '';
         const s = _mbPop.get(_mbPopImgKey(t));
         if (!s) return '';
-        if (s.status === 'loading') return '<div class="mb-dp-xsub mb-pop-xpic-wait"><span class="mb-dp-spin">◌</span> Looking for a picture…</div>';
+        if (s.status === 'loading') {
+            // An area asks five properties: how many so far (mockup part A).
+            const all = _MB_POP_IMG_ALL.has(t.type);
+            const n = all ? (_mbPopImgAsked.get(_mbPopImgKey(t)) || 0) : 0;
+            return `<div class="mb-dp-xsub mb-pop-xpic-wait"><span class="mb-dp-spin">◌</span> Looking for ${all ? 'pictures' : 'a picture'}…` +
+                `${all ? ` <span class="mb-ei-asked">${n} of ${(_MB_POP_IMG_PROPS[t.type] || []).length} asked</span>` : ''}</div>`;
+        }
         if (s.status === 'failed') {
             return `<div class="mb-dp-xsub mb-pop-xpic-fail">Could not ask Wikidata for a picture (${_rgEsc(s.detail)}).</div>` +
                 '<p><button type="button" class="mb-dp-retry">⟳ Try again</button></p>';
@@ -85721,9 +85803,14 @@
                 ' <span class="mb-ei-via">via Event Horizon</span>'
             : im.file
                 ? `<a href="${_rgEsc(im.page)}" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> · ${_rgEsc(im.file)}` +
-                    (im.prop ? ` · from Wikidata ${_rgEsc(rec.item)} (${im.prop === 'P154' ? 'logo' : 'image'})` : '')
+                    (im.prop ? ` · from Wikidata ${_rgEsc(rec.item)} (${_rgEsc(_MB_WD_IMG_LABEL[im.prop] || 'image')})` : '')
                 : `<a href="${_rgEsc(im.url)}" target="_blank" rel="noopener noreferrer">${_rgEsc(_eiOrigin(im))}</a>`);
-        return '<figure class="mb-pop-xpic mb-ei-win">' + link(cur, pick, img(cur, 'mb-dp-xcover')) +
+        // The flag on the map's corner (Event Horizon's areaImages()); never
+        // in the strip or the viewer, which show each file as it is.
+        const badge = im => (im.badge && _eiLoadState.get(im.badge) === 'ok'
+            ? `<img class="mb-ei-badge" src="${_rgEsc(im.badge)}" alt="" referrerpolicy="no-referrer">` : '');
+        return '<figure class="mb-pop-xpic mb-ei-win">' +
+            link(cur, pick, img(cur, 'mb-dp-xcover') + badge(cur), cur.badge ? ' class="mb-ei-big"' : '') +
             `<figcaption class="mb-dp-xsub"><span>${where(cur)}</span>` +
             `${ok.length > 1 ? `<span class="mb-ei-pos">${pick + 1} / ${ok.length}</span>` : ''}</figcaption>` +
             (ok.length > 1 ? '<div class="mb-ei-strip" role="group" aria-label="Pictures">' + ok.map((im, i) => link(im, i, img(im, 'mb-ei-thumb') + ehTag(im),
@@ -89069,7 +89156,7 @@
         })),
         // One lookup for card and window: type, ISO codes, the immediate
         // parent and the parts (a chain of parents would cost a lookup per
-        // level, R1).
+        // level, R1). Space adds the url-rels and the Wikidata pictures.
         area: Object.assign({ title: 'Area', wide: false }, _mbPopLookupKind({
             cardInc: 'area-rels',
             cardHtml(d) {
@@ -89084,15 +89171,30 @@
                         ['Existed', _rgEsc(_mbPopLifeSpan(d['life-span']))],
                     ]);
             },
+            // The pictures after the pills, the links under the facts
+            // (mockups https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o part A
+            // and https://claude.ai/artifact/23mGArYVMW2bru1egjRDxR, approved
+            // 2026-11-23): the place window's links table, from the url-rels
+            // lookup the pictures and the Subdivision flags share.
             windowHtml(d, t) {
+                const ps = _mbPop.get(_mbPopLookup(t, 'url-rels').key);
+                const links = ps && ps.status === 'done' && ps.data ? _mbPopUrlLinksTableHtml(t, 'links', ps.data.relations) : '';
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
-                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><h4>Facts</h4>` + _mbPopKvHtml([
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>${_mbPopWindowPicture(t)}<h4>Facts</h4>` + _mbPopKvHtml([
                         ['ISO 3166', _rgEsc([...(d['iso-3166-1-codes'] || []), ...(d['iso-3166-2-codes'] || []),
                             ...(d['iso-3166-3-codes'] || [])].join(', '))],
                         ['Existed', _rgEsc(_mbPopLifeSpan(d['life-span']))],
-                    ]) + `</div><div class="mb-dp-col"><h4>Related areas</h4>${_mbPopRelTableHtml(t, 'areas',
+                    ]) + links + `</div><div class="mb-dp-col"><h4>Related areas</h4>${_mbPopRelTableHtml(t, 'areas',
                     _mbPopRelTableRows(d.relations, 'area'), 'Area', 'areas')}</div></div>`;
+            },
+            cardAside: _mbPopCardPicture,
+            // Space: the url-rels (asked even with pictures off, for the
+            // links: question 3 of the links mockup), then the pictures.
+            pin(t, d, again, repaint) {
+                const pin = _mbPopLookup(t, 'url-rels');
+                _mbPopPinLoad(t, pin.key, pin.url, again, repaint);
+                _mbPopImageLoad(t, _mbPopLoadedRels(_mbPop.get(pin.key)), again, repaint);
             },
         })),
         // One lookup for card and window. The Web Service has no
@@ -90460,9 +90562,16 @@
      * the same 25 (60) a minute. Their next slot is kept in GM storage too,
      * which every tab of the script shares (vzell, 2026-10-19: HTTP 429 with
      * 4+ Discogs tabs open and no token).
+     *
+     * Wikidata's API too since feat/area-pictures (vzell, 2026-11-23): it
+     * answered HTTP 429 with `Retry-After: 42` after 10 to 19 requests at one
+     * a second, and refused for about 40 s (scripts/probe-area-images.py,
+     * scripts/probe-wikidata-429.py), while an area window asks five. A 429
+     * now pauses every tab's Wikidata requests and the window waits,
+     * instead of failing on its one retry 1.5 s later.
      * @type {Set<string>}
      */
-    const _EXT_SHARED_SLOT_HOSTS = new Set(['api.discogs.com']);
+    const _EXT_SHARED_SLOT_HOSTS = new Set(['api.discogs.com', 'www.wikidata.org']);
 
     /**
      * How long a shared host's requests pause, in every tab, once it says
@@ -152430,6 +152539,10 @@ a { color: #1565c0; }`;
             .mb-ei-avatar { position: relative; overflow: visible; background: #fff; }
             .mb-ei-avatar .mb-ei-clip { position: absolute; inset: 0; overflow: hidden; border-radius: 2px; }
             .mb-ei-avatar .mb-ei-clip img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity 0.9s ease; }
+            /* An area's flag on its map's corner (mockup part A, 2026-11-23). */
+            .mb-ei-avatar img.mb-ei-badge { position: absolute; left: 1px; top: 1px; width: 12px; height: auto; border-radius: 1px;
+                box-shadow: 0 1px 2px rgba(60, 40, 20, 0.45); pointer-events: none; }
+            .mb-ei-avatar img.mb-ei-badge[hidden] { display: none; }
             .mb-ei-avatar .mb-ei-arr { position: absolute; top: 50%; z-index: 1; width: 12px; height: 20px; padding: 0; transform: translateY(-50%);
                 border: 0; border-radius: 2px; background: rgba(43, 38, 34, 0.78); color: #fbf8f1; font: 12px/20px system-ui, sans-serif;
                 cursor: pointer; opacity: 0; transition: opacity 0.15s; }
@@ -152744,6 +152857,10 @@ a { color: #1565c0; }`;
      * @returns {void}
      */
     function _eiStart(ent, sidebar) {
+        if (_MB_POP_IMG_ALL.has(ent.type)) {
+            _eiStartKnown(ent, sidebar);
+            return;
+        }
         const lookup = _mbPopLookup(ent, 'url-rels');
         const fromRels = () => {
             const st = _mbPop.get(lookup.key);
@@ -152787,6 +152904,36 @@ a { color: #1565c0; }`;
                 _mbWsLoad(lookup.key, lookup.url, { repaint: fromRels });
             }, _EI_ZABE_WAIT_MS);
         });
+    }
+
+    /**
+     * An area page's heading (decided 2026-11-23, mockup part A of
+     * https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o): its pictures come
+     * from Wikidata, which only a window's Space asks, so the heading shows
+     * the window's picture record when this page or this browser already
+     * has it (memory, else IndexedDB) and asks nothing itself; no record, no
+     * picture. `data-mb-ei` says `known` or `none`.
+     * @param {{type: string, id: string}} ent
+     * @param {HTMLElement} sidebar
+     * @returns {void}
+     */
+    function _eiStartKnown(ent, sidebar) {
+        if (!_mbPopImgOn(ent)) {
+            _eiDecided(sidebar, 'off');
+            return;
+        }
+        const key = _mbPopImgKey(ent);
+        const st = _mbPop.get(key);
+        const show = (data) => {
+            const images = (data && data.images) || [];
+            _eiDecided(sidebar, images.length ? 'known' : 'none');
+            if (images.length) _eiShow(ent, images);
+        };
+        if (st && st.status === 'done') {
+            show(st.data);
+            return;
+        }
+        Promise.resolve(_rgIdbGet(key, _MB_POP_IMG_VERSION)).catch(() => null).then(rec => show(rec && rec.data));
     }
 
     /**
@@ -152869,6 +153016,19 @@ a { color: #1565c0; }`;
                     const cls = [i ? '' : 'mb-ei-on', im.via === 'eh' ? 'mb-ei-eh' : ''].filter(Boolean).join(' ');
                     return `<i${cls ? ` class="${cls}"` : ''}></i>`;
                 }).join('')}</span>` : '');
+        // An area's flag on its map's corner, shown while the map is
+        // (`_eiStep()`); only once the flag itself is known to load.
+        const bi = list.findIndex(im => im.badge && _eiLoadState.get(im.badge) === 'ok');
+        if (bi >= 0) {
+            const b = document.createElement('img');
+            b.className = 'mb-ei-badge';
+            b.alt = '';
+            b.referrerPolicy = 'no-referrer';
+            b.src = list[bi].badge;
+            b.dataset.mbEiFor = String(bi);
+            b.hidden = bi !== 0;
+            box.appendChild(b);
+        }
         box._eiList = list;
         box.dataset.mbEiI = '0';
         box.dataset.mbttFn = 'ei-pic';
@@ -152923,6 +153083,7 @@ a { color: #1565c0; }`;
         box.dataset.mbEiI = String(i);
         box.querySelectorAll('.mb-ei-clip img').forEach((img, k) => { img.style.opacity = k === i ? '1' : '0'; });
         box.querySelectorAll('.mb-ei-dots i').forEach((d, k) => d.classList.toggle('mb-ei-on', k === i));
+        box.querySelectorAll('img.mb-ei-badge').forEach((b) => { b.hidden = Number(b.dataset.mbEiFor) !== i; });
     }
 
     /**
