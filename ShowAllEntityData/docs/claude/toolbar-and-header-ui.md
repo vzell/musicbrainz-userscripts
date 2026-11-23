@@ -904,6 +904,23 @@ init code (no TDZ). One `MutationObserver` on `<html>` attributes
   ≥ 2026.11.22.184100 (`data-mbu-eh`); the rules are in "Event
   Horizon's single keys are ignored on MusicBrainz's page" above. Its way
   back is the setting (no ☰ row: V still switches EH on).
+- **Event Horizon's player** (`_mbuPlayerSync()`, `sa_eh_player_quiet`,
+  default on; org/majkinetor.org "Event Horizon's player plays on under our
+  page"): under the quiet mark's condition (a table of ours, EH's view not
+  showing), `<html data-mbu-player-off="saed">` (proposed to majkinetor, not
+  yet honoured; same ownership rules) and our class `mb-eh-ply-quiet`, whose
+  CSS (`#mb-eh-ply-quiet-css`) hides `#eh-ply` and `#eh-ply-menu`.
+  `_mbuPlayerSilence()` stops the player only when THIS tab plays it (an
+  iframe, audio or video in `#eh-ply`; a tab that only mirrors a player
+  window or another tab has none and is left alone): EH's own
+  `{type:'control', action:'close'}` on `BroadcastChannel
+  ('mbu-event-horizon-player-v1')` (internal, not a convention), then the
+  sources are removed, which silences a build that ignores the message too.
+  Two observers while it is up: `<html>`'s children (no subtree: EH appends
+  `#eh-ply` there) and `#eh-ply`'s subtree (EH puts the next track's iframe
+  into its dock by itself). Close, not pause: Spotify's pause is a toggle and
+  Apple Music has none. Nothing on the IP, nothing in EH's view, nothing
+  resumed. Way back: the setting.
 - **Menu launchers** (`_ehMenuSync()`): hidden `button[data-mbu-menu-item]`
   directly under `<html>`, which EH projects into its More (⋯) menus and
   `.click()`s. Registered only while EH's view shows and only for a page we

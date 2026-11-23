@@ -31085,3 +31085,49 @@ Anchors 118/118 (`gate-lock-race` rewritten to the new `answered` race,
 `c7-writer-apollo` rewritten, nine added). New helper
 `scripts/refresh-majkinetor-sizes.py` rewrites the Inventory's size cells at
 their old width. Nothing in `ShowAllEntityData.user.js` changed.
+
+## 2026-11-23 — Event Horizon's player stopped under our table (feat/eh-player-quiet, WIP.1)
+
+Env: 2026-11-23T15:14:31+01:00 (last spec run) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs); the symptom itself from vzell's browser (String Theory 2026.11.21.134804, browser version not recorded)
+
+Symptom and cause: the previous entry, and org/majkinetor.org "Event
+Horizon's player plays on under our page". vzell chose both: a post to
+majkinetor (`data-mbu-player-off` and the missing `plyPin()` in `setOn1()`,
+drafted under "On the record") and our fallback.
+
+`_mbuPlayerSync()` (beside `_mbuQuietSync()`/`_mbuKeysSync()`, same
+condition: `_mbuInterop.tableShown`, no `data-mbu-dock`; setting
+`sa_eh_player_quiet`, default on): `<html data-mbu-player-off="saed">`, our
+class `mb-eh-ply-quiet` (CSS hides `#eh-ply`, `#eh-ply-menu`), and
+`_mbuPlayerSilence()`: when `#eh-ply` holds an iframe/audio/video (this tab
+plays), EH's own `{type:'control', action:'close'}` on
+`BroadcastChannel('mbu-event-horizon-player-v1')`, then the sources removed.
+Observers on `<html>`'s children and `#eh-ply`'s subtree while it is up.
+
+- **Close, not pause** (from code, EH 2026.11.23.095945): `plyCmd(false)`
+  sends Spotify `{command:'toggle'}` (a pause from outside can START it),
+  Apple Music has no command at all; `close` is answered by the host tab
+  (`plyHost()`: queue state, not DOM) and clears the queue.
+- **Simulator trap**: the first `eh-body-swap.js` player decided "this tab
+  plays" from the iframe, so our removal (same task as the message) made it
+  ignore the close: three red tests that were the sim's fault. Now
+  `sim.plyHosting`, as EH's `plyHost()`.
+- **Test trap**: "a new #eh-ply is not followed" passed with its observer
+  removed. `plyClose()` + the next track in ONE evaluate: removing the
+  controls from the old `#eh-ply` woke its old observer, whose
+  `getElementById('eh-ply')` then found the new iframe. Split into two steps
+  with a wait, the mutation fails as it should.
+- **My process slip**: a trace experiment backed up and restored the
+  userscript while a background `mutation-check.py` run (eh-keys-off.json)
+  had a defect planted, so the "restore" re-planted it for a while; the
+  runner's own restore (hash-verified) fixed the file. Re-ran all three lists
+  afterwards in the foreground. Never touch the userscript while a mutation
+  run is in flight, even to back it up.
+
+Tests: `tests/fixtures/eh-interop-markers.spec.js` 24/24 (six new: close
+asked and gone; a deaf build silenced, its next track and a new `#eh-ply`
+too; EH's view untouched; a mirror tab hidden, no close; setting off;
+another owner's mark kept). Mutations `scripts/mutations/eh-player-quiet.json`
+11/11; `eh-keys-off.json` 17/17 (two finds re-pointed for the new call) and
+`eh-interop-markers.json` 15/15 re-run clean. test:full deferred to the
+merge.

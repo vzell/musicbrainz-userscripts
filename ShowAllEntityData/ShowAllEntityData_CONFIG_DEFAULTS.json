@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1678+2026-11-23",
-    "schema_entries": 568,
+    "script_version": "9.99.1679+2026-11-23",
+    "schema_entries": 569,
     "sections": 54,
-    "settings": 514,
-    "settings_with_default": 509,
+    "settings": 515,
+    "settings_with_default": 510,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 336,
+      "checkbox": 337,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -355,6 +355,7 @@
     "sa_edits_color_zebra_odd": "Edit details tracklist — odd row",
     "sa_edits_enable_details_collapse": "Start \"Edit details\" column collapsed",
     "sa_edits_enable_notes_collapse": "Start \"Edit notes\" column collapsed",
+    "sa_eh_player_quiet": "Stop Event Horizon's player while a table is shown",
     "sa_enable_annotation_auto_expand": "Auto-expand native \"Annotation\" section",
     "sa_enable_annotation_collapse": "Enable collapsible \"Annotation\" columns",
     "sa_enable_ars_collapse": "Enable collapsible \"ARs\" column",
@@ -870,6 +871,7 @@
     "sa_edits_color_zebra_odd": "#ffffff",
     "sa_edits_enable_details_collapse": false,
     "sa_edits_enable_notes_collapse": false,
+    "sa_eh_player_quiet": true,
     "sa_enable_annotation_auto_expand": true,
     "sa_enable_annotation_collapse": true,
     "sa_enable_ars_collapse": false,

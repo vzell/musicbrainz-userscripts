@@ -17,8 +17,8 @@
     "why": "_mbuTableShown() is where a render reports the table; without the call the marks never go up.",
     "edits": [
       {
-        "find": "        _mbuQuietSync();\n        _mbuKeysSync();\n    }",
-        "replace": "        _mbuQuietSync();\n    }"
+        "find": "        _mbuQuietSync();\n        _mbuKeysSync();\n        _mbuPlayerSync();\n    }",
+        "replace": "        _mbuQuietSync();\n        _mbuPlayerSync();\n    }"
       }
     ],
     "spec": "tests/fixtures/eh-single-keys.spec.js",
@@ -95,8 +95,8 @@
     "why": "Without the <html> observer's call the marks do not follow Event Horizon's view coming and going.",
     "edits": [
       {
-        "find": "_mbuQuietSync(); _mbuKeysSync(); })",
-        "replace": "_mbuQuietSync(); })"
+        "find": "_mbuQuietSync(); _mbuKeysSync(); _mbuPlayerSync(); })",
+        "replace": "_mbuQuietSync(); _mbuPlayerSync(); })"
       }
     ],
     "spec": "tests/fixtures/eh-single-keys.spec.js",

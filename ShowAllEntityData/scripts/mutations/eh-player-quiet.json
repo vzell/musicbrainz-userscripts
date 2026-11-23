@@ -1,0 +1,145 @@
+[
+  {
+    "name": "Event Horizon is not asked to close its player",
+    "why": "Without its own close, EH's queue moves on, its Media Session and ListenBrainz listens go on for a track nobody hears.",
+    "edits": [
+      {
+        "find": "            if (_mbuInterop.playerBus) _mbuInterop.playerBus.postMessage({ type: 'control', action: 'close' });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "asked to close it",
+    "expect": "fail"
+  },
+  {
+    "name": "the player's sources are not removed",
+    "why": "The backstop for a build that ignores the message: without it the sound goes on.",
+    "edits": [
+      {
+        "find": "            try { if (typeof m.pause === 'function') m.pause(); } catch (_) { /* not media */ }\n            m.remove();\n",
+        "replace": "            try { if (typeof m.pause === 'function') m.pause(); } catch (_) { /* not media */ }\n"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "a build that ignores the message",
+    "expect": "fail"
+  },
+  {
+    "name": "#eh-ply is not hidden",
+    "why": "The class's CSS hides EH's player root and menu (the Apple Music login card, a mirror's controls).",
+    "edits": [
+      {
+        "find": "        s.textContent = `html.${_EH_PLAYER_QUIET_CLASS} :is(#eh-ply, #eh-ply-menu) { display: none !important; }`;\n",
+        "replace": "        s.textContent = '';\n"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "a build that ignores the message",
+    "expect": "fail"
+  },
+  {
+    "name": "changes inside #eh-ply are not followed",
+    "why": "EH puts the next track's iframe into its dock by itself; only the #eh-ply observer catches it.",
+    "edits": [
+      {
+        "find": "            o.observe(ply, { childList: true, subtree: true });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "a build that ignores the message",
+    "expect": "fail"
+  },
+  {
+    "name": "a new #eh-ply is not followed",
+    "why": "EH makes #eh-ply again after its own close; only the observer of <html>'s children sees it.",
+    "edits": [
+      {
+        "find": "                _mbuInterop.playerHtmlObs.observe(root, { childList: true });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "a build that ignores the message",
+    "expect": "fail"
+  },
+  {
+    "name": "the player is stopped inside Event Horizon's view too",
+    "why": "EH's own view is the user's: the mark and the stop are for our table only.",
+    "edits": [
+      {
+        "find": "        const want = _mbuInterop.tableShown && Lib.settings.sa_eh_player_quiet !== false &&\n            !root.hasAttribute('data-mbu-dock');\n",
+        "replace": "        const want = _mbuInterop.tableShown && Lib.settings.sa_eh_player_quiet !== false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "view is left alone",
+    "expect": "fail"
+  },
+  {
+    "name": "the player is stopped on the initial page",
+    "why": "Scope: only a table of ours asks for it (as the quiet and keys marks; vzell 2026-11-21 for the keys).",
+    "edits": [
+      {
+        "find": "        const want = _mbuInterop.tableShown && Lib.settings.sa_eh_player_quiet !== false &&\n",
+        "replace": "        const want = Lib.settings.sa_eh_player_quiet !== false &&\n"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "asked to close it",
+    "expect": "fail"
+  },
+  {
+    "name": "the render tail does not sync the player",
+    "why": "Nothing else changes on <html> when the table appears: without this call the mark never goes up.",
+    "edits": [
+      {
+        "find": "        _mbuKeysSync();\n        _mbuPlayerSync();\n    }\n",
+        "replace": "        _mbuKeysSync();\n    }\n"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "asked to close it",
+    "expect": "fail"
+  },
+  {
+    "name": "a mirror tab sends close too",
+    "why": "A tab without a source only mirrors a player playing in another window or tab; a close from it would stop the user's music there.",
+    "edits": [
+      {
+        "find": "        const media = ply ? ply.querySelectorAll('iframe, audio, video') : [];\n        if (!media.length) return;\n",
+        "replace": "        const media = ply ? ply.querySelectorAll('iframe, audio, video') : [];\n        if (!ply) return;\n"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "only mirrors",
+    "expect": "fail"
+  },
+  {
+    "name": "the setting is ignored",
+    "why": "sa_eh_player_quiet off is the way back: EH's player is left as it is.",
+    "edits": [
+      {
+        "find": "        const want = _mbuInterop.tableShown && Lib.settings.sa_eh_player_quiet !== false &&\n",
+        "replace": "        const want = _mbuInterop.tableShown &&\n"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "setting off: the player",
+    "expect": "fail"
+  },
+  {
+    "name": "another script's player mark is overwritten",
+    "why": "The protocol: a mark is set only when absent; the value names its owner.",
+    "edits": [
+      {
+        "find": "            if (!root.hasAttribute('data-mbu-player-off')) root.setAttribute('data-mbu-player-off', 'saed');\n",
+        "replace": "            root.setAttribute('data-mbu-player-off', 'saed');\n"
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "another script's mark is neither overwritten nor removed; the player",
+    "expect": "fail"
+  }
+]

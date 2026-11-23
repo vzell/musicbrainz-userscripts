@@ -66,6 +66,23 @@
  * - `window.__EH_SIM_REBIND__ = { view: 'h' }`: keys rebound in EH's Ctrl+/
  *   palette (`S.keys`); a key taken from another command unbinds that one,
  *   as EH's palette does. `sim.fired` records the KEY pressed.
+ *
+ * Its player (#1063; EH 2026.11.23.095945 at `5d4d464`, org/majkinetor.org
+ * "Event Horizon's player plays on under our page"):
+ * - `sim.play(kind)` starts a track: `div#eh-ply.mbu-ui` appended to
+ *   `<html>` (plyRoot()) with `.ply-dock` holding the source iframe
+ *   (`data-kind`), and the controls `div.ply-ctl` in `#eh-pin` inside EH's
+ *   body while its view shows (plyPin(), place "chip"), else in `#eh-ply`.
+ *   V (`off()`) does NOT move them back, as EH's setOn1() does not.
+ * - `sim.plyNext()` is EH's own move to the next track (plyEnded() →
+ *   plyGo()): a new iframe in the dock (#eh-ply made again if needed), the
+ *   controls into `#eh-ply`.
+ * - A `BroadcastChannel('mbu-event-horizon-player-v1')` listener records
+ *   every message in `sim.plyMsgs`; `{type:'control', action:'close'}` is
+ *   plyClose() (`#eh-ply` and its menu removed), answered only by the tab
+ *   that plays (`sim.plyHosting`, set by `play()`: EH's plyHost() is its
+ *   queue state, `ply.i >= 0 && !plyRemote`, not the iframe).
+ *   `window.__EH_SIM_PLY_DEAF__ = true`: a build that ignores the message.
  */
 (function () {
     'use strict';
@@ -171,8 +188,65 @@
             if (b && b.isConnected && !b.disabled) b.click();
             return !!b;
         },
+        plyMsgs: [],
+        plyCtl: null,
+        /** EH's plyHost(): this tab plays (a queue position, not a mirror); its own state, not the DOM. */
+        plyHosting: false,
+        /** @returns {HTMLElement} EH's plyRoot(): #eh-ply on <html>, made once */
+        plyRoot() {
+            let root = document.getElementById('eh-ply');
+            if (!root) {
+                root = document.createElement('div');
+                root.id = 'eh-ply';
+                root.className = 'mbu-ui ply-chip';
+                root.innerHTML = '<div class="ply-dock"></div>';
+                document.documentElement.append(root);
+            }
+            return root;
+        },
+        /** EH's plyDock(): one source iframe in the dock. */
+        plyDock(kind) {
+            sim.plyRoot().querySelector('.ply-dock').innerHTML = `<iframe src="about:blank" data-kind="${kind}" title="Player"></iframe>`;
+        },
+        /** EH's plyPin(): the controls into #eh-pin while the view shows, else into #eh-ply. */
+        plyPin() {
+            if (!sim.plyCtl) {
+                sim.plyCtl = document.createElement('div');
+                sim.plyCtl.className = 'mbu-ui ply-ctl pb';
+                sim.plyCtl.innerHTML = '<button type="button" class="ply-b" data-ply="pause">Pause</button>';
+            }
+            if (sim.isOn()) {
+                let pin = sim.ehBody.querySelector('#eh-pin');
+                if (!pin) { pin = document.createElement('div'); pin.id = 'eh-pin'; pin.className = 'eh-ply'; sim.ehBody.appendChild(pin); }
+                pin.appendChild(sim.plyCtl);
+            } else sim.plyRoot().appendChild(sim.plyCtl);
+        },
+        /** Starts a track of this source kind (plyGo()). */
+        play(kind = 'spotify') { sim.plyHosting = true; sim.plyDock(kind); sim.plyPin(); },
+        /** EH's own next track (plyEnded() → plyGo() → plyPin()). */
+        plyNext(kind = 'apple') { sim.plyDock(kind); sim.plyPin(); },
+        /** EH's plyClose(). */
+        plyClose() {
+            const root = document.getElementById('eh-ply');
+            if (root) root.remove();
+            const menu = document.getElementById('eh-ply-menu');
+            if (menu) menu.remove();
+            if (sim.plyCtl) { sim.plyCtl.remove(); sim.plyCtl = null; }
+            sim.plyHosting = false;
+        },
     };
     window.__ehSim = sim;
+
+    // EH's player channel (PLY_BUS): only the tab that plays answers a control message.
+    if (typeof BroadcastChannel === 'function') {
+        const bus = new BroadcastChannel('mbu-event-horizon-player-v1');
+        bus.addEventListener('message', (ev) => {
+            const m = ev.data;
+            sim.plyMsgs.push(m);
+            if (window.__EH_SIM_PLY_DEAF__ === true || !m || m.type !== 'control') return;
+            if (sim.plyHosting && m.action === 'close') sim.plyClose();
+        });
+    }
 
     /**
      * Event Horizon's keyGo(sub) (EH:12403): while its view shows, it clicks

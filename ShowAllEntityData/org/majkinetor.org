@@ -16,10 +16,11 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-23)
 
-- *Now (2026-11-23):* refreshed to =5d4d464= (=chore/refresh-majkinetor-5d4d464=). *Next:* decide the fix for
-  "Event Horizon's player plays on under our page" (vzell's note "player"; upstream + convention recommended, a post
-  to draft), then "The shared gate at eight a second" (the 30 ms lock hold; keep 1000 ms; maybe a question on the
-  pace). After that the open half of "Entity pictures" (the area chain's ISO flags, =areaClimb=/=flagI=).
+- *Now (2026-11-23):* refreshed to =5d4d464= (=chore/refresh-majkinetor-5d4d464=), and on top of it
+  =feat/eh-player-quiet= (WIP.1): our fallback for "Event Horizon's player plays on under our page" is built and
+  tested (fixtures and mutations), *waiting for vzell's browser check*; the post ([[#post-938-player][On the
+  record]]) goes out after the merge. *Next:* "The shared gate at eight a second" (the 30 ms lock hold; keep 1000
+  ms; maybe a question on the pace). After that the open half of "Entity pictures" (=areaClimb=/=flagI=).
 - *Shipped today:* "Title style": 9.99.1677 the guess-case word lists, 9.99.1678 the kinds of a track/recording
   name difference; "Entity pictures": 9.99.1679 an area's five Wikidata pictures with the flag badge, its links
   table, and Wikidata in the shared request gate (vzell's live check OK).
@@ -70,7 +71,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | String Theory's idle mode over our FRP                         | TODO  | —             | Interop       |
 | C3: adopt =data-mbu-keys-off= + =keys-keep= (EH's new keys)    | DONE  | 9.99.1675     | Interop       |
 | Standalone EH: use =data-mbu-eh= for the keys marks            | DONE  | 9.99.1676     | Interop       |
-| Event Horizon's player plays on under our page                 | TODO  | —             | Interop       |
+| Event Horizon's player plays on under our page                 | NEXT  | WIP.1         | Interop       |
 | The shared gate at eight a second (2026.11.23)                 | TODO  | —             | Interop       |
 | C7 =mbLastWrite=, C8 =MBU.artistImage=                         | DONE  | 9.99.1643, 46 | Adoptions     |
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions     |
@@ -406,11 +407,12 @@ CLOSED: [2026-11-21 Sat]
 - *History*: 2026-11-09 vzell chose a convention (String Theory waits while =data-mbu-quiet= is set) and posted the
   request ([[#post-938-idle][On the record]]); declined 2026-11-16 (above).
 
-** TODO Event Horizon's player plays on under our page (V hides its controls, not its sound)
+** NEXT Event Horizon's player plays on under our page (V hides its controls, not its sound)
 
-- *Who fixes it*: open, to be decided (the plan's step 2). Most likely *upstream* (a missing call when EH switches
-  off) plus a *convention* (what EH's player does while SAED's table shows), with a defensive part *ours* for older
-  String Theory builds. vzell's wish (2026-11-23, "vzell's notes" → "player"): "I don't want to see and hear any
+- *Who fixes it*: *both* (vzell, 2026-11-23: "both, draft the post and implement our fallback"): *upstream* the
+  missing =plyPin()= call and the proposed convention =data-mbu-player-off= (post drafted:
+  [[#post-938-player][On the record]]), and *ours* the fallback, options 1 and 2 below, on =feat/eh-player-quiet=
+  (=_mbuPlayerSync()=, =sa_eh_player_quiet=, WIP.1). vzell's wish (2026-11-23, "vzell's notes" → "player"): "I don't want to see and hear any
   artifacts of his player, as we currently have our own player implementation".
 - *Symptom* (vzell, 2026-11-23, String Theory 2026.11.21.134804): on
   https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 a track plays in EH's player
@@ -442,9 +444,16 @@ CLOSED: [2026-11-21 Sat]
      ={type:'control', action:'play', value:false}=, answered by the tab that plays; anchor =eh-ply-bus=). That
      channel is internal and undocumented, so it may change without notice: only with (1) asked first.
   3. Hiding only (CSS): the sound goes on, so it does not meet vzell's wish.
-- *Tests*: a fixture spec with a planted =#eh-ply= (iframe + =.ply-ctl=) and a stub channel listener: after the
-  render the element is hidden and one pause message went out; none before a button press (IP), none while EH's
-  own view shows. Live: the pre-test above in vzell's browser.
+- *Built* (=feat/eh-player-quiet=): while a table of ours shows on MusicBrainz's page and EH's view is off (the quiet
+  mark's condition) and =sa_eh_player_quiet= is on: =<html data-mbu-player-off="saed">= (ownership as C3/C4), our
+  class =mb-eh-ply-quiet= hiding =#eh-ply= and =#eh-ply-menu=, EH's own =close= on its channel *only when this tab
+  plays* (a source in =#eh-ply=; a mirror is left alone), and every iframe/audio/video in =#eh-ply= removed, again
+  whenever EH adds one (observers on =<html>='s children and on =#eh-ply=). Close rather than pause: Spotify's pause is
+  a toggle and Apple Music has none, so a pause from outside could start a track; the close clears EH's current
+  queue. Nothing on the IP (same scope as the keys marks), nothing in EH's view, nothing resumed.
+- *Tests*: =tests/fixtures/eh-interop-markers.spec.js= "Event Horizon's player while our table shows" (6), against
+  =eh-body-swap.js='s new player (=play()=, =plyNext()=, the channel, =__EH_SIM_PLY_DEAF__=); mutations
+  =scripts/mutations/eh-player-quiet.json=. Live: the pre-test above in vzell's browser.
 
 ** TODO The shared gate at eight a second (majkinetor's 2026.11.23 gate)
 
@@ -2140,6 +2149,34 @@ Thanks for both. SAED 9.99.1676 uses the new mark:
   edits now drop SAED's kept MusicBrainz cards as well, with nothing to change on my side.
 
 Nothing open from me on this thread now.
+#+end_src
+
+** TODO 2026-11-23 · Post: Event Horizon's player after V, and a mark for it (#938)
+:PROPERTIES:
+:CUSTOM_ID: post-938-player
+:END:
+
+- *Draft* (petri, 2026-11-23, against his =main= at =5d4d464=, EH 2026.11.23.095945; the symptom seen by vzell with
+  String Theory 2026.11.21.134804). For vzell to send on #938; never posted by Claude. *Post only after
+  =feat/eh-player-quiet= is merged and pushed*: it describes SAED's fallback as shipped. Item: "Event Horizon's
+  player plays on under our page". The last paragraph corrects our 2026-11-21 post (its =mbLastWrite= line was
+  wrong, see "Stale-while-revalidate"); cut it if you would rather not.
+
+#+begin_src markdown
+One more, about Event Horizon's player.
+
+**What I see.** On a release page, I start a track in Event Horizon's player and press V. Event Horizon's view goes, and so do the player's controls, but the track keeps playing and there is nothing left to stop it. When the next track starts, the controls come back at the top right, and for an Apple Music track its own embed shows up too (with its login card and a preview). For example https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 with Spotify, then Apple Music.
+
+**Why, as far as I can tell** (`main` at `5d4d464`): the source iframe lives in `#eh-ply` on `<html>`, outside both bodies, while the controls sit in `#eh-pin` inside Event Horizon's body. `relSet()` (V in the relationship editor) calls `plyPin()` after hiding `#eh-pin`, but `setOn1()` (V everywhere else) doesn't, so the controls leave with your body and the sound stays. The next track's `plyPin()` moves them into `#eh-ply`.
+
+Two asks:
+
+1. **`plyPin()` in `setOn1()`**, as `relSet()` does, so the controls stay reachable after V.
+2. **A mark for "not now"**: `<html data-mbu-player-off="saed">`. While it is set, Event Horizon's player pauses and hides; when it goes, it shows again and stays paused. Same rules as `data-mbu-quiet`: the value names the owner, it is removed only while it is still the owner's, and the setter offers its own way back. SAED sets it while one of its tables is shown on MusicBrainz's page (Event Horizon's own view is never touched), behind a setting that is on by default. SAED has its own small player for YouTube links, so two players over one table is one too many.
+
+Until a build honours the mark, SAED does this when the tab itself plays (a source inside `#eh-ply`; a tab that only mirrors a player window is left alone): it posts your own `{type: 'control', action: 'close'}` on `mbu-event-horizon-player-v1`, hides `#eh-ply` and `#eh-ply-menu`, and removes any iframe or audio that turns up in `#eh-ply` while its table is shown. If you would rather SAED stayed off that channel, say so and I will drop that part. A pause instead of a close would be nicer for the user, but from the outside I could not find one that works for every source (Spotify's is a toggle, Apple Music has none).
+
+And a correction to my last comment: Apollo's alias edits don't set `mbLastWrite`. They go through `mbnFetch`, which moves the gate's `mbu:mb-gate-edit`, so they drop the gate's new cache but not Event Horizon's kept answers (`mbLastWrite()` reads only that key), and not SAED's either. If Apollo set `mbLastWrite` after its writes, as Group Therapy and Falcon do, both would follow.
 #+end_src
 
 * vzell's notes
