@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1850 versions; the month pages hold all of them.
+This page shows the newest 100 of 1851 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1680 — 2026-11-23
+
+**🐛 Fix**
+
+- Event Horizon's player no longer plays on under this script's table. A track started in Event Horizon (majkinetor's String Theory) kept playing after V, with its controls gone, and the next track could show its source's own frame (an Apple Music login card). While a table of this script is shown on MusicBrainz's page, the player is now stopped and hidden: Event Horizon is asked to close it on its own player channel, but only in the tab that plays it, and any source it starts there again is removed. Before a button is pressed, in Event Horizon's own view and in a tab that only mirrors a player window, nothing changes. New setting "Stop Event Horizon's player while a table is shown" (on). It also sets &lt;html data-mbu-player-off="saed"&gt;, a mark proposed to majkinetor for his player to pause and hide by itself.
+
 
 ## 9.99.1679 — 2026-11-23
 
@@ -850,17 +857,6 @@ This page shows the newest 100 of 1850 versions; the month pages hold all of the
 **🐛 Fix**
 
 - With direct Ctrl+letter shortcuts on, Ctrl+L (Load from disk) also made Event Horizon go forward in the browser history. It is now this script's alone there; with direct shortcuts off (the default) Ctrl+L stays Event Horizon's, and inside Event Horizon's view it is always its own.
-
-
-## 9.99.1580 — 2026-11-08
-
-**🚀 Feature**
-
-- With majkinetor's String Theory installed, up to eight corner launchers and its dock sat in the bottom right corner over the rendered table. While a table of this script is shown on MusicBrainz's page they are now hidden (in Event Horizon's own view they stay). ☰ SAED → View → "Show corner launchers" brings them back for the page, "Hide corner launchers" hides them again. Needs the String Theory with the shared quiet mark (majkinetor's \#938).
-
-**✨ Improve**
-
-- New setting: ⚙️ Settings → 🎨 UI FEATURES → "Hide String Theory's corner launchers while a table is shown" (on).
 
 
 ---

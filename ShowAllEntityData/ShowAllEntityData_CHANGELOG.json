@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1680",
+    "date": "2026-11-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Event Horizon's player no longer plays on under this script's table. A track started in Event Horizon (majkinetor's String Theory) kept playing after V, with its controls gone, and the next track could show its source's own frame (an Apple Music login card). While a table of this script is shown on MusicBrainz's page, the player is now stopped and hidden: Event Horizon is asked to close it on its own player channel, but only in the tab that plays it, and any source it starts there again is removed. Before a button is pressed, in Event Horizon's own view and in a tab that only mirrors a player window, nothing changes. New setting \"Stop Event Horizon's player while a table is shown\" (on). It also sets <html data-mbu-player-off=\"saed\">, a mark proposed to majkinetor for his player to pause and hide by itself."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1679",
     "date": "2026-11-23",
     "sections": [
