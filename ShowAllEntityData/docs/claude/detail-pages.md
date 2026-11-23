@@ -342,8 +342,15 @@ hosts (kept, decided 2026-10-07).
   EVERY repaint (each chain step, a segment click), so the text jumped. The
   window draws its own flag first (`_mbPopFlagHtml()`), in one fixed 16 × 11
   slot (`.mb-pop-flag`): a Country (`_mbPopIsCountry()`) gets MusicBrainz's
-  own `span.flag.flag-XX` on musicbrainz.org (its CSS is on every page), its
-  ISO code in a box elsewhere (discogs.com: `_foreignHost`); a state
+  own `span.flag.flag-XX` on musicbrainz.org (its CSS is on every page);
+  elsewhere (discogs.com: `_foreignHost`) its flagcdn.com image since
+  2026-11-23 (`https://flagcdn.com/w40/xx.png`, no referrer; Event Horizon's
+  `flagI()`; mockup https://claude.ai/artifact/CCkfRzZFpFGchmBDdMsxzm), its
+  ISO code in a box for every `X?` code but `XK` (flagcdn has none) and for a
+  code whose image failed on the page (one capture `error` listener,
+  `_mbPopFlagCdnInit()`, remembers it in `_mbPopFlagCdnFailed` so a repaint
+  asks no more). Lotheric's two flag scripts run on musicbrainz.org only, so
+  they never meet those images; a state
   (`_mbPopIsState()`: `type` Subdivision, or an untyped own area with an ISO
   3166-2 code) its Wikidata item's P41 on Commons (`Special:FilePath?width=32`),
   its slot empty while that loads and gone once its record says "none"; any
@@ -394,7 +401,25 @@ hosts (kept, decided 2026-10-07).
   only when every step is already in memory, else the area's own name as
   before. Cost: a window whose region is new pays about three 1/s rate slots
   more, AFTER its own requests (the artist's links and five counts come
-  first).
+  first) — **since 2026-11-23 one**: the window first asks the website's
+  `/ws/js/entity/<start area>` (`_mbPopChainRecordFor()`, key
+  `pop:area:<id>:chain`, `_MB_POP_CHAIN_VERSION`; Event Horizon's
+  `areaChain()`), whose `containment` IS `load_containment` — the whole line
+  with ISO codes, the county left out, about 1 KB (probe 2026-11-23, petri:
+  Long Branch 1,046 B, a country 377 B; containment entries carry `typeID`
+  but no `typeName`, so `_MB_AREA_TYPE_IDS` maps 1/2/3). It is undocumented,
+  so: one try in this tab's rate slot (`_mbPopWsJsGet()`; the shared gate
+  paces /ws/2 only), an answer that is not this area or not JSON (the
+  browser check) a failure, and the first failure sets `_mbPopChainOff`: every
+  chain of the page then climbs as above, ⟳ forcing the climb's step. A
+  record seeds each area of its line in memory (New Jersey's tail), and
+  `_mbPopAreaChain()` ends its walk at any step whose record is known. The
+  area window's own "Part of" (first fact, `_mbPopAreaChainHtml(d, {above:
+  true})`) asks the area's record from `pin()`; its card names that line
+  once in memory, else the parent its own lookup names. Fixture loads answer
+  `/ws/js/` 404 (`tests/support/loadPage.js` `MB_WS_JS_RE`), so a spec that
+  does not serve it keeps the climb. Specs: pop-area-chain.spec.js;
+  mutations scripts/mutations/area-chain.json.
 - **Instruments in relationship lists are links** (`_mbPopRelTargetHtml()`,
   WIP.2, every kind): an instrument attribute's `attribute-ids` value IS the
   instrument's MBID (probe `--only attr-instruments`: trumpet and "drums (drum

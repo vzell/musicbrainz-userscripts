@@ -4,8 +4,8 @@
     "why": "The feature itself: without the /ws/js branch every chain climbs area-rels as before. The text is the same, so only the request counts see it.",
     "edits": [
       {
-        "find": "            if (!_mbPopChainOff && (!cs || cs.status !== 'failed')) {",
-        "replace": "            if (false) {"
+        "find": "            if (_mbPopChainOff) steps.add(next);\n            else records.add(a.id);",
+        "replace": "            steps.add(next);"
       }
     ],
     "spec": "tests/fixtures/pop-area-chain.spec.js",
@@ -75,6 +75,123 @@
     ],
     "spec": "tests/fixtures/pop-area-chain.spec.js",
     "grep": "seeds the line",
+    "expect": "fail"
+  },
+  {
+    "name": "flagcdn.com on musicbrainz.org too",
+    "why": "Question 4 of the mockup: musicbrainz.org keeps MusicBrainz's own flag, so no third-party request is made there.",
+    "edits": [
+      {
+        "find": "            if (onMb) return `<span class=\"flag-${code} mb-pop-flag\" data-hq-skip=\"true\" role=\"img\" aria-label=\"${_rgEsc(a.name)}\"></span>`;",
+        "replace": "            if (false) return '';"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "is the first fact",
+    "expect": "fail"
+  },
+  {
+    "name": "an X code is sent to flagcdn.com",
+    "why": "flagcdn has no flag for XE/XW (EH's flagI() skips every X? but XK): the box stays.",
+    "edits": [
+      {
+        "find": "            if (/^X[^K]$/.test(code) || _mbPopFlagCdnFailed.has(code)) {",
+        "replace": "            if (_mbPopFlagCdnFailed.has(code)) {"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "XE keeps its box",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed flag image is not turned into its box",
+    "why": "Question 2 of the mockup: without the listener a blocked image leaves an empty slot.",
+    "edits": [
+      {
+        "find": "            _mbPopFlagCdnInit();\n            return `<span class=\"mb-pop-flag mb-pop-flag-img\"",
+        "replace": "            return `<span class=\"mb-pop-flag mb-pop-flag-img\""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "XE keeps its box",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed flag image is not remembered",
+    "why": "Every repaint of a window would ask flagcdn.com again and fail again.",
+    "edits": [
+      {
+        "find": "            _mbPopFlagCdnFailed.add(code);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "XE keeps its box",
+    "expect": "fail"
+  },
+  {
+    "name": "the area window has no Part of",
+    "why": "The row itself (question 3 of the mockup: the first fact).",
+    "edits": [
+      {
+        "find": "                        ['Part of', _mbPopAreaChainHtml(d, { above: true })],\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "is the first fact",
+    "expect": "fail"
+  },
+  {
+    "name": "Part of names the area itself",
+    "why": "`above` drops the area from its own line: \"New Jersey, United States\" for Long Branch.",
+    "edits": [
+      {
+        "find": "chain.areas.slice(above ? 1 : 0).map(_mbPopAreaHtml)",
+        "replace": "chain.areas.slice(0).map(_mbPopAreaHtml)"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "is the first fact",
+    "expect": "fail"
+  },
+  {
+    "name": "the area window does not ask the line",
+    "why": "Without the load in pin() the Part of row only ever shows its spinner.",
+    "edits": [
+      {
+        "find": "                _mbPopAreaChainLoad(t, [d], again, repaint, { above: true });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "is the first fact",
+    "expect": "fail"
+  },
+  {
+    "name": "the area window asks its own state flag again",
+    "why": "Part of leaves the area out, and its pictures already ask its P41: a second wbgetclaims P41 went to Wikidata for a state's window.",
+    "edits": [
+      {
+        "find": "_mbPopAreaChain(a).areas.slice(above ? 1 : 0).forEach(x => {",
+        "replace": "_mbPopAreaChain(a).areas.slice(0).forEach(x => {"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-pictures.spec.js",
+    "grep": "Space asks the five in order",
+    "expect": "fail"
+  },
+  {
+    "name": "the area card keeps naming only the parent",
+    "why": "Once a window has the line in memory the card names it whole.",
+    "edits": [
+      {
+        "find": "                        ['Part of', _rgEsc((above.length ? above : parent).join(', '))],",
+        "replace": "                        ['Part of', _rgEsc(parent.join(', '))],"
+      }
+    ],
+    "spec": "tests/fixtures/pop-area-chain.spec.js",
+    "grep": "is the first fact",
     "expect": "fail"
   }
 ]

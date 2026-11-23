@@ -83,10 +83,10 @@ const wsJsAnswer = (mode) => {
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} mode - See `wsJsAnswer()`.
- * @returns {Promise<{ws2: string[], wsjs: string[]}>}
+ * @returns {Promise<{ws2: string[], wsjs: string[], flagcdn: string[]}>}
  */
 async function open(page, mode) {
-    const log = { ws2: [], wsjs: [] };
+    const log = { ws2: [], wsjs: [], flagcdn: [] };
     const ctx = page.context();
     await ctx.route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await ctx.route('https://coverartarchive.org/**', (route) => route.fulfill({ status: 404, body: '' }));
@@ -116,8 +116,31 @@ async function open(page, mode) {
         log.wsjs.push(route.request().url());
         return route.fulfill(wsJsAnswer(mode));
     });
+    await page.route('https://flagcdn.com/**', (route) => {
+        log.flagcdn.push(route.request().url());
+        // Germany's flag fails (a site's content policy, no network); every other one loads.
+        return route.fulfill(/\/de\.png$/.test(route.request().url()) ? { status: 404, body: '' }
+            : { status: 200, contentType: 'image/png', body: PNG });
+    });
     await page.mouse.move(0, 0);
     return log;
+}
+
+/**
+ * A Long Branch link, added to the first cell of the first table.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<import('@playwright/test').Locator>}
+ */
+async function longBranchLink(page) {
+    await page.evaluate((href) => {
+        const td = document.querySelector('table.tbl tbody tr td:first-child');
+        const a = document.createElement('a');
+        a.href = href;
+        a.className = 'pop-probe';
+        a.textContent = 'Long Branch';
+        td.append(' ', a);
+    }, `/area/${LONG_BRANCH}`);
+    return page.locator(`a.pop-probe[href="/area/${LONG_BRANCH}"]`);
 }
 
 /**
@@ -212,5 +235,68 @@ test.describe('an area\'s chain in one request (/ws/js/entity), the Web Service 
         const text = await page.evaluate((nj) => window.__saTest.mbPopAreaChainText(
             { id: nj, name: 'New Jersey', type: 'Subdivision', 'iso-3166-2-codes': ['US-NJ'] }), NJ);
         expect(text).toBe('New Jersey, United States');
+    });
+});
+
+test.describe('the area window\'s "Part of", and country flags off musicbrainz.org (mockup CCkfRzZFpFGchmBDdMsxzm)', () => {
+    test('"Part of" is the first fact, the line above the area from one /ws/js request; the card names it once known', async ({ page }) => {
+        const log = await open(page, 'serve');
+        const link = await longBranchLink(page);
+        await ctrlHover(page, link);
+        const cardPartOf = card(page).locator('dt:text-is("Part of") + dd');
+        await expect(cardPartOf, 'the card: the parent its own lookup names').toHaveText('Monmouth County', QUEUE);
+        expect(log.wsjs, 'a hover card asks no chain').toEqual([]);
+        await page.keyboard.press('Space');
+        await expect(dialog(page)).toBeVisible();
+        const partOf = facts(page).locator('dt:text-is("Part of") + dd');
+        await expect(partOf).toHaveText('New Jersey, United States', QUEUE);
+        await expect(facts(page).locator('dt').first()).toHaveText('Part of');
+        expect(log.wsjs, 'the record of the area itself').toEqual([`https://musicbrainz.org/ws/js/entity/${LONG_BRANCH}`]);
+        expect(areaRels(log), 'only the card\'s own lookup').toEqual([LONG_BRANCH]);
+        // musicbrainz.org: MusicBrainz's own country flag, New Jersey's P41, nothing from flagcdn.com.
+        await expect(partOf.locator('span.flag-US.mb-pop-flag[data-hq-skip="true"]')).toHaveCount(1);
+        await expect(partOf.locator(`.mb-pop-flag-img + a[href="/area/${NJ}"]`)).toHaveCount(1, QUEUE);
+        expect(log.flagcdn, 'no flagcdn.com request on musicbrainz.org').toEqual([]);
+        // Lotheric's Right Side / More Flags Everywhere find nothing to do in the Facts:
+        // their processFlags() and img selectors, and insertFlags()'s unstamped area links.
+        const hits = await facts(page).evaluate(el => [
+            el.querySelectorAll('.flag:not([data-hq-processed]):not([data-hq-skip])').length,
+            el.querySelectorAll('img[src*="/flags/"]:not([data-hq-processed]):not([data-hq-skip])').length,
+            Array.from(el.querySelectorAll('a[href*="/area/"]')).filter(a => !a.dataset.flagProcessed).length,
+        ]);
+        expect(hits).toEqual([0, 0, 0]);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        await ctrlHover(page, link);
+        await expect(cardPartOf, 'the card: the whole line, now in memory').toHaveText('New Jersey, United States', QUEUE);
+        expect(log.wsjs).toHaveLength(1);
+    });
+
+    test('off musicbrainz.org: a country\'s flagcdn.com image; XE keeps its box; a failed image becomes its box and stays one', async ({ page }) => {
+        const log = await open(page, 'serve');
+        const html = (a) => page.evaluate((x) => window.__saTest.mbPopFlagHtml(x, false), a);
+        const country = (code, name) => ({ id: code, name, type: 'Country', 'iso-3166-1-codes': [code] });
+        expect(await html(country('US', 'United States'))).toBe(
+            '<span class="mb-pop-flag mb-pop-flag-img" role="img" aria-label="United States">' +
+            '<img class="mb-pop-flag-cdn" data-mb-code="US" src="https://flagcdn.com/w40/us.png" alt="" ' +
+            'referrerpolicy="no-referrer" decoding="async"></span>');
+        expect(await html(country('XE', 'Europe'))).toBe('<span class="mb-pop-flag mb-pop-flag-iso" aria-hidden="true">XE</span>');
+        expect(await html(country('XW', '[Worldwide]'))).toContain('>XW<');
+        expect(await html(country('XK', 'Kosovo')), 'flagcdn has Kosovo').toContain('/w40/xk.png');
+        // Into the page: the US image loads and stays, Germany's fails and turns into its box.
+        const [us, de] = [await html(country('US', 'United States')), await html(country('DE', 'Germany'))];
+        await page.evaluate((h) => {
+            const d = document.createElement('div');
+            d.id = 'cdn-probe';
+            d.innerHTML = h;
+            document.body.appendChild(d);
+        }, us + de);
+        const slots = page.locator('#cdn-probe > span');
+        await expect(slots.nth(1)).toHaveClass('mb-pop-flag mb-pop-flag-iso');
+        await expect(slots.nth(1)).toHaveText('DE');
+        await expect(slots.nth(0).locator('img.mb-pop-flag-cdn')).toHaveCount(1);
+        expect(log.flagcdn.sort()).toEqual(['https://flagcdn.com/w40/de.png', 'https://flagcdn.com/w40/us.png']);
+        expect(await html(country('DE', 'Germany')), 'remembered: a repaint asks no more').toBe(
+            '<span class="mb-pop-flag mb-pop-flag-iso" aria-hidden="true">DE</span>');
     });
 });

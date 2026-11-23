@@ -2744,8 +2744,8 @@ than MusicBrainz lists at once). A work card shows its type, language, ISWC,
 composer, lyricist and publishers. An artist card shows the type, area, life
 span, birthplace, genres, rating, IPI and ISNI, and the sort name first when
 it differs from the name ("Iglesias, Julio"); a label card the type, label
-code, area, years active and genres; an area card what it is part of and how
-many parts it has; an instrument card its type, subtypes and other names; an
+code, area, years active and genres; an area card what it is part of (the
+whole line once a window has shown it) and how many parts it has; an instrument card its type, subtypes and other names; an
 event card its date and time, place, what it is part of, line-up and first
 songs; a place card
 its address and coordinates; a series card its first items. An ISRC or ISWC
@@ -2889,18 +2889,21 @@ userscript lists that host, so Tampermonkey does not ask first).
   order); for an artist, its area and
   birthplace named as MusicBrainz does (*Long Branch, New Jersey, United
   States*, a flag before each country and state; a state's flag is read from
-  Wikidata the first time a window shows it, then kept), its genres (each opening its tag) and aliases one per line, every
+  Wikidata the first time a window shows it, then kept; on other sites, such
+  as discogs.com, a country's flag comes from flagcdn.com, and a code without
+  one there, such as XE for Europe, stays a small box with the code), its genres (each opening its tag) and aliases one per line, every
   external link and its release groups: a segment per
   type (Album, Single, EP, Broadcast, Other) with its total, each a list like
   a work's recordings, with chips for Live, Compilation and the like and the
   covers, loaded as you scroll (a missing one leaves an empty square); for
   a label, its area named the same way, the labels it owns, is owned by or is
-  an imprint of, its links (on the left, under its facts) and its number of releases; for an area, its parts; for an instrument, the related
+  an imprint of, its links (on the left, under its facts) and its number of releases; for an area, first what it is part of, the whole line with flags (*New Jersey, United States* for Long Branch), then its parts; for an instrument, the related
   instruments and every alias (its description is on the Live page); for an
   event, where it was held as MusicBrainz writes it (*OceanFirst Bank Center
-  in West Long Branch, New Jersey, United States* — the window looks up the
-  areas above the place, one per level, and remembers them for every other
-  event there), what it is part of with its dates, its URLs by relationship
+  in West Long Branch, New Jersey, United States* — the window asks
+  MusicBrainz for the whole line above the place in one request, level by
+  level only when that fails, and remembers it for every other event
+  there), what it is part of with its dates, its URLs by relationship
   (each with its **[info]** link), the whole setlist with every song linked to
   its work and every artist — the line-up, and the guests in a song's
   "(with …)" — linked to the artist (the setlist a table: #, song, the rest

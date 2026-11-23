@@ -315,6 +315,10 @@
 //   areaImages(): its five Wikidata properties in its order (P242 locator map, P41 flag, P94
 //   coat of arms, P158 seal, P18 image), one wbgetclaims each, and the flag as a badge on the
 //   locator map's corner when the map comes first.
+//   Added 2026-11-23: an area's chain from one request (_mbPopChainRecordFor()) follows Event
+//   Horizon's areaChain(): the website's /ws/js/entity/<id> containment, the Web Service
+//   climb kept as the fallback; and off musicbrainz.org a country's flag is its flagcdn.com
+//   image (w40), every X? code but XK keeping its box, as his flagI() does.
 // ============================================================================================================================================
 
 (function() {
@@ -84299,8 +84303,14 @@
      * (@Lotheric) blanks every `.flag` until its next frame and appends its
      * own, wider flag inside it, which spilled over the link's green dot and
      * flickered on every repaint (vzell 2026-10-29),
-     * elsewhere the code in a small box (on discogs.com MusicBrainz's CSS
-     * is not there). A Subdivision: its Wikidata item's flag (P41,
+     * elsewhere (on discogs.com MusicBrainz's CSS is not there) its image
+     * from flagcdn.com (`w40`, no referrer; idea: majkinetor's Event
+     * Horizon, `flagI()`; mockup https://claude.ai/artifact/CCkfRzZFpFGchmBDdMsxzm,
+     * approved 2026-11-23), or the code in a small box for a code flagcdn has
+     * no flag for (`XE`, `XW`: every `X?` but Kosovo's `XK`) and for a code
+     * whose image failed on this page (`_mbPopFlagCdnInit()`). Only a window
+     * draws these, so flagcdn.com is first asked on Space, never on a hover.
+     * A Subdivision: its Wikidata item's flag (P41,
      * `_mbPopFlagLoad()`), the slot empty while that loads; a state with no
      * flag loses the slot once its record says so (then kept). Other area
      * types (a city, a county): none.
@@ -84312,8 +84322,14 @@
     function _mbPopFlagHtml(a, onMb = _foreignHost === null) {
         const code = String((a['iso-3166-1-codes'] || [])[0] || '');
         if (/^[A-Z]{2}$/.test(code) && _mbPopIsCountry(a)) {
-            return onMb ? `<span class="flag-${code} mb-pop-flag" data-hq-skip="true" role="img" aria-label="${_rgEsc(a.name)}"></span>`
-                : `<span class="mb-pop-flag mb-pop-flag-iso" aria-hidden="true">${code}</span>`;
+            if (onMb) return `<span class="flag-${code} mb-pop-flag" data-hq-skip="true" role="img" aria-label="${_rgEsc(a.name)}"></span>`;
+            if (/^X[^K]$/.test(code) || _mbPopFlagCdnFailed.has(code)) {
+                return `<span class="mb-pop-flag mb-pop-flag-iso" aria-hidden="true">${code}</span>`;
+            }
+            _mbPopFlagCdnInit();
+            return `<span class="mb-pop-flag mb-pop-flag-img" role="img" aria-label="${_rgEsc(a.name)}">` +
+                `<img class="mb-pop-flag-cdn" data-mb-code="${code}" src="https://flagcdn.com/w40/${code.toLowerCase()}.png" alt="" ` +
+                'referrerpolicy="no-referrer" decoding="async"></span>';
         }
         if (!_mbPopIsState(a)) return '';
         const s = _mbPop.get(_mbPopFlagKey(a.id));
@@ -84323,6 +84339,45 @@
         return `<span class="mb-pop-flag mb-pop-flag-img" role="img" aria-label="${_rgEsc(a.name)}">` +
             `<img src="https://commons.wikimedia.org/wiki/Special:FilePath/${name}?width=32" alt="" ` +
             'referrerpolicy="no-referrer" decoding="async"></span>';
+    }
+
+    /**
+     * The ISO 3166-1 codes whose flagcdn.com image failed on this page (a
+     * site's content policy, no network): from then on `_mbPopFlagHtml()`
+     * writes their box, so a window's repaint does not ask and fail again.
+     * @type {Set<string>}
+     */
+    const _mbPopFlagCdnFailed = new Set();
+
+    /** Whether `_mbPopFlagCdnInit()` has installed its listener. */
+    let _mbPopFlagCdnWired = false;
+
+    /**
+     * Installs, once, the one capture `error` listener that turns a failed
+     * flagcdn.com flag (`img.mb-pop-flag-cdn`) back into its ISO code box
+     * in place and remembers the code (`_mbPopFlagCdnFailed`). A capture
+     * listener on the document, because `error` does not bubble and the
+     * window's markup is rewritten on every repaint; no inline `onerror`,
+     * which a site's content policy may block as well.
+     *
+     * @returns {void}
+     */
+    function _mbPopFlagCdnInit() {
+        if (_mbPopFlagCdnWired) return;
+        _mbPopFlagCdnWired = true;
+        document.addEventListener('error', (e) => {
+            const img = e.target;
+            if (!(img instanceof HTMLImageElement) || !img.classList.contains('mb-pop-flag-cdn')) return;
+            const code = img.dataset.mbCode || '';
+            _mbPopFlagCdnFailed.add(code);
+            const slot = img.parentElement;
+            if (!slot) return;
+            slot.className = 'mb-pop-flag mb-pop-flag-iso';
+            slot.removeAttribute('role');
+            slot.removeAttribute('aria-label');
+            slot.setAttribute('aria-hidden', 'true');
+            slot.textContent = code;
+        }, true);
     }
 
     /**
@@ -85056,41 +85111,58 @@
      * @param {Array<?Object>} areas - The areas whose chains are shown.
      * @param {boolean} again - ⟳.
      * @param {function(): void} repaint
+     * @param {{above?: boolean}} [opts] - `above`: the chains are shown
+     *   without their start area (the area window's "Part of",
+     *   `_mbPopAreaChainHtml()`), so its own flag is not asked: the area
+     *   window's pictures already ask its P41, and a second request for it
+     *   went to Wikidata (pop-area-pictures.spec.js).
      * @returns {void}
      */
-    function _mbPopAreaChainLoad(t, areas, again, repaint) {
-        const next = new Set(areas.map(a => _mbPopAreaChain(a).next).filter(Boolean));
-        next.forEach(id => {
-            const ck = _mbPopChainKey(id);
-            const cs = _mbPop.get(ck);
-            if (!_mbPopChainOff && (!cs || cs.status !== 'failed')) {
-                _mbLoad(ck, (wanted) => _mbPopChainRecordFor(id, wanted),
-                    { force: again, repaint, wanted: _mbPopWanted(t), version: _MB_POP_CHAIN_VERSION });
-                return;
-            }
+    function _mbPopAreaChainLoad(t, areas, again, repaint, { above = false } = {}) {
+        // The record is the START area's (its containment is the whole
+        // line, whatever steps cards already loaded); the climb goes on from
+        // the first step not known.
+        const records = new Set();
+        const steps = new Set();
+        areas.forEach((a) => {
+            const next = _mbPopAreaChain(a).next;
+            if (!next) return;
+            if (_mbPopChainOff) steps.add(next);
+            else records.add(a.id);
+        });
+        records.forEach(id => _mbLoad(_mbPopChainKey(id), (wanted) => _mbPopChainRecordFor(id, wanted),
+            { force: again, repaint, wanted: _mbPopWanted(t), version: _MB_POP_CHAIN_VERSION }));
+        steps.forEach(id => {
             const q = _mbPopLookup({ type: 'area', id }, 'area-rels');
             _mbPopPinLoad(t, q.key, q.url, again, repaint);
         });
         // The flag of each state the chains show so far (`_mbPopFlagHtml()`).
         const states = new Map();
-        areas.forEach(a => _mbPopAreaChain(a).areas.forEach(x => { if (_mbPopIsState(x)) states.set(x.id, x); }));
+        areas.forEach(a => _mbPopAreaChain(a).areas.slice(above ? 1 : 0).forEach(x => { if (_mbPopIsState(x)) states.set(x.id, x); }));
         states.forEach(x => _mbPopFlagLoad(t, x, again, repaint));
     }
 
     /**
      * An area as MusicBrainz writes it, "West Long Branch, New Jersey,
      * United States": the areas of `_mbPopAreaChain()` linked, a spinner
-     * while a step is loading; '' for none.
+     * while a step is loading; '' for none. `above`: only the areas above
+     * it, the area window's "Part of" ("New Jersey, United States" for Long
+     * Branch; mockup https://claude.ai/artifact/CCkfRzZFpFGchmBDdMsxzm,
+     * approved 2026-11-23), its spinner shown alone while nothing is known.
      *
      * @param {?Object} area
+     * @param {{above?: boolean}} [opts]
      * @returns {string}
      */
-    function _mbPopAreaChainHtml(area) {
+    function _mbPopAreaChainHtml(area, { above = false } = {}) {
         const chain = _mbPopAreaChain(area);
-        const html = chain.areas.map(_mbPopAreaHtml).filter(Boolean).join(', ');
+        const html = chain.areas.slice(above ? 1 : 0).map(_mbPopAreaHtml).filter(Boolean).join(', ');
         const st = chain.next ? _mbPop.get(_mbPopLookup({ type: 'area', id: chain.next }, 'area-rels').key) : null;
         const loading = !chain.complete && !(st && st.status === 'failed');
-        return html + (html && loading ? ' <span class="mb-dp-spin">◌</span>' : '');
+        const spin = '<span class="mb-dp-spin">◌</span>';
+        if (!loading) return html;
+        if (html) return `${html} ${spin}`;
+        return above ? spin : '';
     }
 
     /**
@@ -89344,11 +89416,15 @@
             cardHtml(d) {
                 const parent = (d.relations || []).filter(r => r.type === 'part of' && r.direction === 'backward' && r.area).map(r => r.area.name);
                 const parts = (d.relations || []).filter(r => r.type === 'part of' && r.direction === 'forward').length;
+                // The whole line once a window has it in memory (the card
+                // asks nothing for it), else the parent its own lookup names.
+                const chain = _mbPopAreaChain(d);
+                const above = chain.complete ? chain.areas.slice(1).map(a => a.name) : [];
                 return `<div class="mb-tt-title">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type, ...(d['iso-3166-1-codes'] || []),
                         ...(d['iso-3166-2-codes'] || []), ...(d['iso-3166-3-codes'] || [])])}</div><div class="mb-tt-rule"></div>` +
                     _mbPopKvHtml([
-                        ['Part of', _rgEsc(parent.join(', '))],
+                        ['Part of', _rgEsc((above.length ? above : parent).join(', '))],
                         ['Parts', parts ? String(parts) : ''],
                         ['Existed', _rgEsc(_mbPopLifeSpan(d['life-span']))],
                     ]);
@@ -89364,6 +89440,7 @@
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>${_mbPopWindowPicture(t)}<h4>Facts</h4>` + _mbPopKvHtml([
+                        ['Part of', _mbPopAreaChainHtml(d, { above: true })],
                         ['ISO 3166', _rgEsc([...(d['iso-3166-1-codes'] || []), ...(d['iso-3166-2-codes'] || []),
                             ...(d['iso-3166-3-codes'] || [])].join(', '))],
                         ['Existed', _rgEsc(_mbPopLifeSpan(d['life-span']))],
@@ -89372,11 +89449,14 @@
             },
             cardAside: _mbPopCardPicture,
             // Space: the url-rels (asked even with pictures off, for the
-            // links: question 3 of the links mockup), then the pictures.
+            // links: question 3 of the links mockup), then the pictures,
+            // and the line above the area for "Part of" (one /ws/js
+            // request, `_mbPopAreaChainLoad()`).
             pin(t, d, again, repaint) {
                 const pin = _mbPopLookup(t, 'url-rels');
                 _mbPopPinLoad(t, pin.key, pin.url, again, repaint);
                 _mbPopImageLoad(t, _mbPopLoadedRels(_mbPop.get(pin.key)), again, repaint);
+                _mbPopAreaChainLoad(t, [d], again, repaint, { above: true });
             },
         })),
         // One lookup for card and window. The Web Service has no

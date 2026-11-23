@@ -31199,3 +31199,54 @@ Found on the way (both older than this branch):
 Browser check (feat/gate-lock-hold): 2026-11-23 · vzell's browser (versions
 not recorded): "tested live, OK" — two tabs on a release group, Relationships
 loading in both, nothing changed.
+
+## 2026-11-23 — An area's chain in one /ws/js request, flagcdn.com flags off MusicBrainz, "Part of" (feat/area-chain-flags, WIP.1 + WIP.2)
+
+Env: 2026-11-23T18:52:07+01:00 (probe) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · curl, no browser (probe); Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) (specs)
+
+The open half of "Entity pictures" (org/majkinetor.org): Event Horizon's
+`areaChain()`/`areaClimb()` and `flagI()`. SAED already named an area's line
+with flags, so what it takes is the request and the off-MB flags.
+
+Probe (curl, anonymous): `GET /ws/js/entity/bb0af2e9-…` (Long Branch) → 200,
+1,046 B, `typeName: "City"`, `containment` [New Jersey (typeID 2, US-NJ),
+United States (typeID 1, US)] — Monmouth County left out, exactly
+`_MB_POP_CONTAINMENT_TYPES`; a country → 377 B, empty containment; no
+rate-limit headers. The containment entries have `typeID` but NO `typeName`
+(`_MB_AREA_TYPE_IDS`). The Web Service climb for the same line: three
+`area-rels` lookups, 831 + 17,457 + 12,384 B. Saved as
+`tests/fixtures/ws-js-area-bb0af2e9.json`.
+
+Two defects the first spec run found in my own first draft (fixed before the
+commit): the climb's next level asked `/ws/js` again after the start area's
+record had failed (three failures for one line: `_mbPopChainOff`), and an
+answer that lists the area itself would name it twice (filtered). A third
+was found by reading: an area window would have asked the record of its
+PARENT (its card's own `area-rels` lookup already names it), so the record is
+now always the start area's. A fourth was found by `pop-area-pictures.spec.js`
+after Phase 2: a STATE's window (New Jersey) asked Wikidata for its P41 twice,
+once for its pictures and once as a flag of its own chain, though "Part of"
+leaves the area out; `_mbPopAreaChainLoad(…, { above: true })` skips it.
+
+Harness: fixture loads had no catch-all route, so an unserved `/ws/js` would
+have reached the live site from every popup spec. `loadPage.js` now answers
+`/ws/js/` 404 on fixture loads (`MB_WS_JS_RE`); a spec serving it registers a
+page route after the load.
+
+Lotheric (vzell's question): "Right Side Flags Everywhere" 2026-09-03.2110 and
+"More Flags Everywhere" 2026-09-07.1228 both `@match` musicbrainz.org only, so
+flagcdn.com images never meet them; on MusicBrainz the window's markup is the
+stamped one of 2026-10-29 (no `.flag` class, `data-hq-skip`,
+`data-flag-processed`), and `pop-area-chain.spec.js` pins their three
+selectors finding nothing in the area window's Facts.
+
+Not this branch: `popup-ext.spec.js` "G8: before the record has arrived, a
+link in a Discogs window opens in the window" fails 3/3 here AND with main's
+userscript and main's `loadPage.js` (2026-11-23T19:09+01:00, petri): it is
+already broken on main.
+
+Results: `pop-area-chain.spec.js` 8/8, `pop-area-flags.spec.js` 4/4 (its
+discogs.com box expectation updated to the flag image),
+`pop-area-pictures.spec.js` 7/7, the five popup specs 280/282 before the
+fourth fix (the pictures spec, then green, and G8 above); mutations
+`area-chain.json` 15/15, the three re-anchored `poh-fixes.json` entries 3/3.

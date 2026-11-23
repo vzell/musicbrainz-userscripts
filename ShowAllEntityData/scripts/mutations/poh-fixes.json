@@ -108,8 +108,8 @@
     "why": "A Wikidata request per city and per country; MusicBrainz's CSS already has every country's flag.",
     "edits": [
       {
-        "find": "        areas.forEach(a => _mbPopAreaChain(a).areas.forEach(x => { if (_mbPopIsState(x)) states.set(x.id, x); }));",
-        "replace": "        areas.forEach(a => _mbPopAreaChain(a).areas.forEach(x => { if (x.id) states.set(x.id, x); }));"
+        "find": "        areas.forEach(a => _mbPopAreaChain(a).areas.slice(above ? 1 : 0).forEach(x => { if (_mbPopIsState(x)) states.set(x.id, x); }));",
+        "replace": "        areas.forEach(a => _mbPopAreaChain(a).areas.slice(above ? 1 : 0).forEach(x => { if (x.id) states.set(x.id, x); }));"
       }
     ],
     "spec": "tests/fixtures/popup-mb.spec.js",
@@ -144,11 +144,11 @@
   },
   {
     "name": "a country's flag the same everywhere, MusicBrainz's CSS class on discogs.com too",
-    "why": "On discogs.com MusicBrainz's flag CSS is absent: an empty slot instead of the ISO code.",
+    "why": "On discogs.com MusicBrainz's flag CSS is absent: an empty slot instead of the flagcdn.com image (since 2026-11-23; before, the ISO code).",
     "edits": [
       {
-        "find": "            return onMb ? `<span class=\"flag-${code} mb-pop-flag\"",
-        "replace": "            return true ? `<span class=\"flag-${code} mb-pop-flag\""
+        "find": "            if (onMb) return `<span class=\"flag-${code} mb-pop-flag\"",
+        "replace": "            if (true) return `<span class=\"flag-${code} mb-pop-flag\""
       }
     ],
     "spec": "tests/fixtures/pop-area-flags.spec.js",
@@ -277,8 +277,8 @@
     "why": "Right Side Flags Everywhere blanks it and appends its own wider flag inside it: over the green dot, flickering on every repaint.",
     "edits": [
       {
-        "find": "            return onMb ? `<span class=\"flag-${code} mb-pop-flag\" data-hq-skip=\"true\" role=\"img\"",
-        "replace": "            return onMb ? `<span class=\"flag flag-${code} mb-pop-flag\" role=\"img\""
+        "find": "            if (onMb) return `<span class=\"flag-${code} mb-pop-flag\" data-hq-skip=\"true\" role=\"img\"",
+        "replace": "            if (onMb) return `<span class=\"flag flag-${code} mb-pop-flag\" role=\"img\""
       }
     ],
     "spec": "tests/fixtures/pop-area-flags.spec.js",

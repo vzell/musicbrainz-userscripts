@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-23",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Link previews on other sites (discogs.com, setlist.fm, archive.org, the Springsteen sites): a country in a window's area line now shows its real flag instead of its two-letter code in a box (images from flagcdn.com, as majkinetor's Event Horizon does, asked only once a window opens). Codes with no flag there, such as XE (Europe) and XW (Worldwide), keep the box, and so does a flag the site blocks. On musicbrainz.org MusicBrainz's own flags stay, and Lotheric's \"Right Side Flags\" and \"More Flags Everywhere\" still leave the windows alone.",
+          "Link previews: an area's window now starts its Facts with \"Part of\", the whole line above it with flags (\"New Jersey, United States\" for Long Branch), asked in one request (WIP.1). Once a window has it, the area's hover card names that line too instead of only the nearest parent."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-23",
     "sections": [
