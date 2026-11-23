@@ -460,6 +460,11 @@ CLOSED: [2026-11-21 Sat]
 ** TODO The shared gate at eight a second (majkinetor's 2026.11.23 gate)
 
 - *Who fixes it*: *ours* for the port; possibly a question *upstream* about the pace (vzell decides).
+- *Decided* (vzell, 2026-11-23: "port the 30 ms lock hold, keep 1000 ms"): candidate 1 is ported on
+  =feat/gate-lock-hold= (=_MBG_LOCK_HOLD_MS=, =_mbGateState()= answers from inside the lock callback and keeps the
+  lock on a =_mbGateSleep()=; anchor =saed-gate-lock-hold=; spec =mb-shared-gate.spec.js=, 12. "the lock hold", three
+  tests; mutations in =mb-shared-gate.json=; vzell's browser check OK, 2026-11-23), and =_MBG_GAP= stays 1000 ms. Open: candidate 2 (=search-shed=) and
+  whether to ask about the pace; neither was asked for.
 - *What changed* (=5d4d464=, String Theory 2026.11.23.125301, #1093–#1098; analysis "Request gate"): =MBN_GAP= 125 ms
   and =MBN_BURST= 4, eight starts a second sustained (was 1000 ms and 3); an interactive lane (=itat=/=ilast=); a
   =search-shed= 503 holds searches only (=scool=/=shot=); no =hot= factor on a 503 with =Retry-After= or

@@ -238,8 +238,8 @@
     "why": "Upstream's lock race: a bridge that never settles the request on abort hangs the booking forever unless the 3 s timer releases the wait itself.",
     "edits": [
       {
-        "find": "                return await Promise.race([locked, timeout]);",
-        "replace": "                return await locked;"
+        "find": "                return await Promise.race([answered, timeout]);",
+        "replace": "                return await answered;"
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -251,8 +251,8 @@
     "why": "After the timeout the booking went ahead unlocked; a grant that comes later must run nothing, or tat moves a second time.",
     "edits": [
       {
-        "find": "                    () => (expired ? undefined : rw()));",
-        "replace": "                    () => rw());"
+        "find": "                    if (expired) return undefined; // a late grant books nothing\n",
+        "replace": ""
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -261,11 +261,15 @@
   },
   {
     "name": "the booking reads cool uncapped",
-    "why": "Upstream's form (cap in the wait only): a cool ten minutes out still books at (and tat, for everyone after) ten minutes out.",
+    "why": "Upstream's form (cap in the wait only): a cool ten minutes out still books at (and tat, for everyone after) ten minutes out. Since 9.99.1674 the write clamp lowers a far-future cool in storage before any read, which hides this read-side cap from its spec (found 2026-11-23: the entry passed on main); so it is planted with the clamp off too.",
     "edits": [
       {
         "find": "            const cool = now + (_mbGateHoldEnd(s.cool, now, mono) - mono);\n            const tat = s.tat || 0;",
         "replace": "            const cool = s.cool || 0;\n            const tat = s.tat || 0;"
+      },
+      {
+        "find": "            _mbGateClampWrite(s, Date.now(), _steadyNow());\n",
+        "replace": ""
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -274,11 +278,15 @@
   },
   {
     "name": "the wait reads cool uncapped",
-    "why": "With only the booking capped, the wait's re-read of a far-future cool still waits ten minutes.",
+    "why": "With only the booking capped, the wait's re-read of a far-future cool still waits ten minutes. Since 9.99.1674 the write clamp lowers a far-future cool in storage before any read, which hides this read-side cap from its spec (found 2026-11-23: the entry passed on main); so it is planted with the clamp off too.",
     "edits": [
       {
         "find": "            const cool = _mbGateHoldEnd(_mbGateRead().cool, Date.now(), now);",
         "replace": "            const cool = now + ((_mbGateRead().cool || 0) - Date.now());"
+      },
+      {
+        "find": "            _mbGateClampWrite(s, Date.now(), _steadyNow());\n",
+        "replace": ""
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -287,11 +295,15 @@
   },
   {
     "name": "the wait's cap counts from each re-read's now",
-    "why": "Upstream's wait: the cap moves along with now, so a cool ten minutes out still holds the request for all ten (and the job log hears 'waits longer' every second).",
+    "why": "Upstream's wait: the cap moves along with now, so a cool ten minutes out still holds the request for all ten (and the job log hears 'waits longer' every second). Since 9.99.1674 the write clamp lowers a far-future cool in storage before any read, which hides this read-side cap from its spec (found 2026-11-23: the entry passed on main); so it is planted with the clamp off too.",
     "edits": [
       {
         "find": "            const cool = _mbGateHoldEnd(_mbGateRead().cool, Date.now(), now);",
         "replace": "            const cool = now + Math.min((_mbGateRead().cool || 0) - Date.now(), _MBG_MAX_HOLD);"
+      },
+      {
+        "find": "            _mbGateClampWrite(s, Date.now(), _steadyNow());\n",
+        "replace": ""
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -300,11 +312,15 @@
   },
   {
     "name": "the booking's cap counts from its own now",
-    "why": "Capped per request only: the next request books 60 s out again behind the same broken value, so a column's requests one after another each wait a minute.",
+    "why": "Capped per request only: the next request books 60 s out again behind the same broken value, so a column's requests one after another each wait a minute. Since 9.99.1674 the write clamp lowers a far-future cool in storage before any read, which hides this read-side cap from its spec (found 2026-11-23: the entry passed on main); so it is planted with the clamp off too.",
     "edits": [
       {
         "find": "            const cool = now + (_mbGateHoldEnd(s.cool, now, mono) - mono);\n            const tat = s.tat || 0;",
         "replace": "            const cool = Math.min(s.cool || 0, now + _MBG_MAX_HOLD);\n            const tat = s.tat || 0;"
+      },
+      {
+        "find": "            _mbGateClampWrite(s, Date.now(), _steadyNow());\n",
+        "replace": ""
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -313,11 +329,15 @@
   },
   {
     "name": "the tab forgets when it first saw the value",
-    "why": "_mbGateCool() restarts the 60 s at every read: the cap rolls along at the booking and in the wait.",
+    "why": "_mbGateCool() restarts the 60 s at every read: the cap rolls along at the booking and in the wait. Since 9.99.1674 the write clamp lowers a far-future cool in storage before any read, which hides this read-side cap from its spec (found 2026-11-23: the entry passed on main); so it is planted with the clamp off too.",
     "edits": [
       {
         "find": "        if (v !== _mbgHoldSeen.cool) {",
         "replace": "        if (true) {"
+      },
+      {
+        "find": "            _mbGateClampWrite(s, Date.now(), _steadyNow());\n",
+        "replace": ""
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -326,7 +346,7 @@
   },
   {
     "name": "the answer reads the stored cool raw",
-    "why": "Behind a broken far-future cool, hot never steps and the hold reported for a 1 s 503 is that value's ten minutes (vzell's browser check: 522.3 s).",
+    "why": "Behind a broken far-future cool, hot never steps and the hold reported for a 1 s 503 is that value's ten minutes (vzell's browser check: 522.3 s). Since 9.99.1674 the write clamp lowers a far-future cool in storage before any read, which hides this read-side cap from its spec (found 2026-11-23: the entry passed on main); so it is planted with the clamp off too.",
     "edits": [
       {
         "find": "                const cool = _mbGateHoldEnd(s.cool, now, mono);\n                if (mono > cool + _MBG_QUIET_MS) s.hot = 0;",
@@ -335,6 +355,10 @@
       {
         "find": "                return Math.max(0, _mbGateHoldEnd(s.cool, now, mono) - mono);",
         "replace": "                return s.cool - now;"
+      },
+      {
+        "find": "            _mbGateClampWrite(s, Date.now(), _steadyNow());\n",
+        "replace": ""
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
@@ -343,10 +367,14 @@
   },
   {
     "name": "the tab forgets its own 503's hold",
-    "why": "Behind a broken cool, max(cool, now + ms) leaves the stored value unchanged and the cap counts it as over: the tab would not hold for its own throttle.",
+    "why": "Behind a broken cool, max(cool, now + ms) leaves the stored value unchanged and the cap counts it as over: the tab would not hold for its own throttle. Since 9.99.1674 the write clamp lowers a far-future cool in storage before any read, which hides this read-side cap from its spec (found 2026-11-23: the entry passed on main); so it is planted with the clamp off too.",
     "edits": [
       {
         "find": "                _mbgHoldSeen.own = Math.max(_mbgHoldSeen.own, mono + ms);\n",
+        "replace": ""
+      },
+      {
+        "find": "            _mbGateClampWrite(s, Date.now(), _steadyNow());\n",
         "replace": ""
       }
     ],
@@ -646,5 +674,57 @@
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
     "grep": "a lead this tab already counts",
     "expect": "fail"
+  },
+  {
+    "name": "the lock is not held after a write",
+    "why": "Without the hold a tab taking the lock right after this one can read the schedule from before our booking (Chromium hands the write over a moment later) and book the same slot.",
+    "edits": [
+      {
+        "find": "                    return _mbGateSleep(_MBG_LOCK_HOLD_MS);\n",
+        "replace": "                    return undefined;\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "the lock is kept 30 ms|the next holder waits the hold out",
+    "expect": "fail"
+  },
+  {
+    "name": "the hold sleeps on a plain page timer",
+    "why": "A page timer held back (#999) would keep the lock, and every tab and script behind it, for seconds; the hold must be a _mbGateSleep().",
+    "edits": [
+      {
+        "find": "                    return _mbGateSleep(_MBG_LOCK_HOLD_MS);\n",
+        "replace": "                    return new Promise((r) => setTimeout(r, _MBG_LOCK_HOLD_MS));\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "not held back with the page's timers",
+    "expect": "fail"
+  },
+  {
+    "name": "the caller waits the hold out",
+    "why": "The hold is for the NEXT holder; answering after it would add 30 ms to every booking of this tab.",
+    "edits": [
+      {
+        "find": "                    try { done.res(rw()); } catch (e) { done.rej(e); return undefined; }\n                    return _mbGateSleep(_MBG_LOCK_HOLD_MS);\n",
+        "replace": "                    let v;\n                    try { v = rw(); } catch (e) { done.rej(e); return undefined; }\n                    return _mbGateSleep(_MBG_LOCK_HOLD_MS).then(() => done.res(v));\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "the lock is kept 30 ms",
+    "expect": "fail"
+  },
+  {
+    "name": "a late rejection is left unheard",
+    "why": "Without the no-op catch, the abort of a lock that came too late would reject 'answered' with no one listening (an 'Uncaught (in promise)' in the console). No spec can see it: the stuck-lock spec's fake request never settles, so nothing rejects; a real bridge that rejects on abort is not simulated. Recorded, not tested.",
+    "edits": [
+      {
+        "find": "                answered.catch(() => {});\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "a lock that never settles",
+    "expect": "pass"
   }
 ]

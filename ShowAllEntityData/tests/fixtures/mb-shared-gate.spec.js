@@ -444,6 +444,13 @@ test.describe('shared MusicBrainz request gate (mbu:mb-gate v1)', () => {
 // 11. THE JOB LOG HEARS A LONGER WAIT ONCE. When a hold appears that moves
 //     the wait's end later, `onWait` is told again, with the reason; a wait
 //     that does not move is told once.
+// 12. THE LOCK HOLD (upstream's MBN_LOCK_HOLD since 5d4d464, 2026-11-23).
+//     The lock is kept 30 ms after a write, so the write reaches other tabs
+//     before the next holder reads; the caller is answered at once. Pinned
+//     both ways: the lock is still held when the write has answered, and a
+//     second write right after the first waits ≥ ~30 ms. Two real tabs
+//     booking one slot cannot be reproduced here (Playwright's pages share
+//     one storage process), so the hold itself is what is asserted.
 
 test.describe('shared request gate: aligned with upstream (lock race, sleep, hold cap)', () => {
 
@@ -608,11 +615,74 @@ test.describe('shared request gate: aligned with upstream (lock race, sleep, hol
             .toEqual({ sleepers: 0, frame: false, observer: false, ticking: false });
         // A plain write under the lock leaves no sleeper behind either: the
         // lock timer's sleep ends when the lock answers, not a slice later.
+        // Since the lock hold (12. below) one sleeper is left for its 30 ms:
+        // the hold's own. A lock timer still asleep would make it two.
         const left = await page.evaluate(async () => {
             await window.__saTest.mbGate.answer(200, null);
             return window.__saTest.mbGate.wakers().sleepers;
         });
-        expect(left, 'no sleeper outlives the write').toBe(0);
+        expect(left, 'only the lock hold sleeps after the write').toBeLessThanOrEqual(1);
+        await expect.poll(() => page.evaluate(() => window.__saTest.mbGate.wakers()),
+            { message: 'and the hold ends too: every waker rests' })
+            .toEqual({ sleepers: 0, frame: false, observer: false, ticking: false });
+    });
+
+    test('the lock is kept 30 ms after a write, and the caller does not wait for it', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0, lead: '', leadUntil: 0 });
+        const r = await page.evaluate(async () => {
+            const held = async () => (await navigator.locks.query()).held.some((l) => l.name === 'mbu-mb-gate');
+            await window.__saTest.mbGate.answer(200, null);
+            // Answered while the lock is still ours: the caller did not wait the hold out.
+            const atAnswer = await held();
+            await new Promise((res) => setTimeout(res, 150));
+            return { atAnswer, later: await held() };
+        });
+        expect(r.atAnswer, 'the lock is still held when the write has answered').toBe(true);
+        expect(r.later, 'and let go once the hold is over').toBe(false);
+    });
+
+    test('the next holder waits the hold out: a second write comes at least ~30 ms after the first', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0, lead: '', leadUntil: 0 });
+        const gaps = await page.evaluate(async () => {
+            const out = [];
+            for (let i = 0; i < 3; i++) {
+                await window.__saTest.mbGate.answer(200, null);
+                const t = performance.now();
+                await window.__saTest.mbGate.answer(200, null);
+                out.push(performance.now() - t);
+                await new Promise((res) => setTimeout(res, 100));
+            }
+            return out;
+        });
+        // Every second write waited for the first one's hold (30 ms, a few ms of slack).
+        for (const g of gaps) expect(g, `gaps ${gaps.map(Math.round).join(', ')} ms`).toBeGreaterThanOrEqual(25);
+    });
+
+    test("the hold is not held back with the page's timers: the next write still comes at once", async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0, lead: '', leadUntil: 0 });
+        const r = await page.evaluate(async () => {
+            const real = window.setTimeout;
+            // #999: the page's timers fire seconds late. A hold on a plain timer
+            // would keep the lock (and every tab and script behind it) 8 s.
+            window.setTimeout = (fn, ms, ...a) => real(fn, (ms || 0) + 8000, ...a);
+            let ms;
+            try {
+                await window.__saTest.mbGate.answer(200, null);
+                const t = performance.now();
+                await Promise.race([
+                    window.__saTest.mbGate.answer(200, null),
+                    new Promise((res) => real(res, 6000)),
+                ]);
+                ms = performance.now() - t;
+            } finally {
+                window.setTimeout = real;
+            }
+            return ms;
+        });
+        expect(r, 'the second write waited the 30 ms hold, not the held-back timer').toBeLessThan(1500);
     });
 
     test('the job log is told again only when a new hold moves the wait later', async ({ page }) => {
