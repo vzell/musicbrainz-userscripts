@@ -1376,13 +1376,18 @@ MusicBrainz too and have no Brucebase title to compare.
 possessive apostrophes (Hooligans, T‐Birds, Ripley, Macauley, Old Timer's), venue sub-names without a comma (Cipriani
 42nd Street, Barnes & Noble Union Square, …), =St=/=St.=.
 
-** Wiki fixes for Danny (draft for vzell to send, 2026-11-21)
+** Wiki fixes for Danny (draft for vzell to send, 2026-11-21; items 8–12 added 2026-11-23)
 
 Env: 2026-11-21T02:19:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
 (BruceParser 0.28.1–0.32.0 reports over the run =bb/2026-11-21=)
 
 From BruceParser's fixed reports (0.28.0–0.32.0): what they show on the wiki now that the parser's own artefacts and
 the hand-coded exceptions that hid real rows are gone. vzell sends it; nothing here was posted.
+
+Items 8–12 (2026-11-23) come from the audit of the five reports whose counts never moved: BruceParser 0.37.0–0.39.0
+removed their parser artefacts (828 image rows judged by the wrong rule, 3 YEAR-LIST rows) and widened two checks
+(parents, the =files= tag), so every row left is a wiki issue. Run =bb/2026-11-23=; the full lists are in the
+subsection after the draft. Item 9's and 12's full lists point to =brucebase-report.html=, so upload first.
 
 #+begin_example
 Hi Danny,
@@ -1448,10 +1453,648 @@ exceptions gone, a few real things on the wiki have surfaced. No hurry with any 
    The full list is on the URL page after my next upload:
    https://volkerzell.de/bruce/URL-shortening.html (last section)
 
+8. Year pages vs. their list pages (32 titles differ, 7 wrong links,
+   6 entries not listed, 1 list entry without a year-page anchor,
+   5 anchors/links used twice). Titles, year page first:
+   https://brucebase.wikidot.com/1966#250766
+      year page: 1966-07-25 - UNKNOWN LOCATION, ASBURY PARK, NJ
+      list page: 1966-07-25 - BUSINESS DISTRICT, ASBURY PARK, NJ
+   https://brucebase.wikidot.com/1966#260766
+      year page: 1966-07-26 - UNKNOWN LOCATION, ASBURY PARK, NJ
+      list page: 1966-07-26 - BUSINESS DISTRICT, ASBURY PARK, NJ
+   https://brucebase.wikidot.com/1972#000472b
+      year page: 1972-05-00 - MEDIASOUND STUDIOS, STUDIO C, NEW YORK CITY, NY
+      list page: 1972-04-00 - MEDIASOUND STUDIOS, STUDIO C, NEW YORK CITY, NY
+   https://brucebase.wikidot.com/1973#140273
+      year page: 1973-02-14 - VCU NEW GYM, VIRGINIA COMMONWEALTH UNIVERSITY, RICHMOND, VA
+      list page: 1973-02-14 - NEW GYMNASIUM, VIRGINIA COMMONWEALTH UNIVERSITY, RICHMOND, VA
+   https://brucebase.wikidot.com/1973#160273
+      year page: 1973-02-16 - WILLIAM T. BOYLAN GYMNASIUM, MONMOUTH COLLEGE, WEST LONG BRANCH, NJ
+      list page: 1973-02-16 - BOYLAN GYMNASIUM, MONMOUTH COLLEGE, WEST LONG BRANCH, NJ
+   https://brucebase.wikidot.com/1973#280273
+      year page: 1973-02-28 - STOCKTON MEMORIAL CIVIC AUDITORIUM, STOCKTON, CA
+      list page: 1973-02-28 - MEMORIAL CIVIC AUDITORIUM, STOCKTON, CA
+   https://brucebase.wikidot.com/1973#230473a
+      year page: 1973-04-23 - THE SHABOO INN, WILLIMANTIC, CT
+      list page: 1973-04-23 - SHABOO, WILLIMANTIC, CT
+   https://brucebase.wikidot.com/1973#120573
+      year page: 1973-05-12 - BEHIND THE EAST GYM, NIAGARA UNIVERSITY, LEWISTON, NY
+      list page: 1973-05-12 - EAST GYM, NIAGARA UNIVERSITY, LEWISTON, NY
+   https://brucebase.wikidot.com/1973#161273
+      year page: 1973-12-16 - THE SHABOO INN, WILLIMANTIC, CT
+      list page: 1973-12-16 - THE SHABOO, WILLIMANTIC, CT
+   https://brucebase.wikidot.com/1974#091174
+      year page: 1974-11-09 - MUSIC HALL, HOUSTON, TX
+      list page: 1974-11-09 - HOUSTON MUSIC HALL, HOUSTON, TX
+   https://brucebase.wikidot.com/1975#130975
+      year page: 1975-09-13 - HOUSTON MUSIC HALL, HOUSTON, TX
+      list page: 1975-09-13 - MUSIC HALL, HOUSTON, TX
+   https://brucebase.wikidot.com/1975#140975
+      year page: 1975-09-14 - HOUSTON MUSIC HALL, HOUSTON, TX
+      list page: 1975-09-14 - MUSIC HALL, HOUSTON, TX
+   https://brucebase.wikidot.com/1975#111075a
+      year page: 1975-10-11 - JAI-ALAI FRONTON, MIAMI, FL
+      list page: 1975-10-11 - JAI ALAI FRONTON, MIAMI, FL
+   https://brucebase.wikidot.com/1975#091175
+      year page: 1975-11-09 - JAI-ALAI FRONTON, TAMPA, FL
+      list page: 1975-11-09 - JAI ALAI FRONTON, TAMPA, FL
+   https://brucebase.wikidot.com/1975#101175
+      year page: 1975-11-10 - JAI-ALAI FRONTON, TAMPA, FL
+      list page: 1975-11-10 - JAI ALAI FRONTON, TAMPA, FL
+   https://brucebase.wikidot.com/1975#111175
+      year page: 1975-11-11 - JAI-ALAI FRONTON, MIAMI, FL
+      list page: 1975-11-11 - JAI ALAI FRONTON, MIAMI, FL
+   https://brucebase.wikidot.com/1975#141175
+      year page: 1975-11-14 - JAI-ALAI FRONTON, MIAMI, FL
+      list page: 1975-11-14 - JAI ALAI FRONTON, MIAMI, FL
+   https://brucebase.wikidot.com/1988#270388
+      year page: 1988-03-27 - ROYAL OAK MUSIC THEATRE, ROYAL OAK, MI
+      list page: 1988-03-27 - ROYAL OAK MUSIC THEATER, ROYAL OAK, MI
+   https://brucebase.wikidot.com/1990#311090
+      year page: 1990-10-31 CAFE VERTIGO, LOS ANGELES, CA
+      list page: 1990-10-31 - CAFE VERTIGO, LOS ANGELES, CA
+   https://brucebase.wikidot.com/1995#000395a
+      year page: 1995-03-00 - THRILL HILL WEST, BEVERLY HILLS, CA
+      list page: 1995-03-00 - THRILL HILL EAST, RUMSON, NJ
+   https://brucebase.wikidot.com/1995#000595a
+      year page: 1995-05-00 - THRILL HILL WEST, BEVERLY HILLS, CA
+      list page: 1995-05-00 - THRILL HILL EAST, RUMSON, NJ
+   https://brucebase.wikidot.com/2009#000209
+      year page: 2009-02-00 - BOXWOOD STUDIO, COLTS NECK, NJ
+      list page: 2009-02-00 - THRILL HILL EAST, COLTS NECK, NJ
+   https://brucebase.wikidot.com/2009#000809
+      year page: 2009-08-00 - STONE HILL STUDIO, COLTS NECK, NJ
+      list page: 2009-08-00 - THRILL HILL EAST, COLTS NECK, NJ
+   https://brucebase.wikidot.com/2025#280425
+      year page: 2025-04-28 - SABAN MEDIA CENTER, LOS ANGELS, CA
+      list page: 2025-04-28 - SABAN MEDIA CENTER, LOS ANGELES, CA
+   https://brucebase.wikidot.com/2025#270625a
+      year page: 2025-06-27 SIRIUSXUM STUDIO, NEW YORK CITY, NY
+      list page: 2025-06-27 - SIRIUSXM STUDIO, NEW YORK CITY, NY
+   https://brucebase.wikidot.com/2025#021025a
+      year page: 2025-10-02 SIRIUSXUM STUDIO, NEW YORK CITY, NY
+      list page: 2025-10-02 - SIRIUSXM STUDIO, NEW YORK CITY, NY
+   https://brucebase.wikidot.com/2025#141025
+      year page: 2025-10-14 - SPOTIFY HQ, THE ADELPHI, LONDON, ENGLAND
+      list page: 2025-10-14 - THE ADELPHI, LONDON, ENGLAND
+   https://brucebase.wikidot.com/2025#151025
+      year page: 2025-10-15 - ROYAL FESTIVAL HALL, SOUTHBANK CENTRE, LONDON, ENGLAND
+      list page: 2025-10-15 - SOUTHBANK CENTRE'S ROYAL FESTIVAL HALL, LONDON, ENGLAND
+   https://brucebase.wikidot.com/2025#201025
+      year page: 2025-10-20 - THE STONE PONY, ASBURY PARK, NJ
+      list page: 2025-10-20 - THE STONE PONY, ASBURY, NJ
+   https://brucebase.wikidot.com/2025#261025
+      year page: 2025-10-26 - THE STONE PONY, ASBURY PARK, NJ
+      list page: 2025-10-26 - THE STONE PONY, ASBURY, NJ
+   https://brucebase.wikidot.com/2026#280826
+      year page: 2026-08-28 THE STONE PONY, SUMMER STAGE, ASBURY PARK, NJ
+      list page: 2026-08-28 - THE STONE PONY, SUMMER STAGE, ASBURY PARK, NJ
+   https://brucebase.wikidot.com/2026#300826
+      year page: 2026-08-30 107.1 THE BOSS STUDIO, NEPTUNE, NJ
+      list page: 2026-08-30 - 107.1 THE BOSS STUDIO, NEPTUNE, NJ
+   Wrong links on the list page:
+   - https://brucebase.wikidot.com/1977-list: "1977-01-00 - TELEGRAPH HILL STUDIO, HOLMDEL, NJ" links to /1976#001177b; the year page has it as https://brucebase.wikidot.com/1977#000177b
+   - https://brucebase.wikidot.com/1977-list: "1977-04-00 - TELEGRAPH HILL STUDIO, HOLMDEL, NJ" links to /1976#000477; the year page has it as https://brucebase.wikidot.com/1977#000477
+   - https://brucebase.wikidot.com/1995-list: "1995-08-00 - THRILL HILL WEST, BEVERLY HILLS, CA" links to /1995#000795; the year page has it as https://brucebase.wikidot.com/1995#000895
+   - https://brucebase.wikidot.com/2007-list: "2007-08-00 - CONVENTION HALL, ASBURY PARK, NJ" links to /2007#000807; the year page has it as https://brucebase.wikidot.com/2007#000807b
+   - https://brucebase.wikidot.com/2009-list: "2009-09-10 - SOMMET CENTER, NASHVILLE, TN" links to /2009#181109; the year page has it as https://brucebase.wikidot.com/2009#100909
+   - https://brucebase.wikidot.com/2011-list: "2011-02-15 - STONE HILL STUDIO, COLTS NECK, NJ" links to /2011#000211; the year page has it as https://brucebase.wikidot.com/2011#150211
+   - https://brucebase.wikidot.com/2026-list: "2026-07-00 - BRUCE SPRINGSTEEN CENTER FOR AMERICAN MUSIC, MONMOUTH UNIVERSITY, WEST LONG BRANCH, NJ" links to /2026#030626; the year page has it as https://brucebase.wikidot.com/2026#000726
+   Not on the list page:
+   - https://brucebase.wikidot.com/1977-list: "1977-07-29 - ATLANTIC STUDIOS, NEW YORK CITY, NY" is not listed (https://brucebase.wikidot.com/1977#290777)
+   - https://brucebase.wikidot.com/1987-list: "1987-09-29 - COCOANUT GROVE, AMBASSADOR HOTEL, LOS ANGELES, CA" is not listed (https://brucebase.wikidot.com/1987#290987)
+   - https://brucebase.wikidot.com/2007-list: "2007-08-00 - THRILL HILL EAST, RUMSON, NJ" is not listed (https://brucebase.wikidot.com/2007#000807a)
+   - https://brucebase.wikidot.com/2025-list: "2025-10-16 - CLARIDGE'S, LONDON, ENGLAND" is not listed (https://brucebase.wikidot.com/2025#161025a)
+   - https://brucebase.wikidot.com/2025-list: "2025-10-16 - TELEVISION CENTRE, STUDIO 1, LONDON, ENGLAND" is not listed (https://brucebase.wikidot.com/2025#161025b)
+   - https://brucebase.wikidot.com/2025-list: "2025-10-22 - TCL CHINESE THEATRE, LOS ANGELES, CA" is not listed (https://brucebase.wikidot.com/2025#221025)
+   On the list page, but no anchor on the year page:
+   - https://brucebase.wikidot.com/1979-list: "1979-04-12 - POWER STATION, NEW YORK CITY, NY" links to https://brucebase.wikidot.com/1979#120479, an anchor the year page does not have
+   Used twice:
+   - YEAR page https://brucebase.wikidot.com/1972#000472b: anchor used 2 times: 1972-04-00 - MEDIASOUND STUDIOS, STUDIO C, NEW YORK CITY, NY / 1972-05-00 - MEDIASOUND STUDIOS, STUDIO C, NEW YORK CITY, NY
+   - list page https://brucebase.wikidot.com/1995-list: link to 1995#000795 used 2 times: 1995-07-00 - THRILL HILL EAST, RUMSON, NJ / 1995-08-00 - THRILL HILL WEST, BEVERLY HILLS, CA
+   - list page https://brucebase.wikidot.com/2009-list: link to 2009#181109 used 2 times: 2009-09-10 - SOMMET CENTER, NASHVILLE, TN / 2009-11-18 - SOMMET CENTER, NASHVILLE, TN
+   - list page https://brucebase.wikidot.com/2011-list: link to 2011#000211 used 2 times: 2011-02-15 - STONE HILL STUDIO, COLTS NECK, NJ / 2011-02-00 - STONE HILL STUDIO, COLTS NECK, NJ
+   - list page https://brucebase.wikidot.com/2026-list: link to 2026#030626 used 2 times: 2026-06-03 - BRUCE SPRINGSTEEN CENTER FOR AMERICAN MUSIC, MONMOUTH UNIVERSITY, WEST LONG BRANCH, NJ / 2026-07-00 - BRUCE SPRINGSTEEN CENTER FOR AMERICAN MUSIC, MONMOUTH UNIVERSITY, WEST LONG BRANCH, NJ
+
+9. Pages without a parent page (no link in their breadcrumbs), 133:
+   - 104 storyteller stories, 1972-01-21 to 1981-07-30,
+     e.g. https://brucebase.wikidot.com/story:story-1972-01-21-neptune-nj
+   - and 29 others (eye 2, gallery 2, gignote 14, media 4, news 6, recnote 1):
+     https://brucebase.wikidot.com/eye:1971-09-01-garfield-park-long-branch-nj
+     https://brucebase.wikidot.com/eye:1973-03-24-student-center-lewiston-ny
+     https://brucebase.wikidot.com/gallery:2019-12-06-stone-pony-asbury-park-nj
+     https://brucebase.wikidot.com/gallery:2020-05-06-siriusxm-studio-new-york-city-ny
+     https://brucebase.wikidot.com/gignote:1973-01-00-unknown-location-red-bank-nj
+     https://brucebase.wikidot.com/gignote:1973-06-03-civic-center-baltimore-md
+     https://brucebase.wikidot.com/gignote:1975-10-03-rivoli-theatre-indianapolis-in
+     https://brucebase.wikidot.com/gignote:1978-06-12-mary-e-sawyer-auditorium-la-crosse-wi
+     https://brucebase.wikidot.com/gignote:1983-06-06-hit-factory-new-york-city-ny
+     https://brucebase.wikidot.com/gignote:1983-06-13-hit-factory-new-york-city-ny
+     https://brucebase.wikidot.com/gignote:2012-03-17-red-light-cafe-atlanta-ga
+     https://brucebase.wikidot.com/gignote:2014-03-00-fort-hancock-sandy-hook-nj
+     https://brucebase.wikidot.com/gignote:2014-09-04-unknown-location-new-york-city-ny
+     https://brucebase.wikidot.com/gignote:2015-10-25-state-theatre-new-brunswick-nj
+     https://brucebase.wikidot.com/gignote:2016-02-23-quicken-loans-arena-cleveland-oh
+     https://brucebase.wikidot.com/gignote:2021-07-26-ana-intercontinental-hotel-tokyo-japan
+     https://brucebase.wikidot.com/gignote:2021-11-25-siriusxm-studio-new-york-city-ny
+     https://brucebase.wikidot.com/gignote:2023-01-31-amalie-arena-tampa-fl
+     https://brucebase.wikidot.com/media:2020-01-17-deeridge-farm-wellington-fl
+     https://brucebase.wikidot.com/media:2020-01-18-paramount-theatre-asbury-park-nj
+     https://brucebase.wikidot.com/media:2020-03-26-siriusxm-studio-new-york-city-ny
+     https://brucebase.wikidot.com/media:2025-05-19-eve-studios-bredbury-england
+     https://brucebase.wikidot.com/news:1968-07-17-off-broad-street-red-bank-nj-late
+     https://brucebase.wikidot.com/news:1995-08-06-metro-long-branch-nj
+     https://brucebase.wikidot.com/news:2008-08-23-scottrade-center-st-louis-mo
+     https://brucebase.wikidot.com/news:2018-10-03-walter-kerr-theatre-new-york-city-ny
+     https://brucebase.wikidot.com/news:2021-07-26-ana-intercontinental-hotel-tokyo-japan
+     https://brucebase.wikidot.com/news:web-1973-12-22-uncle-al-s-erlton-lounge-cherry-hill-nj
+     https://brucebase.wikidot.com/recnote:1985-04-16-kokuritsu-yoyogi-kyogi-jo-tokyo-japan
+
+10. Pages without any tag, 38:
+    https://brucebase.wikidot.com/content:american-hotel-freehold-nj
+    https://brucebase.wikidot.com/content:asbury-united-methodist-church-janesville-wi
+    https://brucebase.wikidot.com/content:cbs-30th-street-studio-new-york-city-ny
+    https://brucebase.wikidot.com/content:eve-studios-bredbury-england
+    https://brucebase.wikidot.com/content:live-downloads-d
+    https://brucebase.wikidot.com/content:lyrics-dedication
+    https://brucebase.wikidot.com/content:lyrics-folkways
+    https://brucebase.wikidot.com/content:lyrics-on-the-line
+    https://brucebase.wikidot.com/content:palm-theater-telluride-co
+    https://brucebase.wikidot.com/content:reale-arena-donostia-san-sebastian-spain
+    https://brucebase.wikidot.com/content:retail-releases-top-test
+    https://brucebase.wikidot.com/content:springsteen-residence-freehold-nj
+    https://brucebase.wikidot.com/content:table-def-header-details
+    https://brucebase.wikidot.com/content:table-def-header-recgig
+    https://brucebase.wikidot.com/content:tracks-23rd-street-lullaby-limited
+    https://brucebase.wikidot.com/content:tracks-london-calling-note
+    https://brucebase.wikidot.com/content:tracks-magic-tour-highlights
+    https://brucebase.wikidot.com/content:tracks-released-the-human-rights-concerts-video
+    https://brucebase.wikidot.com/content:tracks-silver-patron-saints
+    https://brucebase.wikidot.com/content:tracks-springsteen-on-broadway
+    https://brucebase.wikidot.com/content:tracks-stomping-ground-note
+    https://brucebase.wikidot.com/content:tracks-the-bridge-school-concerts-25
+    https://brucebase.wikidot.com/content:university-of-bridgeport-bridgeport-ct
+    https://brucebase.wikidot.com/content:v-f-w-hall-freehold-nj
+    https://brucebase.wikidot.com/news:web-2026-04-07-kia-forum-inglewood-ca
+    https://brucebase.wikidot.com/playlist:spare-parts-overview
+    https://brucebase.wikidot.com/recording:1984-09-00-shakedown-studios-new-york-city-ny
+    https://brucebase.wikidot.com/relation:chubby-checker
+    https://brucebase.wikidot.com/relation:david-mansfield
+    https://brucebase.wikidot.com/relation:gladys-avignon
+    https://brucebase.wikidot.com/retail:a-more-perfect-union-credits
+    https://brucebase.wikidot.com/retail:elvis-viva-las-vegas-soundtrack-release
+    https://brucebase.wikidot.com/retail:float-away-with-the-friday-night-gods-addinfo
+    https://brucebase.wikidot.com/retail:hammersmith-odeon-london-75-release
+    https://brucebase.wikidot.com/retail:jerry-maguire-soundtrack-credits
+    https://brucebase.wikidot.com/retail:pbs-exclusive-2005-ep-addinfo
+    https://brucebase.wikidot.com/retail:she-came-to-me-soundtrack-overview
+    https://brucebase.wikidot.com/retail:stories-from-a-rock-n-roll-heart-overview
+
+11. Pages without (or with the wrong) first-letter tag, 10:
+    https://brucebase.wikidot.com/ott:a-rainy-night-in-soho                                  (expected "a")
+    https://brucebase.wikidot.com/ott:i-want-you                                             (expected "i")
+    https://brucebase.wikidot.com/ott:streets-of-minneapolis                                 (expected "s")
+    https://brucebase.wikidot.com/relation:rob-demartin                                      (expected "d")
+    https://brucebase.wikidot.com/song:dinner-at-eight                                       (expected "d")
+    https://brucebase.wikidot.com/song:follow-the-sun                                        (expected "f")
+    https://brucebase.wikidot.com/song:two-of-us                                             (expected "t")
+    https://brucebase.wikidot.com/song:you-re-gonna-miss-me-when-i-m-gone                    (expected "y")
+    https://brucebase.wikidot.com/venue:107-1-the-boss-studio-neptune-nj                     (expected "0-9")
+    https://brucebase.wikidot.com/venue:unknown-location-bayonne-nj                          (expected "u")
+
+12. The "files" tag: 99 pages have pictures or files of their own but no
+    "files" tag (gallery 16, news 43, recnote 1, relation 3, venue 36), e.g.
+    https://brucebase.wikidot.com/gallery:1980-10-30-memorial-sports-arena-los-angeles-ca
+    https://brucebase.wikidot.com/gallery:1980-12-16-garden-boston-ma
+    https://brucebase.wikidot.com/gallery:2000-02-28-bryce-jordan-center-university-park-pa
+    https://brucebase.wikidot.com/gallery:2000-04-03-rose-garden-portland-or
+    and 61 pages carry the tag without a file of their own
+    (files 30, gallery 2, news 9, recnote 1, relation 13, venue 6), e.g.
+    https://brucebase.wikidot.com/files:artwork-tour-cs
+    https://brucebase.wikidot.com/files:artwork-tour-gfapnj
+    https://brucebase.wikidot.com/files:artwork-tour-lwst
+    https://brucebase.wikidot.com/files:artwork-tour-nbrsk
+    (Pages that only show pictures stored on other pages, like the album covers on
+    the retail pages, are fine without the tag.)
+
+Items 9 and 12 in full: https://volkerzell.de/bruce/brucebase-report.html after my next upload.
+
 The setlist differences list (volkerzell.de/bruce/setlist-differences.txt) is down to 315
 events after the next upload; about 25 of the old entries were parser artefacts, not
 wiki differences.
 
 Thanks again for Brucebase!
 Volker
+#+end_example
+
+*** Full lists for items 8–12 (2026-11-23)
+
+Env: 2026-11-23T15:31:35+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a (BruceParser 0.39.0 reports over the run =bb/2026-11-23=)
+
+Written by =python3 scripts/build-bb-wiki-fix-lists.py ~/git/scripts/BruceParser/bb/2026-11-23 --part full=; the
+e-mail items above by the same script without =--part=. Regenerate both after the next run before sending.
+
+#+begin_example
+Year vs. list titles (32):
+  https://brucebase.wikidot.com/1966#250766 | 1966-07-25 - UNKNOWN LOCATION, ASBURY PARK, NJ | 1966-07-25 - BUSINESS DISTRICT, ASBURY PARK, NJ
+  https://brucebase.wikidot.com/1966#260766 | 1966-07-26 - UNKNOWN LOCATION, ASBURY PARK, NJ | 1966-07-26 - BUSINESS DISTRICT, ASBURY PARK, NJ
+  https://brucebase.wikidot.com/1972#000472b | 1972-05-00 - MEDIASOUND STUDIOS, STUDIO C, NEW YORK CITY, NY | 1972-04-00 - MEDIASOUND STUDIOS, STUDIO C, NEW YORK CITY, NY
+  https://brucebase.wikidot.com/1973#140273 | 1973-02-14 - VCU NEW GYM, VIRGINIA COMMONWEALTH UNIVERSITY, RICHMOND, VA | 1973-02-14 - NEW GYMNASIUM, VIRGINIA COMMONWEALTH UNIVERSITY, RICHMOND, VA
+  https://brucebase.wikidot.com/1973#160273 | 1973-02-16 - WILLIAM T. BOYLAN GYMNASIUM, MONMOUTH COLLEGE, WEST LONG BRANCH, NJ | 1973-02-16 - BOYLAN GYMNASIUM, MONMOUTH COLLEGE, WEST LONG BRANCH, NJ
+  https://brucebase.wikidot.com/1973#280273 | 1973-02-28 - STOCKTON MEMORIAL CIVIC AUDITORIUM, STOCKTON, CA | 1973-02-28 - MEMORIAL CIVIC AUDITORIUM, STOCKTON, CA
+  https://brucebase.wikidot.com/1973#230473a | 1973-04-23 - THE SHABOO INN, WILLIMANTIC, CT | 1973-04-23 - SHABOO, WILLIMANTIC, CT
+  https://brucebase.wikidot.com/1973#120573 | 1973-05-12 - BEHIND THE EAST GYM, NIAGARA UNIVERSITY, LEWISTON, NY | 1973-05-12 - EAST GYM, NIAGARA UNIVERSITY, LEWISTON, NY
+  https://brucebase.wikidot.com/1973#161273 | 1973-12-16 - THE SHABOO INN, WILLIMANTIC, CT | 1973-12-16 - THE SHABOO, WILLIMANTIC, CT
+  https://brucebase.wikidot.com/1974#091174 | 1974-11-09 - MUSIC HALL, HOUSTON, TX | 1974-11-09 - HOUSTON MUSIC HALL, HOUSTON, TX
+  https://brucebase.wikidot.com/1975#130975 | 1975-09-13 - HOUSTON MUSIC HALL, HOUSTON, TX | 1975-09-13 - MUSIC HALL, HOUSTON, TX
+  https://brucebase.wikidot.com/1975#140975 | 1975-09-14 - HOUSTON MUSIC HALL, HOUSTON, TX | 1975-09-14 - MUSIC HALL, HOUSTON, TX
+  https://brucebase.wikidot.com/1975#111075a | 1975-10-11 - JAI-ALAI FRONTON, MIAMI, FL | 1975-10-11 - JAI ALAI FRONTON, MIAMI, FL
+  https://brucebase.wikidot.com/1975#091175 | 1975-11-09 - JAI-ALAI FRONTON, TAMPA, FL | 1975-11-09 - JAI ALAI FRONTON, TAMPA, FL
+  https://brucebase.wikidot.com/1975#101175 | 1975-11-10 - JAI-ALAI FRONTON, TAMPA, FL | 1975-11-10 - JAI ALAI FRONTON, TAMPA, FL
+  https://brucebase.wikidot.com/1975#111175 | 1975-11-11 - JAI-ALAI FRONTON, MIAMI, FL | 1975-11-11 - JAI ALAI FRONTON, MIAMI, FL
+  https://brucebase.wikidot.com/1975#141175 | 1975-11-14 - JAI-ALAI FRONTON, MIAMI, FL | 1975-11-14 - JAI ALAI FRONTON, MIAMI, FL
+  https://brucebase.wikidot.com/1988#270388 | 1988-03-27 - ROYAL OAK MUSIC THEATRE, ROYAL OAK, MI | 1988-03-27 - ROYAL OAK MUSIC THEATER, ROYAL OAK, MI
+  https://brucebase.wikidot.com/1990#311090 | 1990-10-31 CAFE VERTIGO, LOS ANGELES, CA | 1990-10-31 - CAFE VERTIGO, LOS ANGELES, CA
+  https://brucebase.wikidot.com/1995#000395a | 1995-03-00 - THRILL HILL WEST, BEVERLY HILLS, CA | 1995-03-00 - THRILL HILL EAST, RUMSON, NJ
+  https://brucebase.wikidot.com/1995#000595a | 1995-05-00 - THRILL HILL WEST, BEVERLY HILLS, CA | 1995-05-00 - THRILL HILL EAST, RUMSON, NJ
+  https://brucebase.wikidot.com/2009#000209 | 2009-02-00 - BOXWOOD STUDIO, COLTS NECK, NJ | 2009-02-00 - THRILL HILL EAST, COLTS NECK, NJ
+  https://brucebase.wikidot.com/2009#000809 | 2009-08-00 - STONE HILL STUDIO, COLTS NECK, NJ | 2009-08-00 - THRILL HILL EAST, COLTS NECK, NJ
+  https://brucebase.wikidot.com/2025#280425 | 2025-04-28 - SABAN MEDIA CENTER, LOS ANGELS, CA | 2025-04-28 - SABAN MEDIA CENTER, LOS ANGELES, CA
+  https://brucebase.wikidot.com/2025#270625a | 2025-06-27 SIRIUSXUM STUDIO, NEW YORK CITY, NY | 2025-06-27 - SIRIUSXM STUDIO, NEW YORK CITY, NY
+  https://brucebase.wikidot.com/2025#021025a | 2025-10-02 SIRIUSXUM STUDIO, NEW YORK CITY, NY | 2025-10-02 - SIRIUSXM STUDIO, NEW YORK CITY, NY
+  https://brucebase.wikidot.com/2025#141025 | 2025-10-14 - SPOTIFY HQ, THE ADELPHI, LONDON, ENGLAND | 2025-10-14 - THE ADELPHI, LONDON, ENGLAND
+  https://brucebase.wikidot.com/2025#151025 | 2025-10-15 - ROYAL FESTIVAL HALL, SOUTHBANK CENTRE, LONDON, ENGLAND | 2025-10-15 - SOUTHBANK CENTRE'S ROYAL FESTIVAL HALL, LONDON, ENGLAND
+  https://brucebase.wikidot.com/2025#201025 | 2025-10-20 - THE STONE PONY, ASBURY PARK, NJ | 2025-10-20 - THE STONE PONY, ASBURY, NJ
+  https://brucebase.wikidot.com/2025#261025 | 2025-10-26 - THE STONE PONY, ASBURY PARK, NJ | 2025-10-26 - THE STONE PONY, ASBURY, NJ
+  https://brucebase.wikidot.com/2026#280826 | 2026-08-28 THE STONE PONY, SUMMER STAGE, ASBURY PARK, NJ | 2026-08-28 - THE STONE PONY, SUMMER STAGE, ASBURY PARK, NJ
+  https://brucebase.wikidot.com/2026#300826 | 2026-08-30 107.1 THE BOSS STUDIO, NEPTUNE, NJ | 2026-08-30 - 107.1 THE BOSS STUDIO, NEPTUNE, NJ
+Year vs. list, link (7):
+  https://brucebase.wikidot.com/1977-list: "1977-01-00 - TELEGRAPH HILL STUDIO, HOLMDEL, NJ" links to /1976#001177b; the year page has it as https://brucebase.wikidot.com/1977#000177b
+  https://brucebase.wikidot.com/1977-list: "1977-04-00 - TELEGRAPH HILL STUDIO, HOLMDEL, NJ" links to /1976#000477; the year page has it as https://brucebase.wikidot.com/1977#000477
+  https://brucebase.wikidot.com/1995-list: "1995-08-00 - THRILL HILL WEST, BEVERLY HILLS, CA" links to /1995#000795; the year page has it as https://brucebase.wikidot.com/1995#000895
+  https://brucebase.wikidot.com/2007-list: "2007-08-00 - CONVENTION HALL, ASBURY PARK, NJ" links to /2007#000807; the year page has it as https://brucebase.wikidot.com/2007#000807b
+  https://brucebase.wikidot.com/2009-list: "2009-09-10 - SOMMET CENTER, NASHVILLE, TN" links to /2009#181109; the year page has it as https://brucebase.wikidot.com/2009#100909
+  https://brucebase.wikidot.com/2011-list: "2011-02-15 - STONE HILL STUDIO, COLTS NECK, NJ" links to /2011#000211; the year page has it as https://brucebase.wikidot.com/2011#150211
+  https://brucebase.wikidot.com/2026-list: "2026-07-00 - BRUCE SPRINGSTEEN CENTER FOR AMERICAN MUSIC, MONMOUTH UNIVERSITY, WEST LONG BRANCH, NJ" links to /2026#030626; the year page has it as https://brucebase.wikidot.com/2026#000726
+Year vs. list, add (6):
+  https://brucebase.wikidot.com/1977-list: "1977-07-29 - ATLANTIC STUDIOS, NEW YORK CITY, NY" is not listed (https://brucebase.wikidot.com/1977#290777)
+  https://brucebase.wikidot.com/1987-list: "1987-09-29 - COCOANUT GROVE, AMBASSADOR HOTEL, LOS ANGELES, CA" is not listed (https://brucebase.wikidot.com/1987#290987)
+  https://brucebase.wikidot.com/2007-list: "2007-08-00 - THRILL HILL EAST, RUMSON, NJ" is not listed (https://brucebase.wikidot.com/2007#000807a)
+  https://brucebase.wikidot.com/2025-list: "2025-10-16 - CLARIDGE'S, LONDON, ENGLAND" is not listed (https://brucebase.wikidot.com/2025#161025a)
+  https://brucebase.wikidot.com/2025-list: "2025-10-16 - TELEVISION CENTRE, STUDIO 1, LONDON, ENGLAND" is not listed (https://brucebase.wikidot.com/2025#161025b)
+  https://brucebase.wikidot.com/2025-list: "2025-10-22 - TCL CHINESE THEATRE, LOS ANGELES, CA" is not listed (https://brucebase.wikidot.com/2025#221025)
+Year vs. list, lacks (1):
+  https://brucebase.wikidot.com/1979-list: "1979-04-12 - POWER STATION, NEW YORK CITY, NY" links to https://brucebase.wikidot.com/1979#120479, an anchor the year page does not have
+Year vs. list, twice (5):
+  YEAR page https://brucebase.wikidot.com/1972#000472b: anchor used 2 times: 1972-04-00 - MEDIASOUND STUDIOS, STUDIO C, NEW YORK CITY, NY / 1972-05-00 - MEDIASOUND STUDIOS, STUDIO C, NEW YORK CITY, NY
+  list page https://brucebase.wikidot.com/1995-list: link to 1995#000795 used 2 times: 1995-07-00 - THRILL HILL EAST, RUMSON, NJ / 1995-08-00 - THRILL HILL WEST, BEVERLY HILLS, CA
+  list page https://brucebase.wikidot.com/2009-list: link to 2009#181109 used 2 times: 2009-09-10 - SOMMET CENTER, NASHVILLE, TN / 2009-11-18 - SOMMET CENTER, NASHVILLE, TN
+  list page https://brucebase.wikidot.com/2011-list: link to 2011#000211 used 2 times: 2011-02-15 - STONE HILL STUDIO, COLTS NECK, NJ / 2011-02-00 - STONE HILL STUDIO, COLTS NECK, NJ
+  list page https://brucebase.wikidot.com/2026-list: link to 2026#030626 used 2 times: 2026-06-03 - BRUCE SPRINGSTEEN CENTER FOR AMERICAN MUSIC, MONMOUTH UNIVERSITY, WEST LONG BRANCH, NJ / 2026-07-00 - BRUCE SPRINGSTEEN CENTER FOR AMERICAN MUSIC, MONMOUTH UNIVERSITY, WEST LONG BRANCH, NJ
+No parent (133):
+  https://brucebase.wikidot.com/eye:1971-09-01-garfield-park-long-branch-nj
+  https://brucebase.wikidot.com/eye:1973-03-24-student-center-lewiston-ny
+  https://brucebase.wikidot.com/gallery:2019-12-06-stone-pony-asbury-park-nj
+  https://brucebase.wikidot.com/gallery:2020-05-06-siriusxm-studio-new-york-city-ny
+  https://brucebase.wikidot.com/gignote:1973-01-00-unknown-location-red-bank-nj
+  https://brucebase.wikidot.com/gignote:1973-06-03-civic-center-baltimore-md
+  https://brucebase.wikidot.com/gignote:1975-10-03-rivoli-theatre-indianapolis-in
+  https://brucebase.wikidot.com/gignote:1978-06-12-mary-e-sawyer-auditorium-la-crosse-wi
+  https://brucebase.wikidot.com/gignote:1983-06-06-hit-factory-new-york-city-ny
+  https://brucebase.wikidot.com/gignote:1983-06-13-hit-factory-new-york-city-ny
+  https://brucebase.wikidot.com/gignote:2012-03-17-red-light-cafe-atlanta-ga
+  https://brucebase.wikidot.com/gignote:2014-03-00-fort-hancock-sandy-hook-nj
+  https://brucebase.wikidot.com/gignote:2014-09-04-unknown-location-new-york-city-ny
+  https://brucebase.wikidot.com/gignote:2015-10-25-state-theatre-new-brunswick-nj
+  https://brucebase.wikidot.com/gignote:2016-02-23-quicken-loans-arena-cleveland-oh
+  https://brucebase.wikidot.com/gignote:2021-07-26-ana-intercontinental-hotel-tokyo-japan
+  https://brucebase.wikidot.com/gignote:2021-11-25-siriusxm-studio-new-york-city-ny
+  https://brucebase.wikidot.com/gignote:2023-01-31-amalie-arena-tampa-fl
+  https://brucebase.wikidot.com/media:2020-01-17-deeridge-farm-wellington-fl
+  https://brucebase.wikidot.com/media:2020-01-18-paramount-theatre-asbury-park-nj
+  https://brucebase.wikidot.com/media:2020-03-26-siriusxm-studio-new-york-city-ny
+  https://brucebase.wikidot.com/media:2025-05-19-eve-studios-bredbury-england
+  https://brucebase.wikidot.com/news:1968-07-17-off-broad-street-red-bank-nj-late
+  https://brucebase.wikidot.com/news:1995-08-06-metro-long-branch-nj
+  https://brucebase.wikidot.com/news:2008-08-23-scottrade-center-st-louis-mo
+  https://brucebase.wikidot.com/news:2018-10-03-walter-kerr-theatre-new-york-city-ny
+  https://brucebase.wikidot.com/news:2021-07-26-ana-intercontinental-hotel-tokyo-japan
+  https://brucebase.wikidot.com/news:web-1973-12-22-uncle-al-s-erlton-lounge-cherry-hill-nj
+  https://brucebase.wikidot.com/recnote:1985-04-16-kokuritsu-yoyogi-kyogi-jo-tokyo-japan
+  https://brucebase.wikidot.com/story:story-1972-01-21-neptune-nj
+  https://brucebase.wikidot.com/story:story-1972-08-10-new-york-city-ny
+  https://brucebase.wikidot.com/story:story-1972-12-07-ossining-ny
+  https://brucebase.wikidot.com/story:story-1973-01-09a-boston-ma
+  https://brucebase.wikidot.com/story:story-1973-02-14-richmond-va
+  https://brucebase.wikidot.com/story:story-1973-03-02-berkeley-ca
+  https://brucebase.wikidot.com/story:story-1973-04-24-bryn-mawr-pa
+  https://brucebase.wikidot.com/story:story-1973-05-31a-richmond-va
+  https://brucebase.wikidot.com/story:story-1973-06-13-binghamton-ny
+  https://brucebase.wikidot.com/story:story-1973-07-31-roslyn-ny
+  https://brucebase.wikidot.com/story:story-1973-10-31-bryn-mawr-pa
+  https://brucebase.wikidot.com/story:story-1974-01-06-cambridge-ma
+  https://brucebase.wikidot.com/story:story-1974-01-29-nashville-tn
+  https://brucebase.wikidot.com/story:story-1974-02-01-cleveland-oh
+  https://brucebase.wikidot.com/story:story-1974-03-03-washington-dc
+  https://brucebase.wikidot.com/story:story-1974-03-09-houston-tx
+  https://brucebase.wikidot.com/story:story-1974-03-10-houston-tx
+  https://brucebase.wikidot.com/story:story-1974-03-15-austin-tx
+  https://brucebase.wikidot.com/story:story-1974-05-09-cambridge-ma
+  https://brucebase.wikidot.com/story:story-1974-06-03-cleveland-oh
+  https://brucebase.wikidot.com/story:story-1974-07-13-new-york-city-ny
+  https://brucebase.wikidot.com/story:story-1974-10-04-lincoln-center-ny
+  https://brucebase.wikidot.com/story:story-1974-10-11-gaithersburg-md
+  https://brucebase.wikidot.com/story:story-1974-10-19-schenectady-ny
+  https://brucebase.wikidot.com/story:story-1974-10-26-springfield-ma
+  https://brucebase.wikidot.com/story:story-1974-10-29-boston-ma
+  https://brucebase.wikidot.com/story:story-1975-02-23-westbury-ny
+  https://brucebase.wikidot.com/story:story-1975-03-08-washington-dc
+  https://brucebase.wikidot.com/story:story-1975-07-20-providence-ri
+  https://brucebase.wikidot.com/story:story-1975-07-26-kutztown-pa
+  https://brucebase.wikidot.com/story:story-1975-08-02-norfolk-va
+  https://brucebase.wikidot.com/story:story-1975-08-08-akron-oh
+  https://brucebase.wikidot.com/story:story-1975-08-10-cleveland-oh
+  https://brucebase.wikidot.com/story:story-1975-08-14-new-york-city-ny
+  https://brucebase.wikidot.com/story:story-1975-08-15-new-york-city-ny
+  https://brucebase.wikidot.com/story:story-1975-08-17-new-york-city-ny
+  https://brucebase.wikidot.com/story:story-1975-08-23-atlanta-ga
+  https://brucebase.wikidot.com/story:story-1975-09-12-austin-tx
+  https://brucebase.wikidot.com/story:story-1975-09-13-houston-tx
+  https://brucebase.wikidot.com/story:story-1975-09-23-ann-arbor-mi
+  https://brucebase.wikidot.com/story:story-1975-09-26-iowa-city-ia
+  https://brucebase.wikidot.com/story:story-1975-10-02-milwaukee-wi
+  https://brucebase.wikidot.com/story:story-1975-10-04-detroit-mi
+  https://brucebase.wikidot.com/story:story-1975-10-11-red-bank-nj-early
+  https://brucebase.wikidot.com/story:story-1975-10-11-red-bank-nj-late
+  https://brucebase.wikidot.com/story:story-1975-10-17-los-angeles-ca
+  https://brucebase.wikidot.com/story:story-1975-10-26-seattle-wa
+  https://brucebase.wikidot.com/story:story-1975-11-01-santa-barbara-ca
+  https://brucebase.wikidot.com/story:story-1975-11-10-tampa-fl
+  https://brucebase.wikidot.com/story:story-1975-11-18-london-england
+  https://brucebase.wikidot.com/story:story-1975-11-23-amsterdam-netherlands
+  https://brucebase.wikidot.com/story:story-1975-12-02-boston-ma
+  https://brucebase.wikidot.com/story:story-1975-12-05-washington-dc
+  https://brucebase.wikidot.com/story:story-1975-12-27-philadelphia-pa
+  https://brucebase.wikidot.com/story:story-1975-12-28-philadelphia-pa
+  https://brucebase.wikidot.com/story:story-1975-12-30-philadelphia-pa
+  https://brucebase.wikidot.com/story:story-1975-12-31-philadelphia-pa
+  https://brucebase.wikidot.com/story:story-1976-04-22-burruss-auditorium-blacksburg-va
+  https://brucebase.wikidot.com/story:story-1976-05-10-municipal-auditorium-theater-mobile
+  https://brucebase.wikidot.com/story:story-1977-02-12-ottawa-on
+  https://brucebase.wikidot.com/story:story-1977-02-13-toronto-on
+  https://brucebase.wikidot.com/story:story-1977-02-15-detroit-mi
+  https://brucebase.wikidot.com/story:story-1977-02-19-saint-paul-mn
+  https://brucebase.wikidot.com/story:story-1977-02-22-milwaukee-wi
+  https://brucebase.wikidot.com/story:story-1977-02-26-indianapolis-in
+  https://brucebase.wikidot.com/story:story-1977-02-28-st-louis-mo
+  https://brucebase.wikidot.com/story:story-1977-03-05-orlando-fl
+  https://brucebase.wikidot.com/story:story-1977-03-10-toledo-oh
+  https://brucebase.wikidot.com/story:story-1977-03-11-latrobe-pa
+  https://brucebase.wikidot.com/story:story-1977-03-13-baltimore-md
+  https://brucebase.wikidot.com/story:story-1977-03-14-poughkeepsie-ny
+  https://brucebase.wikidot.com/story:story-1977-03-15-binghamton-ny
+  https://brucebase.wikidot.com/story:story-1977-03-18-new-haven-ct
+  https://brucebase.wikidot.com/story:story-1977-03-19-lewiston-me
+  https://brucebase.wikidot.com/story:story-1977-03-22-boston-ma
+  https://brucebase.wikidot.com/story:story-1977-03-23-boston-ma
+  https://brucebase.wikidot.com/story:story-1977-03-24-boston-ma
+  https://brucebase.wikidot.com/story:story-1977-03-25-boston-ma
+  https://brucebase.wikidot.com/story:story-1977-12-31-passaic-nj
+  https://brucebase.wikidot.com/story:story-1978-09-29-birmingham-al
+  https://brucebase.wikidot.com/story:story-1978-11-01-princeton-nj
+  https://brucebase.wikidot.com/story:story-1978-11-02-largo-md
+  https://brucebase.wikidot.com/story:story-1978-11-08-montreal-qc
+  https://brucebase.wikidot.com/story:story-1978-11-10-st-bonaventure-ny
+  https://brucebase.wikidot.com/story:story-1978-11-12-troy-ny
+  https://brucebase.wikidot.com/story:story-1978-11-14-utica-ny
+  https://brucebase.wikidot.com/story:story-1978-11-16-toronto-on
+  https://brucebase.wikidot.com/story:story-1978-11-20-champaign-il
+  https://brucebase.wikidot.com/story:story-1978-11-21-evanston-il
+  https://brucebase.wikidot.com/story:story-1978-11-25-st-louis-mo
+  https://brucebase.wikidot.com/story:story-1978-11-27-milwaukee-wi
+  https://brucebase.wikidot.com/story:story-1978-11-28-madison-wi
+  https://brucebase.wikidot.com/story:story-1978-11-29-saint-paul-mn
+  https://brucebase.wikidot.com/story:story-1978-12-01-norman-ok
+  https://brucebase.wikidot.com/story:story-1978-12-07-austin-tx
+  https://brucebase.wikidot.com/story:story-1978-12-13-tucson-az
+  https://brucebase.wikidot.com/story:story-1978-12-19-portland-or
+  https://brucebase.wikidot.com/story:story-1978-12-20-seattle-wa
+  https://brucebase.wikidot.com/story:story-1978-12-27-pittsburgh-pa
+  https://brucebase.wikidot.com/story:story-1978-12-28-pittsburgh-pa
+  https://brucebase.wikidot.com/story:story-1978-12-30-detroit-mi
+  https://brucebase.wikidot.com/story:story-1978-12-31-cleveland-oh
+  https://brucebase.wikidot.com/story:story-1981-06-04-wembley-arena-london-england
+  https://brucebase.wikidot.com/story:story-1981-07-30-coliseum-richfield-oh
+No tag (38):
+  https://brucebase.wikidot.com/content:american-hotel-freehold-nj
+  https://brucebase.wikidot.com/content:asbury-united-methodist-church-janesville-wi
+  https://brucebase.wikidot.com/content:cbs-30th-street-studio-new-york-city-ny
+  https://brucebase.wikidot.com/content:eve-studios-bredbury-england
+  https://brucebase.wikidot.com/content:live-downloads-d
+  https://brucebase.wikidot.com/content:lyrics-dedication
+  https://brucebase.wikidot.com/content:lyrics-folkways
+  https://brucebase.wikidot.com/content:lyrics-on-the-line
+  https://brucebase.wikidot.com/content:palm-theater-telluride-co
+  https://brucebase.wikidot.com/content:reale-arena-donostia-san-sebastian-spain
+  https://brucebase.wikidot.com/content:retail-releases-top-test
+  https://brucebase.wikidot.com/content:springsteen-residence-freehold-nj
+  https://brucebase.wikidot.com/content:table-def-header-details
+  https://brucebase.wikidot.com/content:table-def-header-recgig
+  https://brucebase.wikidot.com/content:tracks-23rd-street-lullaby-limited
+  https://brucebase.wikidot.com/content:tracks-london-calling-note
+  https://brucebase.wikidot.com/content:tracks-magic-tour-highlights
+  https://brucebase.wikidot.com/content:tracks-released-the-human-rights-concerts-video
+  https://brucebase.wikidot.com/content:tracks-silver-patron-saints
+  https://brucebase.wikidot.com/content:tracks-springsteen-on-broadway
+  https://brucebase.wikidot.com/content:tracks-stomping-ground-note
+  https://brucebase.wikidot.com/content:tracks-the-bridge-school-concerts-25
+  https://brucebase.wikidot.com/content:university-of-bridgeport-bridgeport-ct
+  https://brucebase.wikidot.com/content:v-f-w-hall-freehold-nj
+  https://brucebase.wikidot.com/news:web-2026-04-07-kia-forum-inglewood-ca
+  https://brucebase.wikidot.com/playlist:spare-parts-overview
+  https://brucebase.wikidot.com/recording:1984-09-00-shakedown-studios-new-york-city-ny
+  https://brucebase.wikidot.com/relation:chubby-checker
+  https://brucebase.wikidot.com/relation:david-mansfield
+  https://brucebase.wikidot.com/relation:gladys-avignon
+  https://brucebase.wikidot.com/retail:a-more-perfect-union-credits
+  https://brucebase.wikidot.com/retail:elvis-viva-las-vegas-soundtrack-release
+  https://brucebase.wikidot.com/retail:float-away-with-the-friday-night-gods-addinfo
+  https://brucebase.wikidot.com/retail:hammersmith-odeon-london-75-release
+  https://brucebase.wikidot.com/retail:jerry-maguire-soundtrack-credits
+  https://brucebase.wikidot.com/retail:pbs-exclusive-2005-ep-addinfo
+  https://brucebase.wikidot.com/retail:she-came-to-me-soundtrack-overview
+  https://brucebase.wikidot.com/retail:stories-from-a-rock-n-roll-heart-overview
+First letter (10):
+  https://brucebase.wikidot.com/ott:a-rainy-night-in-soho (a)
+  https://brucebase.wikidot.com/ott:i-want-you (i)
+  https://brucebase.wikidot.com/ott:streets-of-minneapolis (s)
+  https://brucebase.wikidot.com/relation:rob-demartin (d)
+  https://brucebase.wikidot.com/song:dinner-at-eight (d)
+  https://brucebase.wikidot.com/song:follow-the-sun (f)
+  https://brucebase.wikidot.com/song:two-of-us (t)
+  https://brucebase.wikidot.com/song:you-re-gonna-miss-me-when-i-m-gone (y)
+  https://brucebase.wikidot.com/venue:107-1-the-boss-studio-neptune-nj (0-9)
+  https://brucebase.wikidot.com/venue:unknown-location-bayonne-nj (u)
+Own files, no "files" tag (99):
+  https://brucebase.wikidot.com/gallery:1980-10-30-memorial-sports-arena-los-angeles-ca
+  https://brucebase.wikidot.com/gallery:1980-12-16-garden-boston-ma
+  https://brucebase.wikidot.com/gallery:2000-02-28-bryce-jordan-center-university-park-pa
+  https://brucebase.wikidot.com/gallery:2000-04-03-rose-garden-portland-or
+  https://brucebase.wikidot.com/gallery:2011-04-02b-synaxis-asbury-park-nj
+  https://brucebase.wikidot.com/gallery:2016-02-02-air-canada-centre-toronto-on
+  https://brucebase.wikidot.com/gallery:2017-09-29-walter-kerr-theatre-new-york-city-ny
+  https://brucebase.wikidot.com/gallery:2018-03-15-walter-kerr-theatre-new-york-city-ny
+  https://brucebase.wikidot.com/gallery:2018-05-10-walter-kerr-theatre-new-york-city-ny
+  https://brucebase.wikidot.com/gallery:2018-10-05-walter-kerr-theatre-new-york-city-ny
+  https://brucebase.wikidot.com/gallery:2020-05-29-fenway-park-boston-ma
+  https://brucebase.wikidot.com/gallery:2022-01-21-transparent-clinch-gallery-asbury-park-nj
+  https://brucebase.wikidot.com/gallery:2023-01-10-vogel-red-bank-nj
+  https://brucebase.wikidot.com/gallery:2023-04-28-estadi-olimpic-lluis-companys-barcelona-s
+  https://brucebase.wikidot.com/gallery:2024-06-12-civitas-metropolitano-madrid-spain
+  https://brucebase.wikidot.com/gallery:2025-09-28-alice-tully-hall-new-york-city-ny
+  https://brucebase.wikidot.com/news:1965-10-08-i-b-club-howell-nj
+  https://brucebase.wikidot.com/news:1965-12-30-st-joseph-s-school-keyport-nj
+  https://brucebase.wikidot.com/news:1966-01-29-keyport-roller-drome-matawan-nj
+  https://brucebase.wikidot.com/news:1969-02-14b-i-a-m-a-clubhouse-long-branch-nj
+  https://brucebase.wikidot.com/news:1970-08-14-parking-deck-richmond-va
+  https://brucebase.wikidot.com/news:1971-12-17-ledge-new-brunswick-nj
+  https://brucebase.wikidot.com/news:1978-07-03-warnors-theatre-fresno-ca
+  https://brucebase.wikidot.com/news:1984-07-18-horizon-rosemont-il
+  https://brucebase.wikidot.com/news:1985-03-31a-chandler-velodrome-brisbane-australia
+  https://brucebase.wikidot.com/news:1985-07-06-wembley-stadium-london-england
+  https://brucebase.wikidot.com/news:1988-04-15-frank-erwin-center-austin-tx
+  https://brucebase.wikidot.com/news:1996-02-05-sony-music-building-los-angeles-ca
+  https://brucebase.wikidot.com/news:1999-07-20-continental-airlines-arena-east-rutherford-n
+  https://brucebase.wikidot.com/news:1999-09-13-first-union-center-philadelphia-pa
+  https://brucebase.wikidot.com/news:2000-06-29-madison-square-garden-new-york-city-ny
+  https://brucebase.wikidot.com/news:2003-05-31-rds-arena-dublin-ireland
+  https://brucebase.wikidot.com/news:2006-11-07-sportpaleis-antwerp-belgium
+  https://brucebase.wikidot.com/news:2009-07-26-estadio-san-mames-bilbao-spain
+  https://brucebase.wikidot.com/news:2014-01-14-rockefeller-center-new-york-city-ny
+  https://brucebase.wikidot.com/news:2014-11-10-nep-studios-new-york-city-ny
+  https://brucebase.wikidot.com/news:2016-01-19-united-center-chicago-il
+  https://brucebase.wikidot.com/news:2020-06-03-siriusxm-studio-new-york-city-ny
+  https://brucebase.wikidot.com/news:2020-10-20-siriusxm-studio-new-york-city-ny
+  https://brucebase.wikidot.com/news:2020-10-21a-siriusxm-studio-new-york-city-ny
+  https://brucebase.wikidot.com/news:2020-10-22a-siriusxm-studio-new-york-city-ny
+  https://brucebase.wikidot.com/news:2022-04-06-stone-hill-farm-colts-neck-nj
+  https://brucebase.wikidot.com/news:2023-03-29-little-caesars-arena-detroit-mi
+  https://brucebase.wikidot.com/news:2023-05-07-rds-arena-dublin-ireland
+  https://brucebase.wikidot.com/news:2023-05-09-rds-arena-dublin-ireland
+  https://brucebase.wikidot.com/news:2024-03-27-barclays-center-brooklyn-ny
+  https://brucebase.wikidot.com/news:2024-04-00a-stone-hill-farm-colts-neck-nj
+  https://brucebase.wikidot.com/news:2024-06-03-stadio-giuseppe-meazza-milan-italy
+  https://brucebase.wikidot.com/news:2024-06-14-civitas-metropolitano-madrid-spain
+  https://brucebase.wikidot.com/news:2024-06-17-civitas-metropolitano-madrid-spain
+  https://brucebase.wikidot.com/news:2024-06-22-estadi-olimpic-lluis-companys-barcelona-spai
+  https://brucebase.wikidot.com/news:2024-07-18-strawberry-arena-solna-sweden
+  https://brucebase.wikidot.com/news:2024-07-27-wembley-stadium-london-england
+  https://brucebase.wikidot.com/news:2024-10-17-television-centre-london-england
+  https://brucebase.wikidot.com/news:2025-05-27-decathlon-arena-villeneuve-d-ascq-france
+  https://brucebase.wikidot.com/news:2025-06-18-deutsche-bank-park-frankfurt-germany
+  https://brucebase.wikidot.com/news:2025-07-03-stadio-giuseppe-meazza-milan-italy
+  https://brucebase.wikidot.com/news:2026-05-30-xfinity-mobile-arena-philadelphia-pa
+  https://brucebase.wikidot.com/news:2026-06-29-central-synagogue-new-york-city-ny
+  https://brucebase.wikidot.com/recnote:1972-03-17-arena-richmond-va
+  https://brucebase.wikidot.com/relation:bleachers
+  https://brucebase.wikidot.com/relation:elliott-murphy
+  https://brucebase.wikidot.com/relation:virginia-springsteen
+  https://brucebase.wikidot.com/venue:alltel-arena-little-rock-ar
+  https://brucebase.wikidot.com/venue:amalie-arena-tampa-fl
+  https://brucebase.wikidot.com/venue:amway-center-orlando-fl
+  https://brucebase.wikidot.com/venue:capital-one-arena-washington-dc
+  https://brucebase.wikidot.com/venue:cfg-bank-arena-baltimore-md
+  https://brucebase.wikidot.com/venue:chandler-velodrome-brisbane-australia
+  https://brucebase.wikidot.com/venue:dokken-bergen-norway
+  https://brucebase.wikidot.com/venue:estadi-olimpic-de-montjuic-barcelona-spain
+  https://brucebase.wikidot.com/venue:etihad-stadium-manchester-england
+  https://brucebase.wikidot.com/venue:feinstein-s-54-below-new-york-city-ny
+  https://brucebase.wikidot.com/venue:firehouse-freehold-nj
+  https://brucebase.wikidot.com/venue:footprint-center-phoenix-az
+  https://brucebase.wikidot.com/venue:institute-for-performing-arts-liverpool-england
+  https://brucebase.wikidot.com/venue:jma-wireless-dome-syracuse-ny
+  https://brucebase.wikidot.com/venue:kia-forum-inglewood-ca
+  https://brucebase.wikidot.com/venue:lbj-presidential-library-austin-tx
+  https://brucebase.wikidot.com/venue:lincoln-hall-auditorium-blackwood-nj
+  https://brucebase.wikidot.com/venue:mark-twain-house-hartford-ct
+  https://brucebase.wikidot.com/venue:moody-center-austin-tx
+  https://brucebase.wikidot.com/venue:orange-velodrome-marseille-france
+  https://brucebase.wikidot.com/venue:palaolimpico-turin-italy
+  https://brucebase.wikidot.com/venue:pandemonium-wanamassa-nj
+  https://brucebase.wikidot.com/venue:pechanga-arena-san-diego-ca
+  https://brucebase.wikidot.com/venue:pnc-arena-raleigh-nc
+  https://brucebase.wikidot.com/venue:qsac-brisbane-australia
+  https://brucebase.wikidot.com/venue:salt-palace-assembly-hall-salt-lake-city-ut
+  https://brucebase.wikidot.com/venue:scotiabank-saddledome-calgary-ab
+  https://brucebase.wikidot.com/venue:southbank-centre-london-england
+  https://brucebase.wikidot.com/venue:sports-authority-field-at-mile-high-denver-co
+  https://brucebase.wikidot.com/venue:springsteen-residence-long-branch-nj
+  https://brucebase.wikidot.com/venue:stadio-del-tennis-rome-italy
+  https://brucebase.wikidot.com/venue:strawberry-arena-solna-sweden
+  https://brucebase.wikidot.com/venue:theatre-milwaukee-wi
+  https://brucebase.wikidot.com/venue:tropicana-field-st-petersburg-fl
+  https://brucebase.wikidot.com/venue:warnors-theatre-fresno-ca
+  https://brucebase.wikidot.com/venue:yankee-stadium-new-york-city-ny
+"files" tag, no own files (61):
+  https://brucebase.wikidot.com/files:artwork-tour-cs
+  https://brucebase.wikidot.com/files:artwork-tour-gfapnj
+  https://brucebase.wikidot.com/files:artwork-tour-lwst
+  https://brucebase.wikidot.com/files:artwork-tour-nbrsk
+  https://brucebase.wikidot.com/files:artwork-tour-wiess
+  https://brucebase.wikidot.com/files:news-magazine-2021
+  https://brucebase.wikidot.com/files:news-magazine-2022
+  https://brucebase.wikidot.com/files:news-magazine-2023
+  https://brucebase.wikidot.com/files:news-magazine-2024
+  https://brucebase.wikidot.com/files:news-tour-btr
+  https://brucebase.wikidot.com/files:news-tour-cs
+  https://brucebase.wikidot.com/files:news-tour-gfapnj
+  https://brucebase.wikidot.com/files:news-tour-lwst
+  https://brucebase.wikidot.com/files:news-tour-nbrsk
+  https://brucebase.wikidot.com/files:news-tour-rvr16
+  https://brucebase.wikidot.com/files:news-tour-sgrs
+  https://brucebase.wikidot.com/files:news-tour-vfc
+  https://brucebase.wikidot.com/files:news-tour-wiess
+  https://brucebase.wikidot.com/files:news-tour-woad
+  https://brucebase.wikidot.com/files:pass-1989
+  https://brucebase.wikidot.com/files:pass-1994
+  https://brucebase.wikidot.com/files:pass-1998
+  https://brucebase.wikidot.com/files:pass-2010
+  https://brucebase.wikidot.com/files:pass-2015
+  https://brucebase.wikidot.com/files:pass-2020
+  https://brucebase.wikidot.com/files:setlist-1989
+  https://brucebase.wikidot.com/files:setlist-1990
+  https://brucebase.wikidot.com/files:setlist-1991
+  https://brucebase.wikidot.com/files:ticket-1989
+  https://brucebase.wikidot.com/files:ticket-1991
+  https://brucebase.wikidot.com/gallery:1992-06-21-forum-di-assago-milan-italy  (shows pictures of other pages)
+  https://brucebase.wikidot.com/gallery:2018-07-18-walter-kerr-theatre-new-york-city-ny  (shows pictures of other pages)
+  https://brucebase.wikidot.com/news:1973-11-06-max-s-kansas-city-new-york-city-ny-late  (shows pictures of other pages)
+  https://brucebase.wikidot.com/news:1973-12-22-uncle-al-s-erlton-lounge-cherry-hill-nj
+  https://brucebase.wikidot.com/news:1978-06-30-community-theatre-berkeley-ca  (shows pictures of other pages)
+  https://brucebase.wikidot.com/news:1980-12-01a-memorial-auditorium-buffalo-ny  (shows pictures of other pages)
+  https://brucebase.wikidot.com/news:1985-09-01-giants-stadium-east-rutherford-nj  (shows pictures of other pages)
+  https://brucebase.wikidot.com/news:1995-11-30-community-theatre-berkeley-ca  (shows pictures of other pages)
+  https://brucebase.wikidot.com/news:1999-07-27-continental-airlines-arena-east-rutherford-n  (shows pictures of other pages)
+  https://brucebase.wikidot.com/news:2024-12-09-frank-s-deli-restaurant-asbury-park-nj  (shows pictures of other pages)
+  https://brucebase.wikidot.com/news:web-shea-s-theatre-buffalo-ny
+  https://brucebase.wikidot.com/recnote:1978-08-10-community-war-memorial-rochester-ny
+  https://brucebase.wikidot.com/relation:albee-tellone  (shows pictures of other pages)
+  https://brucebase.wikidot.com/relation:annie-lennox
+  https://brucebase.wikidot.com/relation:chuck-plotkin
+  https://brucebase.wikidot.com/relation:cindy-mizelle
+  https://brucebase.wikidot.com/relation:emmylou-harris
+  https://brucebase.wikidot.com/relation:john-wesley-harding
+  https://brucebase.wikidot.com/relation:richard-neer
+  https://brucebase.wikidot.com/relation:ronnie-spector
+  https://brucebase.wikidot.com/relation:roy-orbison
+  https://brucebase.wikidot.com/relation:the-edge
+  https://brucebase.wikidot.com/relation:the-rolling-stones
+  https://brucebase.wikidot.com/relation:the-sessions-band
+  https://brucebase.wikidot.com/relation:tom-morello
+  https://brucebase.wikidot.com/venue:civic-center-hartford-ct  (shows pictures of other pages)
+  https://brucebase.wikidot.com/venue:deutsche-bank-park-frankfurt-germany  (shows pictures of other pages)
+  https://brucebase.wikidot.com/venue:meadows-amphitheatre-irvine-ca  (shows pictures of other pages)
+  https://brucebase.wikidot.com/venue:park-werchter-belgium
+  https://brucebase.wikidot.com/venue:samson-stages-brooklyn-ny
+  https://brucebase.wikidot.com/venue:synaxis-asbury-park-nj  (shows pictures of other pages)
 #+end_example

@@ -15,6 +15,15 @@ left out by decision), NOT (not done, with the reason).
 
 * PICKUP HERE (2026-11-23)
 
+- *The audit of the five flat reports, and 0.36.0–0.39.0* (vzell: "do 1 with 2 and 3", then "go ahead with your
+  recommendations"). 0.36.0: =tests/check-probes.sh= after every run (warns only), a second run of the day moves the
+  first to =bb/out/run-<date>-<HHMM>/=. 0.37.0: the images report pairs the =files= tag with the page's own files
+  (912 → 160; 828 rows were pages showing pictures of other pages), news/recnote/relation checked. 0.38.0: no-parent
+  by breadcrumb link over every dated dependent page (105 → 133). 0.39.0: YEAR vs YEAR-LIST both ways, every link
+  read (48 → 45 differences + 6 rows). Feed 1.8.3 published (=f1ac8ee=, FORMAT.md =28079fd=): =files-no-images= 32 →
+  47 (same meaning; 15 news/recnote/relation pages), =no-parent= 105 → 133; =probe-bb-feed.py= 0 kinds untrue, no
+  userscript change. Danny draft items 8–12 + full lists in bbp-parity.org (=scripts/build-bb-wiki-fix-lists.py=).
+  BruceParser =914b2df=. The images audit read 136 attachment lists live from Brucebase (about 1/s).
 - *BruceParser 0.35.0 and the run of 2026-11-23* (Claude, on vzell's word; 49 min 53 s, no failed step; feed repo
   =e3c4743=, only its =run= block changed). 0.33.0's browse ran live: 24 busy answers (two HTTP 000 = curl's new time
   limit), each retried and answered. New in 0.35.0: =page-hashes.txt= per run (Wikidot's random ids normalised away),
