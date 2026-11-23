@@ -1238,10 +1238,13 @@ close every sidebar section; the headings of the main page are left alone.
   installed it uses that script's pictures and asks nothing. On an artist's
   or a label's page, the picture majkinetor's *Event Horizon* already knows
   (once it has looked the artist or label up) joins the turn last, its dot
-  ringed in blue; nothing is asked for it. Switch: *Entity pictures from its
-  links* (and *Also Event Horizon's pictures, when it is installed*).
-- **The picture in previews.** The link previews of an artist, a label or a
-  place show its picture too, once you have pressed Space on one: see
+  ringed in blue; nothing is asked for it. An area's page shows its map
+  (with the flag on its corner), flag, coat of arms, seal and image only once
+  a preview window asked Wikidata for them, and asks nothing itself. Switch:
+  *Entity pictures from its links* (and *Also Event Horizon's pictures, when
+  it is installed*).
+- **The picture in previews.** The link previews of an artist, a label, a
+  place or an area show its picture too, once you have pressed Space on one: see
   *Link previews on MusicBrainz* under [Page-specific
   behaviour](#page-specific-behaviour).
 - **The sidebar under Credits / Relationships.** After the page's own button
@@ -2928,8 +2931,14 @@ userscript lists that host, so Tampermonkey does not ask first).
   make it the large one), and a line names the links that did not load. It is
   asked only here, never for a card; after that the card shows the first too,
   small, beside the facts, with "+N" for the others, also after a reload.
-  Click the large one for the artwork viewer, on all of them.
-  Switch: *Pictures in artist, label and place previews*. With majkinetor's
+  Click the large one for the artwork viewer, on all of them. An **area**
+  window shows its locator map first, with the area's flag on its corner,
+  then the flag, coat of arms, seal and image its Wikidata item names (five
+  small requests, "2 of 5 asked" while they come), and its links (Wikidata,
+  GeoNames) in a table under the facts, as a place window does; the card
+  then shows the map with a small flag. When Wikidata says too many requests,
+  the window waits for it instead of failing, in every tab.
+  Switch: *Pictures in artist, label, place and area previews*. With majkinetor's
   *Event Horizon* installed, an artist's or a label's window also shows the
   pictures Event Horizon finds (Discogs, Deezer, Tidal, Apple Music,
   SoundCloud, Bandcamp, YouTube Music, Wikipedia), after this script's own,

@@ -30989,3 +30989,49 @@ Tests: `tests/fixtures/title-diff-classes.spec.js` 3/3 (classifier borders,
 tooltip-diff, popup-mb and release-rg-main-event 169/169 alongside.
 Mutations `scripts/mutations/title-diff-classes.json` 11/11 OK, userscript
 restored and verified. test:full deferred to the merge.
+
+## 2026-11-23 — An area's pictures: Event Horizon's five, the flag badge, Wikidata's 429 (feat/area-pictures, WIP.1)
+
+Env: probes 2026-11-23T11:45:02+01:00 (url-rels), 12:13:40–12:34:28+01:00 (pictures), 12:53:05+01:00 (429) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Python urllib, no browser; specs: Playwright 1.62.1 bundled Chromium (headless), no Tampermonkey (GM stubs).
+
+What: the area kind gets pictures (`_MB_POP_IMG_PROPS.area` = P242, P41, P94,
+P158, P18, all kept, `_MB_POP_IMG_ALL`), the flag as a badge on a first map,
+the place window's links table, and a heading that shows a known record only
+(`_eiStartKnown()`). Mockups https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o
+part A and https://claude.ai/artifact/23mGArYVMW2bru1egjRDxR (links), approved
+2026-11-23 with every recommendation.
+
+Probes (all in `debug/`, not in git):
+- **Areas' links** (`scripts/probe-area-url-rels.py`, 11 areas): only
+  GeoNames and Wikidata, 2–4 each; Berlin has three GeoNames ids, London,
+  Manchester and Liverpool two. So the links mockup's table (answer A), whose
+  URL column tells them apart. `sws.geonames.org/<id>/` answers 301 to the
+  readable page on www.geonames.org: kept as MusicBrainz gives it.
+- **Areas' pictures** (`scripts/probe-area-images.py`, every area the HTML
+  fixtures link: 175; 145 answered by MusicBrainz, 23 × 503 and 7 × 404):
+  Wikidata answered **506 of its 720 requests with HTTP 429**, so only 32
+  areas came back whole. Of those, every country (US, Japan, Czechia,
+  Australia, Israel) has a map and a flag, and 1 of 32 has no picture.
+- **The 429** (`scripts/probe-wikidata-429.py`): 10 requests at one a second
+  passed (about 19 in the first probe), the 11th got `429` with
+  `Retry-After: 42` (`server: envoy`, text/plain), and the API refused for
+  about 41 s. An area window asks five; a few windows in a row would hit it,
+  and `_extGet()` retried once 1.5 s later. vzell chose to keep the five
+  `wbgetclaims` and put `www.wikidata.org` in `_EXT_SHARED_SLOT_HOSTS`, as
+  Discogs' API is: a 429 pauses every tab (the longer of 60 s and
+  `Retry-After`), up to four tries.
+- **One SPARQL query for all five** (`scripts/probe-area-images-sparql.py`):
+  works (Q1384: 1,984 bytes, 791 ms, the same five files), but
+  query.wikidata.org then answered every request with "429: Aggressively
+  rate-limiting to 1 req / min - this rule was created during active wdqs
+  outage". Not usable now; worth a second look later.
+
+Tests: `tests/fixtures/pop-area-pictures.spec.js` 7/7 (hover asks nothing; the
+five in order, the badge, captions, links; the card with badge and +4, after a
+reload from IndexedDB; the badge only on a first map; the heading known/none,
+asking nothing, its badge following the map; a twice-refused 429 waited out;
+pictures off keeps the links), plus 334/334 of every spec touching areas,
+pictures or Wikidata. popup-mb's area window test now counts two requests (the
+url-rels). Mutations `scripts/mutations/area-pictures.json` 13/13; five older
+finds re-pointed (sidebar-overhaul.json ×4, entity-images.json ×1), those
+entries 4/4 and 7/7. test:full deferred to the merge.

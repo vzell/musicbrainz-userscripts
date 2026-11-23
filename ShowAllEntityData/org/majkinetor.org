@@ -701,6 +701,16 @@ CLOSED: [2026-11-20 Fri]
     (=areaClimb= 6293, =flagI= 6314 with =flagcdn.com=).
   - *Mind*: external requests are =anonymous= and first contact is on Space, never on hover (detail-pages.md); a new
     host needs =@connect=.
+- *Decided* (vzell, 2026-11-21/23): all five pictures, the map first with the flag badge; the area page shows the
+  map only once known; the window also gets the place window's links table, its url-rels asked even with pictures
+  off; no badge in the viewer, 16 px on the card. Mockups https://claude.ai/artifact/C2YZCFYWfMndTv37pBRr2o part A
+  and https://claude.ai/artifact/23mGArYVMW2bru1egjRDxR. Wikidata 429s after 10–19 requests at 1/s
+  (=Retry-After: 42=): five =wbgetclaims= as EH does, with =www.wikidata.org= in the shared request gate.
+- *Built* (=feat/area-pictures=, WIP.1, 2026-11-23, petri): =_MB_POP_IMG_PROPS.area=, =_MB_POP_IMG_ALL=, the badge
+  in =_mbPopImageRecordFor()=, =_MB_WD_IMG_LABEL=, the area kind's =pin()=/=cardAside=/links, =_eiStartKnown()=;
+  credited in the header. Spec =pop-area-pictures.spec.js= 7/7, mutations 13/13. Anchors =eh-area-props=,
+  =eh-area-badge=, =saed-area-pictures=. The area chain's ISO flags (=areaClimb=/=flagI=) and pictures for
+  place/series/instrument beyond what they have stay open.
 
 ** DONE Title style: guess-case word lists, title-difference classes
 

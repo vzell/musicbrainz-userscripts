@@ -1709,7 +1709,7 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         expect(log.ws2.filter(u => u.includes('/ws/2/release?label='))).toHaveLength(1);
     });
 
-    test('the area card and window: the parent and the parts, one request', async ({ page }) => {
+    test('the area card and window: the parent and the parts, one request for the card', async ({ page }) => {
         const log = await open(page, { settings: { sa_pop_mb: true }, showAll: false });
         const a = await addLink(page, '/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8', 'New Jersey');
         await ctrlHover(page, a);
@@ -1724,7 +1724,11 @@ test.describe('MusicBrainz link previews: artist, label, area, instrument (WIP.3
         const rels = await related.locator('tbody td:first-child').allTextContents();
         expect(rels.filter(x => x === 'Parts'), 'its 21 counties').toHaveLength(21);
         await expect(related).toContainText('Essex County');
-        expect(log.ws2).toHaveLength(1);
+        // The card's lookup, then Space's url-rels (the links table and the
+        // pictures, feat/area-pictures; pop-area-pictures.spec.js).
+        expect(log.ws2.filter(u => u.includes('inc=area-rels'))).toHaveLength(1);
+        await expect.poll(() => log.ws2.filter(u => u.includes('inc=url-rels')).length).toBe(1);
+        expect(log.ws2).toHaveLength(2);
     });
 
     test('the instrument card and window: subtypes, hybrids, aliases; the description is left to the Live page', async ({ page }) => {

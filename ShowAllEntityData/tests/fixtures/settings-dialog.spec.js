@@ -648,7 +648,7 @@ test.describe('enabledBy (VZ_MBLibrary 4.6.0)', () => {
     test.beforeEach(async ({ page }) => { pageErrors = collectPageErrors(page); });
     test.afterEach(() => { expect(pageErrors, 'no uncaught page errors').toEqual([]); });
 
-    const NEEDS = 'Needs "Pictures in artist, label and place previews" ticked.';
+    const NEEDS = 'Needs "Pictures in artist, label, place and area previews" ticked.';
     // The control's OWN disabled property: toBeDisabled() also counts an
     // aria-disabled ancestor, which the row is, so it cannot tell the two
     // guarantees apart (a mutation run showed it, 2026-11-18).

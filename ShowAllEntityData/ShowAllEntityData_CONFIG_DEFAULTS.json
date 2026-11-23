@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1675+2026-11-21",
+    "script_version": "9.99.1678+2026-11-23",
     "schema_entries": 568,
     "sections": 54,
     "settings": 514,
@@ -607,7 +607,7 @@
     "sa_pop_initial_page": "Link previews also before a button is pressed",
     "sa_pop_mb": "Preview linked entities on hover",
     "sa_pop_mb_eh_images": "Also Event Horizon's pictures, when it is installed",
-    "sa_pop_mb_image": "Pictures in artist, label and place previews",
+    "sa_pop_mb_image": "Pictures in artist, label, place and area previews",
     "sa_pop_mb_on_touch": "Preview linked entities on touch devices",
     "sa_pop_mb_page": "Also preview links outside tables",
     "sa_pop_mb_page_on_touch": "Also preview links outside tables on touch devices",

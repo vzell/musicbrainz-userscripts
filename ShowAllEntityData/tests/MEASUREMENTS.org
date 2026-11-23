@@ -4963,3 +4963,16 @@ Env: 2026-11-23T12:52:22+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 when its 5 s =toContainText= gave up: the window's first ListPages answer had not come yet under the full run's
 load. The same code passed in the branch's run an hour before (only the fold differs), and the file passed 30/30
 three times over right after. A flake of that spec's timeout, not the merge; left as it is, noted here.
+
+* 2026-11-23 — =npm run test:full= on =petri=, feat/area-pictures (WIP.1)
+
+Env: 2026-11-23T13:47:43+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =cf3a15dc=             |  3463 |      12 | *22 m 32 s* | =run-test-full.py=, 13:47:43–14:10:15 CET |
+| =settings-dialog.spec.js=, after the fix    |    31 |      12 | *1 m 7 s*   | =run-test-full.py=, 14:10:35–14:11:42 CET |
+
+3462 passed, 1 failed: =settings-dialog.spec.js:657= (=enabledBy=) names the picture setting's label, which this branch
+renamed ("… label, place and area previews"); the spec now names the new one and the file passed whole. This branch
+adds 7 tests (=pop-area-pictures.spec.js=).
