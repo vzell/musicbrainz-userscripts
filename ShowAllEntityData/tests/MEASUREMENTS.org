@@ -4949,3 +4949,17 @@ Env: 2026-11-23T12:12:37+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 
 3456 passed, no flake. This branch adds 3 tests (=title-diff-classes.spec.js=). A Wikidata probe
 (=probe-area-images.py=) ran alongside on the same machine, network only.
+
+* 2026-11-23 — =npm run test:full= on =petri=, main after merging feat/title-style (9.99.1678)
+
+Env: 2026-11-23T12:52:22+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =cb797dcc=             |  3456 |      12 | *22 m 22 s* | =run-test-full.py=, 12:52:22–13:14:44 CET |
+| =bb-tags.spec.js= =--repeat-each 3=         |    30 |      12 | *26 s*      | =run-test-full.py=, right after           |
+
+3455 passed, 1 failed: =bb-tags.spec.js:225= "a tag link's window: the first 250 by title" read "Pages 0 of 300"
+when its 5 s =toContainText= gave up: the window's first ListPages answer had not come yet under the full run's
+load. The same code passed in the branch's run an hour before (only the fold differs), and the file passed 30/30
+three times over right after. A flake of that spec's timeout, not the merge; left as it is, noted here.
