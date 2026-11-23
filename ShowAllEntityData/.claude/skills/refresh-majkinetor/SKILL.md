@@ -197,7 +197,8 @@ dated copies:
 
 1. The "Env:" line under "* Analysis … (reference)" (the new stamp) and the heading's date.
 2. "Method": the pinned SHA and its commit date and subject; `main` or `stable`.
-3. "Inventory": sizes and lines (`wc -c -l`), `@run-at`, `@match`, new or removed scripts.
+3. "Inventory": sizes and lines (`python3 scripts/refresh-majkinetor-sizes.py`, then `--apply`: it rewrites the size
+   cells at their old width, so the hand-aligned table stays aligned), `@run-at`, `@match`, new or removed scripts.
 4. Every section the CHANGELOG notes (step 1), the anchor report and the probe comparison touched:
    - rewrite the statement that changed;
    - keep the *measured* / *from code* marks honest: a re-run result is *measured* with today's stamp;

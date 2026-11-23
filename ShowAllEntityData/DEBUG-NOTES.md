@@ -31035,3 +31035,105 @@ pictures or Wikidata. popup-mb's area window test now counts two requests (the
 url-rels). Mutations `scripts/mutations/area-pictures.json` 13/13; five older
 finds re-pointed (sidebar-overhaul.json ×4, entity-images.json ×1), those
 entries 4/4 and 7/7. test:full deferred to the merge.
+
+## 2026-11-23 — majkinetor refresh: a1e8f54 → 5d4d464 (the gate at eight a second, EH's player under our page)
+
+Env: 2026-11-23T14:48:02+01:00 – 2026-11-23T14:53:55+01:00 (probe) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · SAED 9.99.1679 (`dde80ef1`) · code reading: n/a
+
+refresh-majkinetor skill, branch `chore/refresh-majkinetor-5d4d464`. Clone
+`debug/majkinetor/` moved `a1e8f54` → `5d4d464` (2026-11-23T12:53:01+01:00);
+harness copies ST 2026.11.23.125301, EH 2026.11.23.095945, ISRC Scout
+2026.11.23, the bundle's `@description` naming the same member versions;
+main's raw link served the same `@version`. No new #938 comment from
+majkinetor. Everything else is in `org/majkinetor.org` (Refresh log, the two
+new TODOs, "Coexistence").
+
+- **The shared gate went to eight starts a second** (`dev/net/mb-gate.mjs`,
+  #1095): `MBN_GAP` 125 ms and `MBN_BURST` 4 (was 1000 ms and 3), an
+  interactive lane (`itat`/`ilast`), search-only holds on a 503 with
+  `X-RateLimit-Who: search-shed` (`scool`/`shot`), a 30 ms lock hold after a
+  booking, merged reads, a 5-minute Cache Storage cache keyed by a new write
+  mark `localStorage['mbu:mb-gate-edit']`. Same protocol version 1; its own
+  DEVELOP.md still says 1,000 ms. SAED's `_mbGateState()` writes the unknown
+  fields back unchanged and books `tat` at its own 1000 ms (anchor
+  `saed-gate-gap`). Probe case D measured it: up to nine MusicBrainz responses
+  in one second (four or five at every earlier refresh), six 503s, five on
+  EH's search and one on SAED's entity-pictures lookup
+  (`/ws/2/artist/…?inc=url-rels`); SAED waited 1.5 s in the gate, its 31-page
+  fetch 32.7 s (28.7 s alone). Bundle cases B and I: four 503s each, all on
+  members' gated requests. Every structural row (bodies, bar, V/V, `h`, the
+  C reload, ISRC Scout's 37/37 icons and 51/51 cells) as before.
+- **EH's player plays on after V** (vzell's note "player" in
+  `org/majkinetor.org`; snapshots `debug/eh-player.html`,
+  `debug/mb-no-player-ads.html`, `debug/mb-no-player-still-playing.html`,
+  String Theory 2026.11.21.134804 in his browser). From code: the source
+  iframe lives in `#eh-ply` on `<html>` (`plyRoot()`), the controls in
+  `#eh-pin` in EH's body; `setOn1(false)` never calls `plyPin()`, while
+  `relSet()` does, so after V the controls go and the sound stays. The next
+  track's `plyPin()` brings controls into `#eh-ply`, and Apple Music shows its
+  own 150 px embed (login card, preview). `#eh-ply` has no `data-mb-corner`,
+  so C4 does not hide it. The two snapshot file names look swapped against
+  vzell's descriptions: `mb-no-player-ads.html` holds the Apple embed with
+  controls, `mb-no-player-still-playing.html` the hidden Spotify one.
+- **Apollo and `mbLastWrite`**: still no setter in code. Its bulk alias editor
+  POSTs through `mbnFetch` (`mbWebFetch`), which moves `mbu:mb-gate-edit`;
+  EH's kept answers and SAED read only `mbLastWrite`. Anchor
+  `c7-writer-apollo` had gone BACK only because the inlined gate now READS
+  `mbLastWrite`; rewritten to match a setter.
+
+Anchors 118/118 (`gate-lock-race` rewritten to the new `answered` race,
+`c7-writer-apollo` rewritten, nine added). New helper
+`scripts/refresh-majkinetor-sizes.py` rewrites the Inventory's size cells at
+their old width. Nothing in `ShowAllEntityData.user.js` changed.
+
+## 2026-11-23 — Event Horizon's player stopped under our table (feat/eh-player-quiet, WIP.1)
+
+Env: 2026-11-23T15:14:31+01:00 (last spec run) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs); the symptom itself from vzell's browser (String Theory 2026.11.21.134804, browser version not recorded)
+
+Symptom and cause: the previous entry, and org/majkinetor.org "Event
+Horizon's player plays on under our page". vzell chose both: a post to
+majkinetor (`data-mbu-player-off` and the missing `plyPin()` in `setOn1()`,
+drafted under "On the record") and our fallback.
+
+`_mbuPlayerSync()` (beside `_mbuQuietSync()`/`_mbuKeysSync()`, same
+condition: `_mbuInterop.tableShown`, no `data-mbu-dock`; setting
+`sa_eh_player_quiet`, default on): `<html data-mbu-player-off="saed">`, our
+class `mb-eh-ply-quiet` (CSS hides `#eh-ply`, `#eh-ply-menu`), and
+`_mbuPlayerSilence()`: when `#eh-ply` holds an iframe/audio/video (this tab
+plays), EH's own `{type:'control', action:'close'}` on
+`BroadcastChannel('mbu-event-horizon-player-v1')`, then the sources removed.
+Observers on `<html>`'s children and `#eh-ply`'s subtree while it is up.
+
+- **Close, not pause** (from code, EH 2026.11.23.095945): `plyCmd(false)`
+  sends Spotify `{command:'toggle'}` (a pause from outside can START it),
+  Apple Music has no command at all; `close` is answered by the host tab
+  (`plyHost()`: queue state, not DOM) and clears the queue.
+- **Simulator trap**: the first `eh-body-swap.js` player decided "this tab
+  plays" from the iframe, so our removal (same task as the message) made it
+  ignore the close: three red tests that were the sim's fault. Now
+  `sim.plyHosting`, as EH's `plyHost()`.
+- **Test trap**: "a new #eh-ply is not followed" passed with its observer
+  removed. `plyClose()` + the next track in ONE evaluate: removing the
+  controls from the old `#eh-ply` woke its old observer, whose
+  `getElementById('eh-ply')` then found the new iframe. Split into two steps
+  with a wait, the mutation fails as it should.
+- **My process slip**: a trace experiment backed up and restored the
+  userscript while a background `mutation-check.py` run (eh-keys-off.json)
+  had a defect planted, so the "restore" re-planted it for a while; the
+  runner's own restore (hash-verified) fixed the file. Re-ran all three lists
+  afterwards in the foreground. Never touch the userscript while a mutation
+  run is in flight, even to back it up.
+
+Tests: `tests/fixtures/eh-interop-markers.spec.js` 24/24 (six new: close
+asked and gone; a deaf build silenced, its next track and a new `#eh-ply`
+too; EH's view untouched; a mirror tab hidden, no close; setting off;
+another owner's mark kept). Mutations `scripts/mutations/eh-player-quiet.json`
+11/11; `eh-keys-off.json` 17/17 (two finds re-pointed for the new call) and
+`eh-interop-markers.json` 15/15 re-run clean. test:full deferred to the
+merge.
+
+Browser check (feat/eh-player-quiet): 2026-11-23T16:00:28+01:00 · vzell's
+browser (version and Tampermonkey version not recorded) · String Theory as
+installed: "tested live, OK, all behave as predicted" — the player stopped
+after the render on release 22a6802f-…, nothing shown later, EH's own view
+untouched, the setting off leaves it playing.

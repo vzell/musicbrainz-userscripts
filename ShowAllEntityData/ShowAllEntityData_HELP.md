@@ -1930,6 +1930,18 @@ again. Setting: *Hide String Theory's corner launchers while a table is
 shown* in ⚙️ Settings → 🎨 UI FEATURES. Needs a String Theory that knows the
 shared mark (majkinetor's #938); an older one keeps its launchers.
 
+**Event Horizon's player.** A track you started in Event Horizon's player
+keeps playing when you switch Event Horizon off with `V`, and its controls go
+with Event Horizon's view, so nothing is left to stop it; the next track can
+even show its source's own frame (an Apple Music login card). While a table of
+this script is shown on MusicBrainz's page, the player is stopped and hidden:
+Event Horizon is asked to close it, which also clears its current playlist,
+and any sound it starts there again is removed. Before you press a button, in
+Event Horizon's own view, and in a tab that only shows the controls of a
+player playing in another window or tab, nothing changes, and nothing starts
+again afterwards. Setting: *Stop Event Horizon's player while a table is
+shown* in ⚙️ Settings → 🎨 UI FEATURES.
+
 **One request budget.** MusicBrainz allows about one Web Service request a
 second per computer, for all scripts together. majkinetor's scripts share
 one schedule for it across all your MusicBrainz tabs, and when MusicBrainz

@@ -128,6 +128,101 @@ test.describe('data-mbu-quiet while our table shows', () => {
     });
 });
 
+test.describe('Event Horizon\'s player while our table shows', () => {
+    /** @returns {Promise<{root: boolean, media: number, shown: ?boolean, mark: ?string, closes: number}>} the player's state */
+    const player = (page) => page.evaluate(() => {
+        const root = document.getElementById('eh-ply');
+        return {
+            root: !!root,
+            media: root ? root.querySelectorAll('iframe, audio, video').length : 0,
+            shown: root ? getComputedStyle(root).display !== 'none' : null,
+            mark: document.documentElement.getAttribute('data-mbu-player-off'),
+            closes: window.__ehSim.plyMsgs.filter((m) => m && m.type === 'control' && m.action === 'close').length,
+        };
+    });
+
+    test('a track started in EH plays on after V; after the render EH is asked to close it, and it is gone', async ({ page }) => {
+        await openRelease(page, { ehOn: true });
+        await page.evaluate(() => { window.__ehSim.play('spotify'); window.__ehSim.off(); });
+        // Pins the scope: on the initial page (no table of ours yet) nothing is touched.
+        expect(await player(page)).toEqual({ root: true, media: 1, shown: true, mark: null, closes: 0 });
+        await renderTracks(page);
+        await expect.poll(async () => (await player(page)).closes).toBe(1);
+        await expect.poll(async () => (await player(page)).root).toBe(false);
+        expect((await player(page)).mark).toBe('saed');
+    });
+
+    test('a build that ignores the message: its sources are removed, #eh-ply hidden, the next track silenced too', async ({ page }) => {
+        await page.context().addInitScript({ content: 'window.__EH_SIM_PLY_DEAF__ = true;' });
+        await openRelease(page, { ehOn: true });
+        await page.evaluate(() => { window.__ehSim.play('spotify'); window.__ehSim.off(); });
+        await renderTracks(page);
+        await expect.poll(async () => (await player(page)).media).toBe(0);
+        expect(await player(page)).toMatchObject({ root: true, shown: false, mark: 'saed' });
+        // EH moves on by itself: the Apple Music frame of the next track never stays.
+        await page.evaluate(() => window.__ehSim.plyNext('apple'));
+        await expect.poll(async () => (await player(page)).media).toBe(0);
+        expect((await player(page)).shown).toBe(false);
+        // A new #eh-ply made later (EH closed its own and started again): followed too.
+        // Two steps: in one, the old #eh-ply's observer (woken by the controls leaving
+        // it) would find the new iframe by id, and hide a missing <html> observer.
+        await page.evaluate(() => window.__ehSim.plyClose());
+        await page.evaluate(() => new Promise((r) => setTimeout(r, 100)));
+        await page.evaluate(() => window.__ehSim.plyNext('youtube'));
+        await expect.poll(async () => (await player(page)).media).toBe(0);
+        expect((await player(page)).shown).toBe(false);
+    });
+
+    test('Event Horizon\'s view is left alone: V on drops the mark, a track played there keeps playing', async ({ page }) => {
+        await openRelease(page);
+        await renderTracks(page);
+        expect((await player(page)).mark).toBe('saed');
+        await page.evaluate(() => window.__ehSim.on());
+        await expect.poll(async () => (await player(page)).mark).toBeNull();
+        await page.evaluate(() => window.__ehSim.play('spotify'));
+        // Give an observer a chance to act on the new iframe; it must not.
+        await page.evaluate(() => new Promise((r) => setTimeout(r, 300)));
+        expect(await player(page)).toEqual({ root: true, media: 1, shown: true, mark: null, closes: 0 });
+        // V off again over our table: now it goes.
+        await page.evaluate(() => window.__ehSim.off());
+        await expect.poll(async () => (await player(page)).root).toBe(false);
+    });
+
+    test('a tab that only mirrors a player playing elsewhere: hidden, no close sent', async ({ page }) => {
+        await openRelease(page);
+        // A mirror's #eh-ply: controls, no source (the sound is in another window or tab).
+        await page.evaluate(() => {
+            const r = window.__ehSim.plyRoot();
+            r.insertAdjacentHTML('beforeend', '<div class="mbu-ui ply-ctl pb"><button type="button" data-ply="pause">Pause</button></div>');
+        });
+        await renderTracks(page);
+        await page.evaluate(() => new Promise((r) => setTimeout(r, 300)));
+        expect(await player(page)).toEqual({ root: true, media: 0, shown: false, mark: 'saed', closes: 0 });
+    });
+
+    test('setting off: the player, the mark and the channel are left alone', async ({ page }) => {
+        await openRelease(page, { ehOn: true, settings: { sa_eh_player_quiet: false } });
+        await page.evaluate(() => { window.__ehSim.play('spotify'); window.__ehSim.off(); });
+        await renderTracks(page);
+        await page.evaluate(() => new Promise((r) => setTimeout(r, 300)));
+        expect(await player(page)).toEqual({ root: true, media: 1, shown: true, mark: null, closes: 0 });
+    });
+
+    test('another script\'s mark is neither overwritten nor removed; the player is still stopped', async ({ page }) => {
+        await openRelease(page, { ehOn: true });
+        await page.evaluate(() => {
+            document.documentElement.setAttribute('data-mbu-player-off', 'other-script');
+            window.__ehSim.play('spotify');
+            window.__ehSim.off();
+        });
+        await renderTracks(page);
+        await expect.poll(async () => (await player(page)).root).toBe(false);
+        expect((await player(page)).mark).toBe('other-script');
+        await page.evaluate(() => { window.__ehSim.on(); window.__ehSim.off(); });
+        expect((await player(page)).mark).toBe('other-script');
+    });
+});
+
 test.describe('launchers in Event Horizon\'s More (⋯) menu', () => {
     test('while its view shows a page of ours: "Open in" first, then one item per button', async ({ page }) => {
         await openRelease(page, { ehOn: true });

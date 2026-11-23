@@ -1571,6 +1571,13 @@
             description: "With majkinetor's String Theory (or one of its scripts) installed, up to eight launchers and its dock sit in the bottom right corner, over the rendered table. On, they are hidden on MusicBrainz's page while a table this script rendered is shown; Event Horizon's own view keeps them, and \"Show corner launchers\" in the ☰ menu's View group brings them back for the page. Uses the shared <html data-mbu-quiet> mark (majkinetor's #938); a String Theory without it ignores the mark."
         },
 
+        sa_eh_player_quiet: {
+            label: "Stop Event Horizon's player while a table is shown",
+            type: 'checkbox',
+            default: true,
+            description: "Event Horizon (majkinetor's String Theory) has a music player. Switched off with V, its view goes but a track it plays keeps playing, with no controls to stop it, and the next track can show its source's own frame (an Apple Music login card). On, the player is stopped and hidden on MusicBrainz's page while a table this script rendered is shown: this script asks Event Horizon to close it, which also clears its current playlist, and removes any sound it starts again there. Event Horizon's own view is left alone; nothing is resumed afterwards. Also sets <html data-mbu-player-off>, a mark proposed to majkinetor. Off: Event Horizon's player is left as it is."
+        },
+
         sa_mb_shared_gate: {
             label: "Share MusicBrainz's request budget with other userscripts (mbu:mb-gate)",
             type: 'checkbox',
@@ -112851,10 +112858,17 @@ ${sections.join('\n')}
      *     by id (`_ehMenuSync()`);
      *   - `observing`: the `<html>` attribute observer is installed;
      *   - `keysKeepOurs`: `<html data-mbu-keys-keep>` was set by this script
-     *     (`_mbuKeysSync()`), so it may remove it.
+     *     (`_mbuKeysSync()`), so it may remove it;
+     *   - `playerHtmlObs` / `playerRootObs`: the observers of `<html>`'s
+     *     children and of `#eh-ply` while Event Horizon's player is kept
+     *     quiet, `playerBus`: its player channel (`_mbuPlayerSync()`).
      * Declared before the init code that first uses it (no TDZ).
      */
-    const _mbuInterop = { tableShown: false, quietUserShown: false, menu: new Map(), observing: false, keysKeepOurs: false };
+    const _mbuInterop = {
+        tableShown: false, quietUserShown: false, menu: new Map(), observing: false, keysKeepOurs: false,
+        // Event Horizon's player (_mbuPlayerSync()): the observers while it is kept quiet, the channel.
+        playerHtmlObs: null, playerRootObs: null, playerBus: null,
+    };
 
     /** sessionStorage key of a pending "press this button" handoff from Event Horizon's menu. */
     const _EH_HANDOFF_KEY = 'sa_eh_handoff';
@@ -112869,16 +112883,17 @@ ${sections.join('\n')}
      * its body swaps; String Theory and a standalone Event Horizon write
      * their version marks (`data-mbu-st`, `data-mbu-eh`) at their start,
      * which can come after ours, so a table already shown gets the keys marks
-     * then. Every change re-derives the menu launchers, the quiet mark and
-     * the keys marks. Only those four attributes are observed, so our own
-     * `data-mbu-quiet` and `data-mbu-keys-*` writes cannot loop back here.
+     * then. Every change re-derives the menu launchers, the quiet mark, the
+     * keys marks and the player mark. Only those four attributes are
+     * observed, so our own `data-mbu-quiet`, `data-mbu-keys-*` and
+     * `data-mbu-player-off` writes cannot loop back here.
      *
      * @returns {void}
      */
     function _ehInteropObserve() {
         if (_mbuInterop.observing || _foreignHost) return;
         _mbuInterop.observing = true;
-        new MutationObserver(() => { _ehMenuSync(); _mbuQuietSync(); _mbuKeysSync(); })
+        new MutationObserver(() => { _ehMenuSync(); _mbuQuietSync(); _mbuKeysSync(); _mbuPlayerSync(); })
             .observe(document.documentElement, { attributes: true, attributeFilter: ['data-mbu-dock', 'data-mbu-page', 'data-mbu-st', 'data-mbu-eh'] });
     }
 
@@ -112898,7 +112913,8 @@ ${sections.join('\n')}
     /**
      * Called from the render tail (a fetched render and a load from disk):
      * from now on a table of ours is on MusicBrainz's page, so the quiet mark
-     * may go up (`_mbuQuietSync()`).
+     * (`_mbuQuietSync()`), the keys marks (`_mbuKeysSync()`) and the player
+     * mark (`_mbuPlayerSync()`) may go up.
      *
      * @returns {void}
      */
@@ -112908,6 +112924,127 @@ ${sections.join('\n')}
         _ehInteropObserve();
         _mbuQuietSync();
         _mbuKeysSync();
+        _mbuPlayerSync();
+    }
+
+    /** Event Horizon's player channel (EH `PLY_BUS`, 2026.11.23.095945): a separate player window and tab handover. */
+    const _EH_PLAYER_CHANNEL = 'mbu-event-horizon-player-v1';
+
+    /** `<html>` class of ours while Event Horizon's player is kept quiet: the CSS below hides it. */
+    const _EH_PLAYER_QUIET_CLASS = 'mb-eh-ply-quiet';
+
+    /**
+     * Event Horizon's player kept quiet while a table of ours shows (vzell,
+     * 2026-11-23: "I don't want to see and hear any artifacts of his
+     * player"; org/majkinetor.org, "Event Horizon's player plays on under our
+     * page"). The player's source iframe lives in `#eh-ply` on `<html>`,
+     * outside both bodies (EH `plyRoot()`), and its controls in Event
+     * Horizon's body (`#eh-pin`), so V takes the controls and leaves the
+     * sound; Event Horizon's `setOn1()` never moves them back.
+     *
+     * Up under the same condition as the quiet mark (a table of ours on
+     * MusicBrainz's page, Event Horizon's view not showing) and
+     * `sa_eh_player_quiet`:
+     *   - `<html data-mbu-player-off="saed">`, the mark proposed to
+     *     majkinetor (an Event Horizon that honours it pauses and hides its
+     *     player); ownership as for C3/C4: set only when absent, removed only
+     *     while it reads `saed`;
+     *   - our class `_EH_PLAYER_QUIET_CLASS` on `<html>`, which hides
+     *     `#eh-ply` and `#eh-ply-menu` whoever owns the mark;
+     *   - `_mbuPlayerSilence()` at once and on every change inside `#eh-ply`.
+     * Down while Event Horizon's view shows; nothing is resumed (Event
+     * Horizon's close cannot be undone, and its view is the user's).
+     *
+     * @returns {void}
+     */
+    function _mbuPlayerSync() {
+        if (_foreignHost) return;
+        const root = document.documentElement;
+        const want = _mbuInterop.tableShown && Lib.settings.sa_eh_player_quiet !== false &&
+            !root.hasAttribute('data-mbu-dock');
+        if (want) {
+            if (!root.hasAttribute('data-mbu-player-off')) root.setAttribute('data-mbu-player-off', 'saed');
+            _mbuPlayerStyle();
+            root.classList.add(_EH_PLAYER_QUIET_CLASS);
+            if (!_mbuInterop.playerHtmlObs) {
+                // #eh-ply is a direct child of <html>: <html>'s own children only, no subtree.
+                _mbuInterop.playerHtmlObs = new MutationObserver(() => _mbuPlayerWatchRoot());
+                _mbuInterop.playerHtmlObs.observe(root, { childList: true });
+            }
+            _mbuPlayerWatchRoot();
+        } else {
+            if (root.getAttribute('data-mbu-player-off') === 'saed') root.removeAttribute('data-mbu-player-off');
+            root.classList.remove(_EH_PLAYER_QUIET_CLASS);
+            if (_mbuInterop.playerHtmlObs) { _mbuInterop.playerHtmlObs.disconnect(); _mbuInterop.playerHtmlObs = null; }
+            if (_mbuInterop.playerRootObs) { _mbuInterop.playerRootObs.disconnect(); _mbuInterop.playerRootObs = null; }
+        }
+    }
+
+    /**
+     * Follows `#eh-ply` while the player is kept quiet: an observer on its
+     * subtree (Event Horizon puts the next track's iframe into its dock on
+     * its own, plyEnded() → plyGo()), re-attached when Event Horizon makes a
+     * new `#eh-ply`, and one `_mbuPlayerSilence()` pass now.
+     *
+     * @returns {void}
+     */
+    function _mbuPlayerWatchRoot() {
+        const ply = document.getElementById('eh-ply');
+        const obs = _mbuInterop.playerRootObs;
+        if (obs && obs._mbTarget !== ply) { obs.disconnect(); _mbuInterop.playerRootObs = null; }
+        if (ply && !_mbuInterop.playerRootObs) {
+            const o = new MutationObserver(() => _mbuPlayerSilence());
+            o._mbTarget = ply;
+            o.observe(ply, { childList: true, subtree: true });
+            _mbuInterop.playerRootObs = o;
+        }
+        _mbuPlayerSilence();
+    }
+
+    /**
+     * Stops Event Horizon's player when THIS tab plays it: a source (iframe,
+     * audio, video) in `#eh-ply`. A tab that only mirrors a player playing
+     * elsewhere (a separate player window, another tab) has none, and is left
+     * alone, so a track the user hears from another window keeps playing.
+     * First Event Horizon's own close on its channel, so its state is clean
+     * (no queue moving on, no Media Session, no ListenBrainz listen): a
+     * `control` message is answered only by the tab that plays (EH
+     * `PLY_BUS`). The channel is Event Horizon's internal one, not a
+     * convention, so the sources are also removed here: that silences any
+     * build, whether it answers the message or not.
+     *
+     * @returns {void}
+     */
+    function _mbuPlayerSilence() {
+        if (!document.documentElement.classList.contains(_EH_PLAYER_QUIET_CLASS)) return;
+        const ply = document.getElementById('eh-ply');
+        const media = ply ? ply.querySelectorAll('iframe, audio, video') : [];
+        if (!media.length) return;
+        try {
+            if (!_mbuInterop.playerBus && typeof BroadcastChannel === 'function') {
+                _mbuInterop.playerBus = new BroadcastChannel(_EH_PLAYER_CHANNEL);
+            }
+            if (_mbuInterop.playerBus) _mbuInterop.playerBus.postMessage({ type: 'control', action: 'close' });
+        } catch (_) { /* no channel here: the removal below still silences it */ }
+        media.forEach((m) => {
+            try { if (typeof m.pause === 'function') m.pause(); } catch (_) { /* not media */ }
+            m.remove();
+        });
+        Lib.debug('init', "Event Horizon's player stopped while our table shows");
+    }
+
+    /**
+     * The CSS behind `_EH_PLAYER_QUIET_CLASS`, added once: Event Horizon's
+     * player root and its playlist menu are hidden.
+     *
+     * @returns {void}
+     */
+    function _mbuPlayerStyle() {
+        if (document.getElementById('mb-eh-ply-quiet-css')) return;
+        const s = document.createElement('style');
+        s.id = 'mb-eh-ply-quiet-css';
+        s.textContent = `html.${_EH_PLAYER_QUIET_CLASS} :is(#eh-ply, #eh-ply-menu) { display: none !important; }`;
+        (document.head || document.documentElement).appendChild(s);
     }
 
     /**
