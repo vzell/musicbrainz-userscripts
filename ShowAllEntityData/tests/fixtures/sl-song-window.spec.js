@@ -246,6 +246,45 @@ test.describe('springsteenlyrics.com song window', () => {
         expect(errors).toEqual([]);
     });
 
+    // With the MusicBrainz title style on, the Title cell has its own tip
+    // ("As written on the site: BACKSTREETS"); the finding goes above it,
+    // not nowhere (vzell's screenshot, 2026-11-23: the card showed only the
+    // site title, and "the two share little").
+    test('the lyrics index with the title style on: the Title cell shows the finding above the site title', async ({ page }) => {
+        const errors = trackPageErrors(page);
+        const { spec } = await loadSlListPage(page, { kind: 'lyrics-b-logged-in', settingsOverride: { sa_sl_detail_preview: true, sa_foreign_mb_titles: true } });
+        await routeDetailPages(page, 'sl');
+        await page.click(`button[data-label="${spec.button}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await openWindow(page, 'backstreets');
+        await page.keyboard.press('Escape');
+        const row = page.locator('table.tbl tbody tr', { has: page.locator('a:not(.mb-fi-glyph)[href="lyrics.php?song=backstreets"]') }).first();
+        const titleTd = row.locator('td[data-mb-findings~="sl-double-utf8"]', { has: page.locator('a[href="lyrics.php?song=backstreets"]') });
+        await expect(titleTd).toHaveCount(1, { timeout: 5000 });
+        const card = await titleTd.evaluate((td) => {
+            const div = document.createElement('div');
+            div.innerHTML = window.__saTest.tipTextToHtml(td.getAttribute('title') || '', td);
+            return {
+                title: td.getAttribute('title'),
+                heads: Array.from(div.querySelectorAll('.mb-tt-title')).map(d => d.textContent),
+                rows: Array.from(div.querySelectorAll('.mb-tt-cmp-val')).map(d => d.textContent),
+                marks: Array.from(div.querySelectorAll('.mb-tt-cmp-val')).map(v => Array.from(v.querySelectorAll('mark')).map(m => m.textContent).join('')),
+                text: div.textContent,
+            };
+        });
+        // The finding's line first, then the site's own text.
+        expect(card.title).toMatch(/^❌ Double-encoded text[^\n]*\n[\s\S]*As written on the site:\nBACKSTREETS$/);
+        // The garbled word, not only its two characters.
+        expect(card.rows).toContain('CalexÃ³ns');
+        expect(card.rows).toContain('Calexóns');
+        expect(card.marks).toContain('Ã³');
+        // The site title's pair marks its case, not "share little".
+        expect(card.rows).toContain('BACKSTREETS');
+        expect(card.marks).toContain('ACKSTREETS');
+        expect(card.text).not.toMatch(/share little/);
+        expect(errors).toEqual([]);
+    });
+
     test('badlands: single releases as a table, Live History as tours of dates, placeholders dropped', async ({ page }) => {
         const errors = trackPageErrors(page);
         const { spec } = await loadSlListPage(page, { kind: 'lyrics-b', settingsOverride: { sa_sl_detail_preview: true } });
@@ -302,9 +341,14 @@ test.describe('springsteenlyrics.com song window', () => {
         const m = await page.evaluate(() => ['CalexÃ³ns', 'Saint-Ã‰tienne', 'BernabÃ©u', 'DÃ©jÃ  Vu', 'Ã and Â alone', 'Déjà vu', 'DéjÃ Vu'].map(t => window.__saTest.slMojibake(t)));
         expect(m.map(x => x.fixed)).toEqual(['Calexóns', 'Saint-Étienne', 'Bernabéu', 'Déjà Vu', 'Ã and Â alone', 'Déjà vu', 'Déjà Vu']);
         // The no-break space a collapsing reader made plain: "Ã " after a lower-case letter.
-        expect(m[6].runs).toEqual([{ at: 3, bad: 'Ã ', fix: 'à ' }]);
-        expect(m[0].runs).toEqual([{ at: 5, bad: 'Ã³', fix: 'ó' }]);
+        // Each run with the word around it, repaired whole (the finding's card).
+        expect(m[6].runs).toEqual([{ at: 3, bad: 'Ã ', fix: 'à ', word: 'DéjÃ Vu', wordFix: 'Déjà Vu' }]);
+        expect(m[0].runs).toEqual([{ at: 5, bad: 'Ã³', fix: 'ó', word: 'CalexÃ³ns', wordFix: 'Calexóns' }]);
         expect(m[4].runs).toEqual([]);
+        // Two runs in one word give the same word, both repaired; outer
+        // punctuation stays out.
+        const w = await page.evaluate(() => window.__saTest.slMojibake('by "BernabÃ©u," and SÃ£o PaulÃ£o.').runs.map(r => [r.word, r.wordFix]));
+        expect(w).toEqual([['BernabÃ©u', 'Bernabéu'], ['SÃ£o', 'São'], ['PaulÃ£o', 'Paulão']]);
 
         // ALL CAPS song titles in prose: linked when the site's song list
         // knows them, never the page's own song, never inside a link, and a

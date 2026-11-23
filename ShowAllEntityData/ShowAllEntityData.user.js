@@ -13538,7 +13538,7 @@
         const titleCell = (t, artist) => {
             const shown = _mbSiteTitleText(t);
             const inner = artist && !/springsteen/i.test(artist) ? _rgEsc(shown) : _slSongTitleHtml(t, show);
-            return shown !== t ? `<td data-mb-tip title="${_rgEsc(`As written on the site:\n${t}`)}">${inner}</td>` : `<td>${inner}</td>`;
+            return `<td${_mbSiteTitleTipAttrs(t, shown)}>${inner}</td>`;
         };
         const body = _slItemGroups(tl.media).map((g) => {
             const rows = g.tracks.map((t) => {
@@ -15100,7 +15100,7 @@
         const link = (href, t) => (href ? `<a href="${esc(href)}">${esc(t)}</a>` : esc(t));
         const titleCell = (t, href, self) => {
             const shown = _mbSiteTitleText(t);
-            const tip = shown !== t ? ` data-mb-tip title="${esc(`As written on the site:\n${t}`)}"` : '';
+            const tip = _mbSiteTitleTipAttrs(t, shown);
             return `<td${self ? ' class="mb-sl-self"' : ''}${tip}>${link(self ? '' : href, shown)}</td>`;
         };
         const cover = r => `<td>${r.image ? `<a href="${esc(r.image.full)}" target="_blank" rel="noopener">` +
@@ -15136,7 +15136,7 @@
             const base = (_slSongHrefSlug(t.href).split('_')[0]) || _slSongSlugOf(t.title);
             if (!base || (!_slSongLinksOn() && !_slMbWorksOn())) return titleCell(t.title, t.href, t.self);
             const shown = _mbSiteTitleText(t.title);
-            const tip = shown !== t.title ? ` data-mb-tip title="${esc(`As written on the site:\n${t.title}`)}"` : '';
+            const tip = _mbSiteTitleTipAttrs(t.title, shown);
             return `<td${t.self ? ' class="mb-sl-self"' : ''}${tip}>${_slSongSpanHtml(base, t.title, shown, { href: t.href || '', self: !!t.self })}</td>`;
         };
         s.releases.forEach(rel => rel.editions.forEach(ed => _slSongEditionGroups(rel.name, ed, s.slug).forEach((g) => {
@@ -18513,7 +18513,12 @@
     /**
      * The tooltip of a site title shown in MusicBrainz style: "As written on
      * the site:" and the site's text, and for the rich card the site's text
-     * over the shown one with what changed marked (`_cmpHtml()`).
+     * over the shown one with what changed marked (`_cmpHtml()`). On a table
+     * cell the tip is also the base its findings are written above
+     * (`data-mb-tip-base`, `_findingTipBase()`), as on the Brucebase Event
+     * cell: a cell with its own tip got no findings lines, so the lyrics
+     * index's Title cell showed "As written on the site" and never its
+     * double-encoding card (vzell, 2026-11-23).
      *
      * @param {Element} el       The element that carries the tooltip.
      * @param {string}  original The title as the site writes it.
@@ -18521,10 +18526,32 @@
      * @returns {void}
      */
     function _mbSiteTitleTip(el, original, shown) {
-        _setTipCmp(el, `As written on the site:\n${original}`, [{
+        const text = `As written on the site:\n${original}`;
+        const cmp = [{
             at: 0, span: 2, head: 'As written on the site',
             la: 'Site', lb: 'Shown', sa: 'site', sb: 'shown title', a: original, b: shown,
-        }]);
+        }];
+        _setTipCmp(el, text, cmp);
+        if (/^T[DH]$/.test(el.tagName)) el.setAttribute('data-mb-tip-base', JSON.stringify({ t: text, c: cmp }));
+    }
+
+    /**
+     * The same tip as `_mbSiteTitleTip()`, as attributes for a cell built
+     * as markup (` data-mb-tip title=… data-mb-tip-cmp=… data-mb-tip-base=…`,
+     * with a leading space), or '' when the title shows as written.
+     *
+     * @param {string} original The title as the site writes it.
+     * @param {string} shown    The title as the page shows it.
+     * @returns {string}
+     */
+    function _mbSiteTitleTipAttrs(original, shown) {
+        if (shown === original) return '';
+        const text = `As written on the site:\n${original}`;
+        const json = _mbttEscape(JSON.stringify({ t: text, c: [{
+            at: 0, span: 2, head: 'As written on the site',
+            la: 'Site', lb: 'Shown', sa: 'site', sb: 'shown title', a: original, b: shown,
+        }] }));
+        return ` data-mb-tip title="${_mbttEscape(text)}" data-mb-tip-cmp="${json}" data-mb-tip-base="${json}"`;
     }
 
     /**
@@ -19785,9 +19812,7 @@
         const body = _bsMediaGroups(support, rec.tracks).map((g) => {
             const rows = g.tracks.map((t) => {
                 const shown = _mbSiteTitleText(t.title);
-                const titleTd = shown !== t.title
-                    ? `<td data-mb-tip title="${_rgEsc(`As written on the site:\n${t.title}`)}">${link(t.songUrl, _rgEsc(shown))}</td>`
-                    : `<td>${link(t.songUrl, _rgEsc(shown))}</td>`;
+                const titleTd = `<td${_mbSiteTitleTipAttrs(t.title, shown)}>${link(t.songUrl, _rgEsc(shown))}</td>`;
                 const q = `Bruce Springsteen ${shown} ${t.date}`.trim();
                 const tile = play ? _ytTileHtml({ src: 'yts', kind: 'video', id: '', list: '', q }, { bare: true, title: shown }) : '';
                 return `<tr><td>${_rgEsc(t.pos)}</td>${titleTd}<td>${_rgEsc(t.date)}</td>` +
@@ -28134,10 +28159,9 @@
             td.appendChild(holder);
         }
         if (shown !== entry.heading) {
-            _mbSiteTitleTip(td, entry.heading, shown);
             // The cell's findings are written above this tip, not instead of
-            // it (`_writeFindingAttrs()`, `_findingTipBase()`).
-            td.setAttribute('data-mb-tip-base', td.getAttribute('data-mb-tip-cmp') || JSON.stringify({ t: td.getAttribute('title') || '', c: [] }));
+            // it (`_mbSiteTitleTip()` makes it the base: `_findingTipBase()`).
+            _mbSiteTitleTip(td, entry.heading, shown);
         }
         const data = docContext.createElement('span');
         data.className = 'mb-bb-ev-data';
@@ -36155,9 +36179,11 @@
      * 36: a show's `bbTagFacts` carries its title as written (`title`; the
      *    place family, batch 3b), what its tabs hold (`content`, the
      *    content family) and its cast tab with the names listed (`cast`).
+     * 37: a springsteenlyrics.com song's double-encoded runs carry the word
+     *    around them (`slSong.mojibake[].word`/`wordFix`, the finding's card).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 36;
+    const _DP_PARSER_VERSION = 37;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -37214,8 +37240,13 @@
      * "Ã©" is "é", while a real "Â°" or "Ã " elsewhere in correct text is
      * left alone unless its bytes form a character. Pure.
      *
+     * Each run also carries the word around it (`word`, up to white space,
+     * outer punctuation off) and that word repaired (`wordFix`), so a card
+     * shows "CalexÃ³ns" over "Calexóns", not "Ã³" over "ó" (vzell,
+     * 2026-11-23).
+     *
      * @param {string} text
-     * @returns {Array<{at: number, bad: string, fix: string}>} In text order.
+     * @returns {Array<{at: number, bad: string, fix: string, word: string, wordFix: string}>} In text order.
      */
     function _slMojibakeScan(text) {
         const s = String(text || '');
@@ -37254,7 +37285,31 @@
         while ((m = nb.exec(s))) {
             if (!out.some(r => r.at === m.index)) out.push({ at: m.index, bad: 'Ã ', fix: 'à ' });
         }
-        return out.sort((a, b) => a.at - b.at);
+        out.sort((a, b) => a.at - b.at);
+        out.forEach((r) => {
+            // The word: from the white space before the run to the white
+            // space after it ("Ã " keeps its own space out of the end).
+            let from = r.at;
+            while (from > 0 && !/\s/.test(s[from - 1])) from--;
+            let to = r.at + r.bad.trimEnd().length;
+            if (r.bad.endsWith(' ')) to = r.at + r.bad.length;
+            while (to < s.length && !/\s/.test(s[to])) to++;
+            while (from < r.at && /["'([“‘«]/.test(s[from])) from++;
+            while (to > r.at + r.bad.length && /["'),.;:!?\]”’»]/.test(s[to - 1])) to--;
+            let word = '';
+            let wordFix = '';
+            let i = from;
+            out.filter(x => x.at >= from && x.at < to).forEach((x) => {
+                word += s.slice(i, x.at) + x.bad;
+                wordFix += s.slice(i, x.at) + x.fix;
+                i = x.at + x.bad.length;
+            });
+            word += s.slice(i, Math.max(i, to));
+            wordFix += s.slice(i, Math.max(i, to));
+            r.word = word.trim();
+            r.wordFix = wordFix.trim();
+        });
+        return out;
     }
 
     /**
@@ -37338,7 +37393,7 @@
      * @returns {Array<{bad: string, fix: string, section: string}>}
      */
     function _findCellSlMojibake(cell) {
-        const own = _slMojibakeScan(cell.textContent).map(r => ({ bad: r.bad, fix: r.fix, section: '' }));
+        const own = _slMojibakeScan(cell.textContent).map(r => ({ bad: r.bad, fix: r.fix, word: r.word, wordFix: r.wordFix, section: '' }));
         if (own.length || !_slMojIsIndex()) return own;
         const url = _slMojSongUrl(cell);
         const mem = url ? _dpMem.get(url) : null;
@@ -38059,7 +38114,7 @@
             const k = `${where}|${r.bad}`;
             if (seen.has(k)) return;
             seen.add(k);
-            moj.push({ section: where, bad: r.bad, fix: r.fix });
+            moj.push({ section: where, bad: r.bad, fix: r.fix, word: r.word, wordFix: r.wordFix });
         });
         scan('Title', `${song.title} ${song.version}`);
         scan('Lyrics', song.lyrics);
@@ -47711,7 +47766,7 @@
             by.get(m.section).push(m);
         });
         return 'springsteenlyrics.com: double-encoded text (UTF-8 read as Windows-1252 and saved again)\n\n' +
-            `Page: ${sl.url}\n` + Array.from(by, ([sec, list]) => `  ${sec}\n` + list.map(m => `    "${m.bad}"  →  "${m.fix}"`).join('\n')).join('\n') +
+            `Page: ${sl.url}\n` + Array.from(by, ([sec, list]) => `  ${sec}\n` + list.map(m => `    "${m.bad}"  →  "${m.fix}"${m.word && m.word !== m.bad.trim() ? `  (in "${m.word}")` : ''}`).join('\n')).join('\n') +
             `\n\nFound by ShowAllEntityData on ${new Date().toISOString().slice(0, 10)}.`;
     }
 
@@ -79825,7 +79880,9 @@
             // means, at most eight
             compare: (cell) => {
                 const ms = _findCellSlMojibake(cell).slice(0, 8);
-                return ms.length ? ms.map(m => ({ la: m.section ? `Site (${m.section})` : 'Site', lb: 'Meant', sa: 'the site', sb: 'meant', a: m.bad, b: m.fix })) : null;
+                // the word around the run (a record saved before parser 37 has
+                // only the run)
+                return ms.length ? ms.map(m => ({ la: m.section ? `Site (${m.section})` : 'Site', lb: 'Meant', sa: 'the site', sb: 'meant', a: m.word || m.bad, b: m.wordFix || m.fix })) : null;
             },
             tint: _findingTintSetting('sa_findings_tint_sl_double_utf8'),
         },
@@ -129886,7 +129943,9 @@ a { color: #1565c0; }`;
     /**
      * The difference between two values, as blocks of shared and changed
      * text. `plain` means "show both unmarked": both have text and share
-     * under 40 % of it, or they are too long to compare.
+     * under 40 % of it, or they are too long to compare. A run that differs
+     * only in letter case counts as shared there ("BACKSTREETS" and
+     * "Backstreets" are the same title, its case marked; vzell, 2026-11-23).
      *
      * @param {string} a
      * @param {string} b
@@ -129911,7 +129970,8 @@ a { color: #1565c0; }`;
                 else blocks.push(y);
             }
         }
-        const shared = blocks.reduce((n, x) => n + (x.eq ? x.eq.length : 0), 0);
+        const shared = blocks.reduce((n, x) => n + (x.eq ? x.eq.length
+            : x.del && x.ins && x.del.toLowerCase() === x.ins.toLowerCase() ? x.del.length : 0), 0);
         return {
             same: false,
             // Only two values that both have text can "share little": an

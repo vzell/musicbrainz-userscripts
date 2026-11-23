@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-11-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com, Brucebase, brucespringsteen.it: a cell whose title is shown in MusicBrainz style (its tip \"As written on the site\") now shows its findings above that tip. Before, the tip hid them: the lyrics index's Title cell of \"Backstreets\" was tinted for double-encoded text, but its card showed only the site's title.",
+          "Comparison cards: a text that differs from the other only in letter case (\"BACKSTREETS\" and \"Backstreets\") is marked letter by letter, with the summary \"10 letters in a different case\", instead of \"The two share little, so nothing is marked\"."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com, the \"Double-encoded text\" card (WIP.3): each spot shows the whole word, \"CalexÃ³ns\" over \"Calexóns\", not only \"Ã³\" over \"ó\". The song window's \"Copy report for the site maintainer\" names the word after each spot. Saved song pages are read again once (parser version 37)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-11-23",
     "sections": [
