@@ -246,6 +246,60 @@ test.describe('springsteenlyrics.com song window', () => {
         expect(errors).toEqual([]);
     });
 
+    // The encoding banner lists each spot (vzell, 2026-11-23, mockup
+    // https://claude.ai/artifact/BdPcZd4TVQQ1fUhCtHP2ft, answers 1-6 as
+    // recommended): its section and place, the garbled word over the
+    // repaired one; a click on it, or on its section's chip, opens the
+    // closed section and shows the spot. Pins WHERE the click lands (the
+    // cell holding the repair, in view), not only that the section opened.
+    test('the encoding banner lists each spot; a click opens its section and shows it', async ({ page }) => {
+        const errors = trackPageErrors(page);
+        await openIndex(page);
+        const dialog = await openWindow(page, 'backstreets');
+        const spot = dialog.locator('.mb-sls-enc .mb-sls-spot');
+        await expect(spot).toHaveCount(1);
+        await expect(spot.locator('.mb-sls-spot-w')).toHaveText('Covers7 Lvvas · Note');
+        await expect(spot.locator('.mb-sls-spot-p')).toHaveText('CalexÃ³ns → Calexóns');
+        await expect(spot.locator('.mb-sls-spot-p mark')).toHaveText(['Ã³', 'ó']);
+        // The section and its chip count it.
+        const covers = dialog.locator('details[data-mb-dp-sec="sl:Covers"]');
+        await expect(covers.locator(':scope > summary .mb-sls-errn')).toHaveText('🔤 1 encoding error');
+        const chip = dialog.locator('.mb-sls-toc button[data-mb-sls-v="sl:Covers"]');
+        await expect(chip.locator('.mb-sls-errb')).toHaveText('1');
+        await expect(dialog.locator('.mb-sls-toc .mb-sls-errb')).toHaveCount(1);
+        // Covers starts closed; the click opens it and shows the cell.
+        await expect(covers).not.toHaveAttribute('open', '');
+        await spot.click();
+        await expect(covers).toHaveAttribute('open', '');
+        const flashed = dialog.locator('.mb-sls-flash');
+        await expect(flashed).toHaveCount(1);
+        await expect(flashed).toContainText('Calexóns');
+        expect(await flashed.evaluate(el => el.tagName)).toBe('TD');
+        await expect(flashed).toBeInViewport();
+        // Closed again, the chip goes to the same spot.
+        await covers.locator(':scope > summary').click();
+        await expect(covers).not.toHaveAttribute('open', '');
+        await chip.click();
+        await expect(covers).toHaveAttribute('open', '');
+        await expect(dialog.locator('.mb-sls-flash')).toContainText('Calexóns');
+
+        // The record: the spot's section and place (parser 38).
+        const rec = await page.evaluate(h => window.__saTest.dpParse('springsteenlyrics.com', h, 'https://www.springsteenlyrics.com/lyrics.php?song=backstreets').slSong.mojibake,
+            fs.readFileSync(path.join(FIXTURE_DIR, 'detail-sl-song-backstreets-logged-in.html'), 'utf8'));
+        expect(rec.map(m => [m.section, m.place, m.word, m.wordFix])).toEqual([['Covers', '7 Lvvas · Note', 'CalexÃ³ns', 'Calexóns']]);
+        // Many spots: three listed, then "and N more".
+        const many = await page.evaluate((h) => {
+            const data = window.__saTest.dpParse('springsteenlyrics.com', h, 'https://www.springsteenlyrics.com/lyrics.php?song=backstreets');
+            const m = data.slSong.mojibake[0];
+            data.slSong.mojibake = [0, 1, 2, 3, 4].map(i => Object.assign({}, m, { place: `row ${i}` }));
+            const div = document.createElement('div');
+            div.innerHTML = window.__saTest.slSongLeftHtml(data);
+            return { head: div.querySelector('.mb-sls-enc b').textContent, spots: div.querySelectorAll('.mb-sls-spot').length, more: (div.querySelector('.mb-sls-spots-more') || {}).textContent };
+        }, fs.readFileSync(path.join(FIXTURE_DIR, 'detail-sl-song-backstreets-logged-in.html'), 'utf8'));
+        expect(many).toEqual({ head: '5 encoding errors on this page', spots: 3, more: 'and 2 more · show all' });
+        expect(errors).toEqual([]);
+    });
+
     // With the MusicBrainz title style on, the Title cell has its own tip
     // ("As written on the site: BACKSTREETS"); the finding goes above it,
     // not nowhere (vzell's screenshot, 2026-11-23: the card showed only the

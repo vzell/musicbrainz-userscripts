@@ -485,6 +485,25 @@ filter text marked. Branch `feat/sl-song-poh`.
   `slSong.mojibake` lists them by section for the banner and the report
   (`_slsReportText()`). The ❌ finding `sl-double-utf8`
   (docs/claude/findings.md) flags rows.
+- **The spots, found** (vzell, 2026-11-23: "not easy to spot where the
+  actual error is"; mockup `debug/mockups/sl-encoding-spots.html`,
+  https://claude.ai/artifact/BdPcZd4TVQQ1fUhCtHP2ft, answers 1–6 as
+  recommended). Each run carries its word (`word`/`wordFix`, parser 37) and
+  where in its section it is (`place`: "7 Lvvas · Note", "line 12"; parser
+  38, one entry per word and place; a live release's under "Live releases",
+  where the window shows it). The banner lists three spots
+  (`_slsSpotPairHtml()`), then "and N more · show all" (`_slsUi.allSpots`).
+  A click on a spot, or on a chip whose section has one (`data-mb-sls-spot`,
+  the first), goes through `_slsGoToSpot()`: `_slsSpotTarget()` finds the
+  section by its heading's text, then the `span.mb-sl-moj` whose text
+  around it holds the repaired word in the row the place names, else that
+  row (a Live History tour: its dates show their text only on hover), else
+  the section; it opens every `details` around it, scrolls it to the middle
+  and flashes the cell (`.mb-sls-flash`). The section's heading
+  (`_slsSec()`'s `errs`) and its chip (`.mb-sls-errb`) count its spots,
+  matched by label. The repair itself: a tint, a wavy line, a small 🔤, and
+  a red edge on its table cell (`td:has(.mb-sl-moj)`). Not done (answer 6):
+  the lyrics index's card does not open the window at the spot.
 - **The source's memory hit.** `extracted()` kept no answer for a record
   found in memory, so the first repaint (a filter keystroke) drew "Loading
   the detail page…". It now stores the hit in `exRes`. This fixes the other

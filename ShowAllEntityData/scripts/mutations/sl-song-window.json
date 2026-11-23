@@ -197,5 +197,31 @@
         "spec": "tests/fixtures/sl-song-window.spec.js",
         "grep": "album version: layout A",
         "expect": "fail"
+    },
+    {
+        "name": "encoding spots: a click on a spot shows nothing",
+        "why": "vzell 2026-11-23 (mockup BdPcZd4TVQQ1fUhCtHP2ft, answer 2): a spot of the banner opens its section and shows the cell.",
+        "edits": [
+            {
+                "find": "        if (!dialog) return null;\n        const target = _slsSpotTarget(dialog, m);\n",
+                "replace": "        if (dialog) return null;\n        const target = _slsSpotTarget(dialog, m);\n"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "the encoding banner lists each spot",
+        "expect": "fail"
+    },
+    {
+        "name": "encoding spots: the banner lists every spot, not three",
+        "why": "vzell 2026-11-23 (answer 4): three spots, then 'and N more', so the banner never pushes the cards out of view.",
+        "edits": [
+            {
+                "find": "_slsUiFor(sl.url).allSpots ? spots : spots.slice(0, 3);",
+                "replace": "_slsUiFor(sl.url).allSpots ? spots : spots.slice(0, 30);"
+            }
+        ],
+        "spec": "tests/fixtures/sl-song-window.spec.js",
+        "grep": "the encoding banner lists each spot",
+        "expect": "fail"
     }
 ]

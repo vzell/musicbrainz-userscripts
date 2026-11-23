@@ -5572,9 +5572,16 @@ page) opens in a window laid out for reading:
   opens that show's version in the window.
 - **Double-encoded text.** springsteenlyrics.com serves some names
   double-encoded, such as "CalexÃ³ns" for "Calexóns". The window shows them
-  repaired with a dotted red underline, and the tooltip gives the site's
-  text. A red banner counts them, and **Copy report for the site maintainer**
-  copies a list of every spot. The rows are also flagged as an ❌ ERROR (see
+  repaired and marked (a light red tint, a wavy line and a small 🔤; in a
+  table, a red edge on the cell), and the tooltip gives the site's text.
+  A red banner lists the spots: the section and where in it ("Covers ·
+  7 Lvvas · Note", "Lyrics · line 12"), and the garbled word over the
+  repaired one. It lists three, then "and N more · show all". A click on a
+  spot opens its section and scrolls to it, which flashes. A section's
+  heading says how many it holds ("🔤 1 encoding error"), and its chip at the
+  top carries a red count; a click on that chip goes to the section's first
+  spot. **Copy report for the site maintainer** copies a list of every spot.
+  The rows are also flagged as an ❌ ERROR (see
   [Warnings and errors](#warnings-and-errors)).
 
 </details>

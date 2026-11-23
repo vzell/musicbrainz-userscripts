@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-11-23",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com song window: the red \"encoding error\" banner now lists each spot, with its section and where in it (\"Covers · 7 Lvvas · Note\", \"Lyrics · line 12\") and the garbled word over the repaired one. It lists three, then \"and N more · show all\". A click on a spot opens its section and scrolls to it, which flashes. A section's heading says how many it holds, and its chip at the top carries a red count that goes to the section's first spot. The repaired text is easier to see: a light red tint, a wavy line and a small 🔤, and a red edge on its table cell. Saved song pages are read again once (parser version 38)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-11-23",
     "sections": [
