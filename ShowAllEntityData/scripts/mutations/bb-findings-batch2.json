@@ -238,7 +238,7 @@
         "why": "vzell, 2026-11-14: no finding (\"Mediasound Studios, Studio C, New York City, NY\").",
         "edits": [
             {
-                "find": "        if (parts.length >= 4 && `${parts[0]}, ${parts[parts.length - 2]}, ${parts[parts.length - 1]}` === v) return 'detail';",
+                "find": "            if ([parts[0], ...parts.slice(ne - nv + 1)].join(', ') === v) return 'detail';",
                 "replace": ""
             }
         ],
@@ -251,7 +251,7 @@
         "why": "The two Mediasound sessions are not flagged.",
         "edits": [
             {
-                "find": "        if (parts.length >= 4 && `${parts[0]}, ${parts[parts.length - 2]}, ${parts[parts.length - 1]}` === v) return 'detail';",
+                "find": "            if ([parts[0], ...parts.slice(ne - nv + 1)].join(', ') === v) return 'detail';",
                 "replace": ""
             }
         ],

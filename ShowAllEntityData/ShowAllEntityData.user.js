@@ -13542,7 +13542,7 @@
         const titleCell = (t, artist) => {
             const shown = _mbSiteTitleText(t);
             const inner = artist && !/springsteen/i.test(artist) ? _rgEsc(shown) : _slSongTitleHtml(t, show);
-            return shown !== t ? `<td data-mb-tip title="${_rgEsc(`As written on the site:\n${t}`)}">${inner}</td>` : `<td>${inner}</td>`;
+            return `<td${_mbSiteTitleTipAttrs(t, shown)}>${inner}</td>`;
         };
         const body = _slItemGroups(tl.media).map((g) => {
             const rows = g.tracks.map((t) => {
@@ -15104,7 +15104,7 @@
         const link = (href, t) => (href ? `<a href="${esc(href)}">${esc(t)}</a>` : esc(t));
         const titleCell = (t, href, self) => {
             const shown = _mbSiteTitleText(t);
-            const tip = shown !== t ? ` data-mb-tip title="${esc(`As written on the site:\n${t}`)}"` : '';
+            const tip = _mbSiteTitleTipAttrs(t, shown);
             return `<td${self ? ' class="mb-sl-self"' : ''}${tip}>${link(self ? '' : href, shown)}</td>`;
         };
         const cover = r => `<td>${r.image ? `<a href="${esc(r.image.full)}" target="_blank" rel="noopener">` +
@@ -15140,7 +15140,7 @@
             const base = (_slSongHrefSlug(t.href).split('_')[0]) || _slSongSlugOf(t.title);
             if (!base || (!_slSongLinksOn() && !_slMbWorksOn())) return titleCell(t.title, t.href, t.self);
             const shown = _mbSiteTitleText(t.title);
-            const tip = shown !== t.title ? ` data-mb-tip title="${esc(`As written on the site:\n${t.title}`)}"` : '';
+            const tip = _mbSiteTitleTipAttrs(t.title, shown);
             return `<td${t.self ? ' class="mb-sl-self"' : ''}${tip}>${_slSongSpanHtml(base, t.title, shown, { href: t.href || '', self: !!t.self })}</td>`;
         };
         s.releases.forEach(rel => rel.editions.forEach(ed => _slSongEditionGroups(rel.name, ed, s.slug).forEach((g) => {
@@ -18517,7 +18517,12 @@
     /**
      * The tooltip of a site title shown in MusicBrainz style: "As written on
      * the site:" and the site's text, and for the rich card the site's text
-     * over the shown one with what changed marked (`_cmpHtml()`).
+     * over the shown one with what changed marked (`_cmpHtml()`). On a table
+     * cell the tip is also the base its findings are written above
+     * (`data-mb-tip-base`, `_findingTipBase()`), as on the Brucebase Event
+     * cell: a cell with its own tip got no findings lines, so the lyrics
+     * index's Title cell showed "As written on the site" and never its
+     * double-encoding card (vzell, 2026-11-23).
      *
      * @param {Element} el       The element that carries the tooltip.
      * @param {string}  original The title as the site writes it.
@@ -18525,10 +18530,32 @@
      * @returns {void}
      */
     function _mbSiteTitleTip(el, original, shown) {
-        _setTipCmp(el, `As written on the site:\n${original}`, [{
+        const text = `As written on the site:\n${original}`;
+        const cmp = [{
             at: 0, span: 2, head: 'As written on the site',
             la: 'Site', lb: 'Shown', sa: 'site', sb: 'shown title', a: original, b: shown,
-        }]);
+        }];
+        _setTipCmp(el, text, cmp);
+        if (/^T[DH]$/.test(el.tagName)) el.setAttribute('data-mb-tip-base', JSON.stringify({ t: text, c: cmp }));
+    }
+
+    /**
+     * The same tip as `_mbSiteTitleTip()`, as attributes for a cell built
+     * as markup (` data-mb-tip title=… data-mb-tip-cmp=… data-mb-tip-base=…`,
+     * with a leading space), or '' when the title shows as written.
+     *
+     * @param {string} original The title as the site writes it.
+     * @param {string} shown    The title as the page shows it.
+     * @returns {string}
+     */
+    function _mbSiteTitleTipAttrs(original, shown) {
+        if (shown === original) return '';
+        const text = `As written on the site:\n${original}`;
+        const json = _mbttEscape(JSON.stringify({ t: text, c: [{
+            at: 0, span: 2, head: 'As written on the site',
+            la: 'Site', lb: 'Shown', sa: 'site', sb: 'shown title', a: original, b: shown,
+        }] }));
+        return ` data-mb-tip title="${_mbttEscape(text)}" data-mb-tip-cmp="${json}" data-mb-tip-base="${json}"`;
     }
 
     /**
@@ -19789,9 +19816,7 @@
         const body = _bsMediaGroups(support, rec.tracks).map((g) => {
             const rows = g.tracks.map((t) => {
                 const shown = _mbSiteTitleText(t.title);
-                const titleTd = shown !== t.title
-                    ? `<td data-mb-tip title="${_rgEsc(`As written on the site:\n${t.title}`)}">${link(t.songUrl, _rgEsc(shown))}</td>`
-                    : `<td>${link(t.songUrl, _rgEsc(shown))}</td>`;
+                const titleTd = `<td${_mbSiteTitleTipAttrs(t.title, shown)}>${link(t.songUrl, _rgEsc(shown))}</td>`;
                 const q = `Bruce Springsteen ${shown} ${t.date}`.trim();
                 const tile = play ? _ytTileHtml({ src: 'yts', kind: 'video', id: '', list: '', q }, { bare: true, title: shown }) : '';
                 return `<tr><td>${_rgEsc(t.pos)}</td>${titleTd}<td>${_rgEsc(t.date)}</td>` +
@@ -28138,10 +28163,9 @@
             td.appendChild(holder);
         }
         if (shown !== entry.heading) {
-            _mbSiteTitleTip(td, entry.heading, shown);
             // The cell's findings are written above this tip, not instead of
-            // it (`_writeFindingAttrs()`, `_findingTipBase()`).
-            td.setAttribute('data-mb-tip-base', td.getAttribute('data-mb-tip-cmp') || JSON.stringify({ t: td.getAttribute('title') || '', c: [] }));
+            // it (`_mbSiteTitleTip()` makes it the base: `_findingTipBase()`).
+            _mbSiteTitleTip(td, entry.heading, shown);
         }
         const data = docContext.createElement('span');
         data.className = 'mb-bb-ev-data';
@@ -28330,10 +28354,13 @@
         // Feed 1.6 (Track A idea 4; vzell, 2026-11-20: instead of the
         // URL-shortening report, a WARNING): a show's dependent page whose
         // name is not its show's, marked on that page and on the show as
-        // dependent-title is (`_bbFeed.byEventName`).
+        // dependent-title is (`_bbFeed.byEventName`). Since the feed of
+        // BruceParser 0.40.0 also the On stage, Off stage and soundcheck
+        // pages, whose show is the one show of their date (stage-names.awk;
+        // vzell, 2026-11-23: "the 76 pages should go into the feed").
         'dependent-name': { id: 'bb-feed-name', glyph: '⇋', level: 'warn', setting: 'sa_findings_bb_feed_name',
             label: 'Brucebase page named differently from its show',
-            report: 'the run\'s gignote, gallery, eye, media and recnote pages (dependent-names.awk)' },
+            report: 'the run\'s gignote, gallery, eye, media and recnote pages (dependent-names.awk) and its onstage, offstage and soundcheck pages (stage-names.awk)' },
     };
     /** @type {Set<string>} The columns that name a row's own page, on every Brucebase list (vzell, decision 5). */
     const _BB_FEED_COLS = new Set(['Event', 'Title', 'Name', 'Page']);
@@ -28687,7 +28714,8 @@
      *   are dropped.
      * The dependent-name kind (feed 1.6) is never dropped: a show's page
      * cannot see its dependents' names, and a dependent page (gignote,
-     * gallery, eye, media, recnote) has no head and no window of ours, only
+     * gallery, eye, media, recnote; onstage, offstage, soundcheck since the
+     * feed of BruceParser 0.40.0) has no head and no window of ours, only
      * rows, which know nothing of the page now.
      *
      * @param {Array<Object>} facts - `_bbFeedFacts()`.
@@ -28734,6 +28762,32 @@
     }
 
     /**
+     * A name or title fact as pairs for the diff card (`_cmpHtml()`, vzell,
+     * 2026-11-23: "like the venue card, a diff that shows the letters"): per
+     * page, its name or title above the one it should have, the letters that
+     * differ marked. On a show, a pill names each of its pages whose title
+     * differs (a title does not name its page). Null for another kind.
+     *
+     * @param {Object} f - A fact of `_bbFeedFacts()` (with its `deps`).
+     * @param {string} name - The page it is about.
+     * @returns {?Array<{a: string, b: string, la: string, lb: string, pill?: string}>}
+     */
+    function _bbFeedFactPairs(f, name) {
+        if (!f || !Array.isArray(f.deps) || !f.deps.length) return null;
+        if (f.kind === 'dependent-name') {
+            return f.deps.map(d => (d.own
+                ? { la: 'This page', lb: 'A page of its show', a: name, b: d.expected }
+                : { la: 'Its page', lb: 'A page of this show', a: d.name, b: d.expected }));
+        }
+        if (f.kind === 'dependent-title') {
+            return f.deps.map(d => (d.own
+                ? { la: 'This page', lb: d.event ? 'Its show' : 'Its parent page', a: d.title, b: d.eventTitle }
+                : { la: 'Its page', lb: 'This show', a: d.title, b: d.eventTitle, pill: d.name }));
+        }
+        return null;
+    }
+
+    /**
      * One fact in words, for a cell's tooltip line and a mark's hover text.
      *
      * @param {Object} f - A fact of `_bbFeedFacts()`.
@@ -28774,7 +28828,12 @@
         const marks = facts.map((f) => {
             const k = _BB_FEED_KINDS[f.kind];
             const tip = `${k.label}. ${_bbFeedFactText(f, name)}\n${_bbFeedSource()}\nReport: ${k.report}.`;
-            return `<span class="mb-bb-feed-mark" data-mb-level="${k.level}" data-mb-feed-kind="${f.kind}" data-mb-tip title="${_mbttEscape(tip)}" ` +
+            // a name or title fact: its first line becomes the diff card
+            // (`_bbFeedFactPairs()`, vzell, 2026-11-23), as on the cells
+            const pairs = _bbFeedFactPairs(f, name);
+            const cmp = pairs ? (pairs.length === 1 ? [{ ...pairs[0], at: 0, head: k.label }] : [{ kind: 'pairs', p: pairs, at: 0, head: k.label }]) : null;
+            const cmpAttr = cmp ? ` data-mb-tip-cmp="${_mbttEscape(JSON.stringify({ t: tip, c: cmp }))}"` : '';
+            return `<span class="mb-bb-feed-mark" data-mb-level="${k.level}" data-mb-feed-kind="${f.kind}" data-mb-tip title="${_mbttEscape(tip)}"${cmpAttr} ` +
                 `tabindex="0" role="img" aria-label="${_mbttEscape(`${k.label}: ${_bbFeedFactText(f, name)}`)}">${k.level === 'error' ? '❌' : '⚠️'} ${k.glyph}</span>`;
         }).join(' ');
         return ` <span class="mb-bb-feed-marks" data-mb-bb-feed-page="${_mbttEscape(name)}" data-mb-bb-feed-live="${_mbttEscape(JSON.stringify(live || null))}">${marks}</span>`;
@@ -28970,6 +29029,19 @@
         const { name, facts } = _bbFeedCellFacts(cell);
         const f = facts.find(x => x.kind === kind);
         return f ? `${_bbFeedFactText(f, name)} ${_bbFeedSource()}` : '';
+    }
+
+    /**
+     * A name or title kind of a cell's page as the diff card's pairs (a
+     * finding's `compare()`, `_bbFeedFactPairs()`); null for the other kinds.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {string} kind
+     * @returns {?Array<Object>}
+     */
+    function _bbFeedCellCompare(cell, kind) {
+        const { name, facts } = _bbFeedCellFacts(cell);
+        return _bbFeedFactPairs(facts.find(x => x.kind === kind), name);
     }
 
     /**
@@ -29828,16 +29900,23 @@
      * (`_BB_NAME_VARIANTS`), and a description between the venue's name and
      * its city, which a venue page never has ("Crystal Ballroom, Hotel
      * Diplomat, New York City, NY" for "Crystal Ballroom, New York City,
-     * NY"); both at once too.
+     * NY"); both at once too. Since 2026-11-23 the rules of BruceParser
+     * 0.41.0's `venue_fits()` ('convention'): the description for a venue
+     * page of any length (a place of four parts, "Concert Hall, QPAC, South
+     * Brisbane, Brisbane, Queensland, Australia"), the venue pages' names of
+     * today ("West Berlin, West Germany" for "Berlin, Germany"), the generic
+     * "Unknown Location" page, and a room or part named before the venue
+     * ("Spotify HQ, Adelphi (The), London, England").
      *
-     * Probe (scripts/probe-bb-batch2-findings.py, mirror of 2026-11-13;
-     * Env: 2026-11-14T18:00+01:00 · petri · Python · n/a): 4,993 events
-     * with a venue page — equal 4,255, variant 271, detail 337, mismatch
-     * 130 (in 39 years; 128 of them in BruceParser's DIFFERENCES-venues.org).
+     * Probe (scripts/probe-bb-batch2-findings.py, run of 2026-11-23 16:22;
+     * Env: 2026-11-23T18:00+01:00 · NB-3641 · Python · n/a): equal 4,257,
+     * detail 339, convention 22, mismatch 104, the same 104 pages as
+     * BruceParser 0.41.0's DIFFERENCES-venues.org (which also lists the one
+     * event with several venue links and none named "Venue").
      *
      * @param {string} part  `_bbVenuePart()` of the event page's title.
      * @param {string} venue The venue page's title.
-     * @returns {string} '' (equal), 'variant', 'detail' or 'mismatch'.
+     * @returns {string} '' (equal), 'variant', 'detail', 'convention' or 'mismatch'.
      */
     function _bbVenueCheck(part, venue) {
         const v = String(venue || '').replace(/\s+/g, ' ').trim();
@@ -29848,8 +29927,17 @@
             bare = part.slice(0, sm.index).trim();
             if (bare === v) return 'variant';
         }
-        const parts = bare.split(',').map(s => s.trim()).filter(Boolean);
-        if (parts.length >= 4 && `${parts[0]}, ${parts[parts.length - 2]}, ${parts[parts.length - 1]}` === v) return 'detail';
+        const hist = bare.replace(/\b(?:West|East) (Germany|Berlin)\b/g, '$1');
+        if (hist === v) return 'convention';
+        if (v === 'Unknown Location' && bare.startsWith('Unknown Location')) return 'convention';
+        // parts at ", " as BruceParser and the probe split them (both titles squeezed)
+        const parts = hist.split(', ');
+        const vparts = v.split(', ');
+        const ne = parts.length, nv = vparts.length;
+        if (ne > nv && nv >= 3) {
+            if ([parts[0], ...parts.slice(ne - nv + 1)].join(', ') === v) return 'detail';
+            if (parts.slice(ne - nv).join(', ') === v) return 'convention';
+        }
         return 'mismatch';
     }
 
@@ -36095,9 +36183,14 @@
      * 36: a show's `bbTagFacts` carries its title as written (`title`; the
      *    place family, batch 3b), what its tabs hold (`content`, the
      *    content family) and its cast tab with the names listed (`cast`).
+     * 37: a springsteenlyrics.com song's double-encoded runs carry the word
+     *    around them (`slSong.mojibake[].word`/`wordFix`, the finding's card).
+     * 38: ... and where in their section they are (`place`: a row and its
+     *    column, a lyrics line), one per word and place, a live release's
+     *    under "Live releases" (the window's list of spots).
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 36;
+    const _DP_PARSER_VERSION = 38;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -37154,8 +37247,13 @@
      * "Ã©" is "é", while a real "Â°" or "Ã " elsewhere in correct text is
      * left alone unless its bytes form a character. Pure.
      *
+     * Each run also carries the word around it (`word`, up to white space,
+     * outer punctuation off) and that word repaired (`wordFix`), so a card
+     * shows "CalexÃ³ns" over "Calexóns", not "Ã³" over "ó" (vzell,
+     * 2026-11-23).
+     *
      * @param {string} text
-     * @returns {Array<{at: number, bad: string, fix: string}>} In text order.
+     * @returns {Array<{at: number, bad: string, fix: string, word: string, wordFix: string}>} In text order.
      */
     function _slMojibakeScan(text) {
         const s = String(text || '');
@@ -37194,7 +37292,31 @@
         while ((m = nb.exec(s))) {
             if (!out.some(r => r.at === m.index)) out.push({ at: m.index, bad: 'Ã ', fix: 'à ' });
         }
-        return out.sort((a, b) => a.at - b.at);
+        out.sort((a, b) => a.at - b.at);
+        out.forEach((r) => {
+            // The word: from the white space before the run to the white
+            // space after it ("Ã " keeps its own space out of the end).
+            let from = r.at;
+            while (from > 0 && !/\s/.test(s[from - 1])) from--;
+            let to = r.at + r.bad.trimEnd().length;
+            if (r.bad.endsWith(' ')) to = r.at + r.bad.length;
+            while (to < s.length && !/\s/.test(s[to])) to++;
+            while (from < r.at && /["'([“‘«]/.test(s[from])) from++;
+            while (to > r.at + r.bad.length && /["'),.;:!?\]”’»]/.test(s[to - 1])) to--;
+            let word = '';
+            let wordFix = '';
+            let i = from;
+            out.filter(x => x.at >= from && x.at < to).forEach((x) => {
+                word += s.slice(i, x.at) + x.bad;
+                wordFix += s.slice(i, x.at) + x.fix;
+                i = x.at + x.bad.length;
+            });
+            word += s.slice(i, Math.max(i, to));
+            wordFix += s.slice(i, Math.max(i, to));
+            r.word = word.trim();
+            r.wordFix = wordFix.trim();
+        });
+        return out;
     }
 
     /**
@@ -37278,7 +37400,7 @@
      * @returns {Array<{bad: string, fix: string, section: string}>}
      */
     function _findCellSlMojibake(cell) {
-        const own = _slMojibakeScan(cell.textContent).map(r => ({ bad: r.bad, fix: r.fix, section: '' }));
+        const own = _slMojibakeScan(cell.textContent).map(r => ({ bad: r.bad, fix: r.fix, word: r.word, wordFix: r.wordFix, section: '' }));
         if (own.length || !_slMojIsIndex()) return own;
         const url = _slMojSongUrl(cell);
         const mem = url ? _dpMem.get(url) : null;
@@ -37992,24 +38114,44 @@
                 crew: [].concat(...credits.map(c => c.crew)), credits: [].concat(...credits.map(c => c.credits)),
             };
         });
-        // The double-encoded runs, by where they are, each once.
+        // The double-encoded spots: the section the window shows them in
+        // (its heading), where in it (`place`: a row and its column, a
+        // lyrics line; '' for prose and the title), each word once per
+        // place (parser 38: the window's list of spots, vzell 2026-11-23).
         const moj = [];
         const seen = new Set();
-        const scan = (where, text) => _slMojibakeScan(text).forEach((r) => {
-            const k = `${where}|${r.bad}`;
+        const scan = (where, text, place = '') => _slMojibakeScan(text).forEach((r) => {
+            const k = `${where}|${place}|${r.word}`;
             if (seen.has(k)) return;
             seen.add(k);
-            moj.push({ section: where, bad: r.bad, fix: r.fix });
+            moj.push({ section: where, place, bad: r.bad, fix: r.fix, word: r.word, wordFix: r.wordFix });
         });
         scan('Title', `${song.title} ${song.version}`);
-        scan('Lyrics', song.lyrics);
+        let lyricLine = 0;
+        String(song.lyrics || '').split('\n').forEach((l) => {
+            if (l.trim()) lyricLine++;
+            scan('Lyrics', l, `line ${lyricLine}`);
+        });
         sections.forEach(sec => sec.blocks.forEach(b => scan(sec.label, b.text)));
-        const rowText = r => [r.artist, r.title, r.format, r.label, r.country, r.note].concat(r.tracks.map(t => t.title)).join(' ');
-        [['Other Official Releases', song.others], ['Single Release', song.singles], ['Covers', song.covers], ['Appearance in Movies', song.movies]]
-            .forEach(([where, list]) => list.forEach(r => scan(where, rowText(r))));
-        song.live.forEach(r => scan('Other Official Releases', `${r.live.release} ${r.live.kind}`));
-        song.liveHistory.forEach(h => h.tours.forEach(tr => scan(h.label, [tr.tour].concat(tr.dates.map(d => d.text)).join('\n'))));
-        versions.forEach(x => scan('Available Versions', `${x.title} ${x.version}`));
+        // A list's section is the heading the page gives it.
+        const kindLabel = (kind, dflt) => (sections.find(x => x.kind === kind) || {}).label || dflt;
+        const rowFields = r => [['Artist', r.artist], ['Title', r.title], ['Format', r.format], ['Label', r.label], ['Country', r.country],
+            ['Note', r.note], ['Tracks', r.tracks.map(t => t.title).join('\n')]];
+        [['others', 'Other Official Releases', song.others], ['singles', 'Single Release', song.singles], ['covers', 'Covers', song.covers],
+            ['movies', 'Appearance in Movies', song.movies]].forEach(([kind, dflt, list]) => {
+            const where = kindLabel(kind, dflt);
+            list.forEach((r) => {
+                const who = _slMojibakeFix(r.artist || r.title || '');
+                rowFields(r).forEach(([col, v]) => scan(where, v || '', who ? `${who} · ${col}` : col));
+            });
+        });
+        song.live.forEach((r) => {
+            const when = r.live.date || r.live.dateText || '';
+            scan('Live releases', r.live.release || '', when ? `${when} · Release` : 'Release');
+            scan('Live releases', r.live.kind || '', when ? `${when} · Kind` : 'Kind');
+        });
+        song.liveHistory.forEach(h => h.tours.forEach(tr => scan(h.label, [tr.tour].concat(tr.dates.map(d => d.text)).join('\n'), _slMojibakeFix(tr.tour))));
+        versions.forEach(x => scan('Available Versions', `${x.title} ${x.version}`, _slMojibakeFix(x.version || x.title || '')));
         return {
             url, slug: song.slug, title: song.title, version: song.version, type: v.type || '', date: v.date || '',
             show: v.show || '', artist: v.artist || '', updated: song.updated, loggedIn: !!song.loggedIn,
@@ -47368,13 +47510,15 @@
      * @param {string} hint   A size hint after it ("61", "4 releases"), or ''.
      * @param {string} body   HTML.
      * @param {boolean} open  Open unless the reader chose otherwise.
+     * @param {number} [errs=0] Its double-encoded spots (`slSong.mojibake`), shown in its heading.
      * @returns {string}
      */
-    function _slsSec(key, label, hint, body, open) {
+    function _slsSec(key, label, hint, body, open, errs = 0) {
         const isOpen = _dpSecState.has(key) ? _dpSecState.get(key) : open;
         return `<details class="mb-dp-sec mb-sls-sec" data-mb-dp-sec="${_rgEsc(key)}"${isOpen ? ' open' : ''}>` +
             '<summary data-mb-tip title="Click: open or close · Ctrl+click: every section">' +
-            `<h4>${_slMojibakeHtml(label)}</h4>${hint ? `<span class="mb-sls-hint">${_rgEsc(hint)}</span>` : ''}</summary>` +
+            `<h4>${_slMojibakeHtml(label)}</h4>${hint ? `<span class="mb-sls-hint">${_rgEsc(hint)}</span>` : ''}` +
+            (errs ? `<span class="mb-sls-errn">🔤 ${errs} encoding error${errs === 1 ? '' : 's'}</span>` : '') + '</summary>' +
             `<div class="mb-sls-body">${body}</div></details>`;
     }
 
@@ -47414,11 +47558,23 @@
         left.push(`<div class="mb-sls-tblock"><div class="mb-dp-xtitle">${_slMojibakeHtml(sl.title || data.title)}</div>` +
             `<div class="mb-sls-prow">${sl.type ? `<span class="mb-sls-pill mb-sls-pill-${pillKind}">${esc(sl.type)}</span>` : ''}` +
             `${sl.version ? `<span class="mb-dp-xsub">${_slMojibakeHtml(sl.version)}</span>` : ''}${nav}</div></div>`);
-        if (sl.mojibake.length) {
-            const n = sl.mojibake.length;
-            left.push(`<div class="mb-sls-enc"><b>${n} encoding error${n === 1 ? '' : 's'} on this page</b>` +
-                '<span>the site serves double-encoded text; shown repaired and underlined</span>' +
-                '<button type="button" class="mb-dp-tbtn" data-mb-sls-act="report" data-mb-tip title="Copy a report of every spot, for the site\'s maintainer">Copy report for the site maintainer</button></div>');
+        // The encoding errors: each spot listed, its section and place, the
+        // garbled word over the repaired one; a click goes there
+        // (`_slsGoToSpot()`). Three, then "and N more" (vzell, 2026-11-23,
+        // mockup https://claude.ai/artifact/BdPcZd4TVQQ1fUhCtHP2ft).
+        const spots = sl.mojibake || [];
+        const spotsIn = label => spots.filter(m => m.section === label).length;
+        if (spots.length) {
+            const n = spots.length;
+            const shownSpots = _slsUiFor(sl.url).allSpots ? spots : spots.slice(0, 3);
+            left.push(`<div class="mb-sls-enc"><div class="mb-sls-enc-h"><b>${n} encoding error${n === 1 ? '' : 's'} on this page</b>` +
+                '<span>the site serves double-encoded text; shown repaired and marked</span>' +
+                '<button type="button" class="mb-dp-tbtn" data-mb-sls-act="report" data-mb-tip title="Copy a report of every spot, for the site\'s maintainer">Copy report for the site maintainer</button></div>' +
+                '<ul class="mb-sls-spots">' + shownSpots.map((m, i) => `<li><button type="button" class="mb-sls-spot" data-mb-sls-act="spot" data-mb-sls-v="${i}" data-mb-tip title="Open the section and show the spot">` +
+                    `<span class="mb-sls-spot-w">${esc(m.section)}${m.place ? `<i>${esc(m.place)}</i>` : ''}</span>` +
+                    `<span class="mb-sls-spot-p">${_slsSpotPairHtml(m)}</span><span class="mb-sls-spot-go">Show ↘</span></button></li>`).join('') + '</ul>' +
+                (n > shownSpots.length ? `<div class="mb-sls-spots-more">and ${n - shownSpots.length} more · <button type="button" class="mb-sls-spots-all" data-mb-sls-act="spots">show all</button></div>` : '') +
+                '</div>');
         }
         // --- the cards ---
         const kv = rows => `<dl class="mb-dp-kv">${rows.filter(([, v]) => v).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
@@ -47483,6 +47639,8 @@
         };
         const leftSecs = [];
         const rightSecs = [];
+        // A section's heading counts its encoding errors (by its label).
+        const secE = (key, label, hint, html, open) => _slsSec(key, label, hint, html, open, spotsIn(label));
         const keyOf = sec => (sec.release ? 'sl:release' : `sl:${sec.label.replace(/\s*\(\d+\)$/, '')}`);
         const longText = sec => sec.blocks.reduce((n, b) => n + b.text.length, 0) > 600;
         // The lyrics: first, except after a live version's show (its
@@ -47491,7 +47649,7 @@
             if (!sl.lyrics) return;
             toc.push(['sl:Lyrics', 'Lyrics', '']);
             const n = sl.lyrics.split('\n').filter(l => _slLyricsNorm(l)).length;
-            rightSecs.push(_slsSec('sl:Lyrics', 'Lyrics', `${sl.version ? `${sl.version.replace(/\s+version$/i, '')} · ` : ''}${n} lines`, _slsLyricsHtml(sl), true));
+            rightSecs.push(secE('sl:Lyrics', 'Lyrics', `${sl.version ? `${sl.version.replace(/\s+version$/i, '')} · ` : ''}${n} lines`, _slsLyricsHtml(sl), true));
         };
         if (sl.type !== 'Live') pushLyrics();
         const groupHead = (g, shown, total) => `<span class="mb-dp-tsec-n">${_slMojibakeHtml(g)}</span>` +
@@ -47531,7 +47689,7 @@
             const tl = rel ? tracksTable('sl-tracklist', rel.groups, rel.name) : null;
             if (tl && tl.html) {
                 toc.push(['sl:Tracklist', 'Tracklist', String(tl.n)]);
-                rightSecs.push(_slsSec('sl:Tracklist', 'Tracklist', `${tl.n} tracks${tl.self ? ` · this song ${tl.self.pos}` : ''}`, tl.html, true));
+                rightSecs.push(secE('sl:Tracklist', 'Tracklist', `${tl.n} tracks${tl.self ? ` · this song ${tl.self.pos}` : ''}`, tl.html, true));
             }
             pushLyrics();
         }
@@ -47557,11 +47715,11 @@
                 open = false;
                 // Other Official Releases' live sentences: their own section after it.
                 if (sec.kind === 'others' && sl.live.length) {
-                    (sec.side === 'left' ? leftSecs : rightSecs).push(_slsSec(key, label, hint, body, open));
+                    (sec.side === 'left' ? leftSecs : rightSecs).push(secE(key, label, hint, body, open));
                     if (list.length) toc.push([key, label, String(list.length)]);
                     const ys = sl.live.map(x => (x.date || '').slice(0, 4)).filter(Boolean).sort();
                     toc.push(['sl:Live releases', 'Live releases', String(sl.live.length)]);
-                    rightSecs.push(_slsSec('sl:Live releases', 'Live releases', `${sl.live.length}${ys.length ? ` · ${ys[0]}–${ys[ys.length - 1]}` : ''}`,
+                    rightSecs.push(secE('sl:Live releases', 'Live releases', `${sl.live.length}${ys.length ? ` · ${ys[0]}–${ys[ys.length - 1]}` : ''}`,
                         _dpListTableHtml(tt, 'sl-live', [
                             textCol('date', 'Date', r => r.date || r.dateText),
                             textCol('show', 'Show', r => r.show),
@@ -47601,7 +47759,7 @@
             }
             if (!body) return;
             if (sec.side === 'right') toc.push([key, label, (hint.match(/^\d+/) || [''])[0]]);
-            (sec.side === 'left' ? leftSecs : rightSecs).push(_slsSec(key, label, hint, body, open));
+            (sec.side === 'left' ? leftSecs : rightSecs).push(secE(key, label, hint, body, open));
         });
         // The pictures, after the left column's facts.
         const imgs = (data.images || []).filter(i => i.thumb);
@@ -47609,7 +47767,7 @@
             const g = `<div class="mb-dp-gallery">${imgs.map(i => `<a href="${esc(i.full || i.thumb)}" target="_blank" rel="noopener" data-mb-artv-ext="${artvN++}">` +
                 `<img src="${esc(i.thumb)}" alt="${esc(i.label || '')}"></a>`).join('')}</div>`;
             const at = leftSecs.findIndex(s => /data-mb-dp-sec="sl:(?:Credits|References|Request)/.test(s));
-            leftSecs.splice(at < 0 ? leftSecs.length : at, 0, _slsSec('sl:Images', 'Images', String(imgs.length), g, true));
+            leftSecs.splice(at < 0 ? leftSecs.length : at, 0, secE('sl:Images', 'Images', String(imgs.length), g, true));
         }
         if (sl.versions.length) {
             toc.push(['sl:Available Versions', 'Available Versions', String(sl.versions.length)]);
@@ -47620,7 +47778,7 @@
                 textCol('date', 'Date', r => r.date),
                 textCol('show', 'Show', r => r.show),
             ].filter(c => c.key !== 'show' || sl.versions.some(r => r.show));
-            rightSecs.push(_slsSec('sl:Available Versions', 'Available Versions', String(sl.versions.length), _dpListTableHtml(tt, 'sl-versions', vcols, sl.versions, {
+            rightSecs.push(secE('sl:Available Versions', 'Available Versions', String(sl.versions.length), _dpListTableHtml(tt, 'sl-versions', vcols, sl.versions, {
                 placeholder: 'Filter versions', facet: r => r.type || 'Other', chipLabel: 'Type', group: r => r.type || 'Other', groupCol: 'type',
                 facetSort: () => 0, rowAttrs: r => (r.self ? ' class="mb-sls-me"' : ''), initial: 'as the site lists them',
                 groupHead: (g, shown, total) => `<span class="mb-dp-tsec-n">${esc(g)}</span><span class="mb-dp-tsec-c">${shown === total ? total : `${shown} of ${total}`}</span>`,
@@ -47628,12 +47786,104 @@
         }
         left.push(...leftSecs);
         if (toc.length > 2) {
-            right.push('<div class="mb-sls-toc">' + toc.map(([k, l, n]) => `<button type="button" class="mb-dg-fc" data-mb-sls-act="jump" data-mb-sls-v="${esc(k)}">` +
-                `${_slMojibakeHtml(l)}${n ? `<span class="mb-dg-n">${esc(n)}</span>` : ''}</button>`).join('') + '</div>');
+            right.push('<div class="mb-sls-toc">' + toc.map(([k, l, n]) => {
+                const errs = spotsIn(l);
+                return `<button type="button" class="mb-dg-fc" data-mb-sls-act="jump" data-mb-sls-v="${esc(k)}"` +
+                    (errs ? ` data-mb-sls-spot="${spots.findIndex(m => m.section === l)}"` : '') + '>' +
+                    `${_slMojibakeHtml(l)}${n ? `<span class="mb-dg-n">${esc(n)}</span>` : ''}` +
+                    (errs ? `<span class="mb-sls-errb" data-mb-tip title="${errs} encoding error${errs === 1 ? '' : 's'}: a click shows the first">${errs}</span>` : '') + '</button>';
+            }).join('') + '</div>');
         }
         right.push(...rightSecs);
         if (!rightSecs.length) right.push('<h4>Lyrics</h4><div class="mb-dp-xsub">The page has no lyrics and no lists.</div>');
         return { left, right };
+    }
+
+    /**
+     * A spot's garbled word over its repaired one for the encoding banner
+     * (HTML): "Calex<mark>Ã³</mark>ns → Calex<mark>ó</mark>ns", each run
+     * of the word marked. A record saved before parser 37 has only the run.
+     *
+     * @param {{bad: string, fix: string, word?: string, wordFix?: string}} m
+     * @returns {string}
+     */
+    function _slsSpotPairHtml(m) {
+        const word = m.word || m.bad;
+        const runs = _slMojibakeScan(word);
+        if (!runs.length) return `<span class="mb-sls-spot-a">${_rgEsc(word)}</span> → ${_rgEsc(m.wordFix || m.fix)}`;
+        let a = '';
+        let b = '';
+        let i = 0;
+        runs.forEach((r) => {
+            const seg = _rgEsc(word.slice(i, r.at));
+            a += `${seg}<mark>${_rgEsc(r.bad)}</mark>`;
+            b += `${seg}<mark>${_rgEsc(r.fix)}</mark>`;
+            i = r.at + r.bad.length;
+        });
+        const rest = _rgEsc(word.slice(i));
+        return `<span class="mb-sls-spot-a">${a}${rest}</span> → ${b}${rest}`;
+    }
+
+    /**
+     * Where a spot of the encoding banner is in the song window: in its
+     * section (the `details` whose heading is the spot's section; the
+     * title block for "Title"), the marked repair (`span.mb-sl-moj`) whose
+     * text around it holds the repaired word, in the row its place names
+     * when it is in a table; else that row (a tour of Live History, whose
+     * dates show their text only on hover); else the section's first mark,
+     * else the section. A mark that a table's filter or chips hide does not
+     * count.
+     *
+     * @param {Element} dialog
+     * @param {{section: string, place?: string, fix: string, wordFix?: string}} m
+     * @returns {?Element}
+     */
+    function _slsSpotTarget(dialog, m) {
+        const label = _slMojibakeFix(m.section).trim();
+        const scope = m.section === 'Title' ? dialog.querySelector('.mb-sls-tblock')
+            : Array.from(dialog.querySelectorAll('details.mb-sls-sec')).find((d) => {
+                const h = d.querySelector(':scope > summary > h4');
+                return h && h.textContent.trim() === label;
+            });
+        if (!scope) return null;
+        const fix = (m.wordFix || m.fix || '').trim();
+        const who = (m.place || '').split(' · ')[0];
+        const around = x => (x.closest('td, li, p, .mb-sls-tour, div') || x).textContent;
+        const shown = x => !x.closest('tr[hidden], tr[style*="display: none"], [hidden]');
+        const marks = Array.from(scope.querySelectorAll('.mb-sl-moj')).filter(shown);
+        const inRow = x => !who || !x.closest('tr') || x.closest('tr').textContent.includes(who);
+        const hit = marks.find(x => around(x).includes(fix) && inRow(x)) || marks.find(x => around(x).includes(fix));
+        if (hit) return hit;
+        if (who) {
+            const row = Array.from(scope.querySelectorAll('tr, .mb-sls-tour')).filter(shown).find(r => r.textContent.includes(who));
+            if (row) return row;
+        }
+        return marks[0] || scope;
+    }
+
+    /**
+     * Shows a spot of the encoding banner (vzell, 2026-11-23): opens its
+     * section and every section around it, scrolls the window's column to
+     * it and flashes it (its table cell when it is in one).
+     *
+     * @param {?Element} dialog
+     * @param {object} m  One of `slSong.mojibake`.
+     * @returns {?Element} What was shown (for the specs).
+     */
+    function _slsGoToSpot(dialog, m) {
+        if (!dialog) return null;
+        const target = _slsSpotTarget(dialog, m);
+        if (!target) return null;
+        for (let d = target.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
+        if (target.tagName === 'DETAILS') target.open = true;
+        const box = target.tagName === 'DETAILS' ? target : (target.closest('td') || target);
+        const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        box.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' });
+        box.classList.remove('mb-sls-flash');
+        void box.offsetWidth;
+        box.classList.add('mb-sls-flash');
+        setTimeout(() => box.classList.remove('mb-sls-flash'), 2000);
+        return box;
     }
 
     /**
@@ -47651,7 +47901,7 @@
             by.get(m.section).push(m);
         });
         return 'springsteenlyrics.com: double-encoded text (UTF-8 read as Windows-1252 and saved again)\n\n' +
-            `Page: ${sl.url}\n` + Array.from(by, ([sec, list]) => `  ${sec}\n` + list.map(m => `    "${m.bad}"  →  "${m.fix}"`).join('\n')).join('\n') +
+            `Page: ${sl.url}\n` + Array.from(by, ([sec, list]) => `  ${sec}\n` + list.map(m => `    "${m.bad}"  →  "${m.fix}"${m.word && m.word !== m.bad.trim() ? `  (in "${m.word}")` : ''}`).join('\n')).join('\n') +
             `\n\nFound by ShowAllEntityData on ${new Date().toISOString().slice(0, 10)}.`;
     }
 
@@ -47679,6 +47929,13 @@
             if (e.type === 'click' && (kind === 'fold' || kind === 'ghosts')) return;
             if (e.type === 'change' && kind !== 'fold' && kind !== 'ghosts') return;
             const sl = slOf();
+            // A spot of the encoding banner, or a chip whose section has one.
+            const spotAt = kind === 'spot' ? el.dataset.mbSlsV : kind === 'jump' ? el.dataset.mbSlsSpot : undefined;
+            if (spotAt !== undefined && sl && sl.mojibake && sl.mojibake[+spotAt]) {
+                e.preventDefault();
+                _slsGoToSpot(el.closest('#mb-dp-dialog'), sl.mojibake[+spotAt]);
+                return;
+            }
             if (kind === 'jump') {
                 e.preventDefault();
                 const d = el.closest('#mb-dp-dialog').querySelector(`details.mb-dp-sec[data-mb-dp-sec="${CSS.escape(el.dataset.mbSlsV)}"]`);
@@ -47709,6 +47966,7 @@
             else if (kind === 'ghosts') ui.ghosts = el.checked;
             else if (kind === 'unfold') ui.fold = false;
             else if (kind === 'dates') ui[el.dataset.mbSlsV] = true;
+            else if (kind === 'spots') ui.allSpots = true;
             else return;
             e.preventDefault();
             if (_dpDialog.repaint) _dpDialog.repaint();
@@ -53064,11 +53322,33 @@
             .mb-dp-dialog .mb-sls-vnav a { padding: 2px 9px; color: #6b3f12; text-decoration: none; white-space: nowrap; }
             .mb-dp-dialog .mb-sls-vnav a:hover { background: #fbf5e7; }
             .mb-dp-dialog .mb-sls-vpos { padding: 2px 8px; color: #7a6d5c; border-inline: 1px solid #d9cfbd; font-variant-numeric: tabular-nums; white-space: nowrap; }
-            .mb-dp-dialog .mb-sls-enc { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px; padding: 6px 10px;
+            .mb-dp-dialog .mb-sls-enc { margin-top: 8px;
                 border: 1px solid #e3b5ab; background: #fbeeea; border-radius: 4px; font: 12.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #7d2e21; }
+            .mb-dp-dialog .mb-sls-enc-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 10px; }
             .mb-dp-dialog .mb-sls-enc b { font-weight: 600; }
             .mb-dp-dialog .mb-sls-enc .mb-dp-tbtn { margin-left: auto; height: 22px; font-size: 12px; }
-            .mb-dp-dialog .mb-sl-moj { text-decoration: underline dotted #c0392b; text-underline-offset: 3px; cursor: help; }
+            .mb-dp-dialog .mb-sls-spots { list-style: none; margin: 0; padding: 0 6px 6px; display: grid; gap: 2px; }
+            .mb-dp-dialog .mb-sls-spot { display: grid; grid-template-columns: minmax(0, 10em) minmax(0, 1fr) auto; gap: 2px 10px; align-items: baseline; width: 100%;
+                text-align: left; padding: 4px 6px; border: 0; border-radius: 3px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+            .mb-dp-dialog .mb-sls-spot:hover, .mb-dp-dialog .mb-sls-spot:focus-visible { background: rgba(192, 57, 43, 0.09); }
+            .mb-dp-dialog .mb-sls-spot:focus-visible { outline: 2px solid #c0392b; outline-offset: 0; }
+            .mb-dp-dialog .mb-sls-spot-w { font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; overflow-wrap: anywhere; }
+            .mb-dp-dialog .mb-sls-spot-w i { display: block; font: italic 12px Georgia, "Times New Roman", serif; letter-spacing: 0; text-transform: none; color: #8a6a60; }
+            .mb-dp-dialog .mb-sls-spot-p { font: 13.5px Georgia, "Times New Roman", serif; color: #3a2a24; overflow-wrap: anywhere; }
+            .mb-dp-dialog .mb-sls-spot-p mark { background: rgba(192, 57, 43, 0.18); color: inherit; border-radius: 2px; padding: 0 1px; }
+            .mb-dp-dialog .mb-sls-spot-go { font-size: 12px; color: #1565c0; white-space: nowrap; }
+            .mb-dp-dialog .mb-sls-spots-more { padding: 0 12px 6px; color: #8a6a60; }
+            .mb-dp-dialog .mb-sls-spots-all { border: 0; background: none; padding: 0; color: #1565c0; font: inherit; cursor: pointer; text-decoration: underline; }
+            .mb-dp-dialog .mb-sls-errn { font: 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color: #c0392b; margin-left: 8px; }
+            .mb-dp-dialog .mb-sls-errb { font: 600 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; min-width: 15px; padding: 0 4px; margin-left: 4px;
+                border-radius: 8px; background: #c0392b; color: #fff; text-align: center; }
+            .mb-dp-dialog .mb-sl-moj { text-decoration: underline wavy #c0392b; text-decoration-thickness: 1px; text-underline-offset: 3px;
+                background: rgba(192, 57, 43, 0.12); border-radius: 2px; padding: 0 1px; cursor: help; }
+            .mb-dp-dialog .mb-sl-moj::after { content: "🔤"; font-size: 9px; vertical-align: super; margin-left: 1px; text-decoration: none; display: inline-block; }
+            .mb-dp-dialog td:has(.mb-sl-moj) { box-shadow: inset 3px 0 0 #c0392b; }
+            .mb-dp-dialog .mb-sls-flash { animation: mb-sls-flash 1.8s ease-out 1; }
+            @keyframes mb-sls-flash { 0%, 30% { background-color: #ffd9a8; } 100% { background-color: transparent; } }
+            @media (prefers-reduced-motion: reduce) { .mb-dp-dialog .mb-sls-flash { animation: none; outline: 2px solid #c0392b; } }
             .mb-dp-dialog .mb-sls-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 9px 0 4px; }
             .mb-dp-dialog .mb-sls-card { border: 1px solid #d9cfbd; border-radius: 4px; background: #fff; padding: 6px 10px 8px; min-width: 0; font-size: 13px; }
             .mb-dp-dialog .mb-sls-ch { font: 600 10px/1.3 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: #7a6d5c; margin-bottom: 3px; }
@@ -79787,6 +80067,14 @@
             },
             test: cell => _findCellSlMojibake(cell).length > 0,
             detail: cell => _findCellSlMojibake(cell).slice(0, 4).map(m => `${m.bad} → ${m.fix}${m.section ? ` (${m.section})` : ''}`).join('; '),
+            // the diff card (vzell, 2026-11-23): each garbled text above what it
+            // means, at most eight
+            compare: (cell) => {
+                const ms = _findCellSlMojibake(cell).slice(0, 8);
+                // the word around the run (a record saved before parser 37 has
+                // only the run)
+                return ms.length ? ms.map(m => ({ la: m.section ? `Site (${m.section})` : 'Site', lb: 'Meant', sa: 'the site', sb: 'meant', a: m.word || m.bad, b: m.wordFix || m.fix })) : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_sl_double_utf8'),
         },
         // The Brucebase year table's MB-Event column (org/TODO.org "Some
@@ -79840,6 +80128,11 @@
             rowGate: row => !!row.querySelector('td[data-mb-bb-date-comma]'),
             test: cell => cell.dataset.mbBbDateComma === '1',
             detail: cell => `Brucebase writes it "${cell.dataset.mbBbEntry || ''}".`,
+            // the diff card (vzell, 2026-11-23): the entry above its usual form
+            compare: (cell) => {
+                const e = cell.dataset.mbBbEntry || '';
+                return e ? { la: 'Brucebase', lb: 'Usual form', a: e, b: e.replace(/^(\d{4}-\d\d-\d\d[a-z]?)\s*,\s*/, '$1 ') } : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_bb_date_comma'),
         },
         // vzell, 2026-11-12 (org/brucebase.org, Phase 16 batch 1): the cast tab
@@ -79885,6 +80178,12 @@
             rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
             test: cell => _bbHasCheck(cell, 'anchor-link'),
             detail: cell => `This entry's anchor is "${_bbEvDatum(cell, 'anchor')}", its page links "${_bbEvDatum(cell, 'info-href')}".`,
+            // the diff card (vzell, 2026-11-23): both as <year page>#<anchor>
+            compare: (cell) => {
+                const anchor = _bbEvDatum(cell, 'anchor');
+                const info = String(_bbEvDatum(cell, 'info-href') || '').match(/^(?:https?:\/\/[^/]+)?\/([\w-]+#\w+)$/);
+                return anchor && info ? { la: 'This entry', lb: 'Its page links', a: `${_bbYearRowSlug(_bbEvData(cell))}#${anchor}`, b: info[1] } : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_bb_anchor'),
         },
         // vzell, 2026-11-14: one anchor on two entries of a year page (1972's
@@ -79910,6 +80209,12 @@
             rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
             test: cell => _bbHasCheck(cell, 'name-variant'),
             detail: cell => `The event page is "${_bbEvDatum(cell, 'raw-title')}".`,
+            // the diff card (vzell, 2026-11-23): the bracket the event page adds
+            compare: (cell) => {
+                const t = _bbEvDatum(cell, 'raw-title');
+                const h = _bbEvDatum(cell, 'raw-heading');
+                return t && h ? { la: 'Year page', lb: 'Event page', a: h, b: t } : null;
+            },
             tint: _findingTintSetting('sa_findings_tint_bb_name'),
         },
         {
@@ -79946,7 +80251,7 @@
         {
             id: 'bb-venue-mismatch', level: 'warn', glyph: '📍', scope: 'cell',
             label: 'Brucebase event page names its venue differently from the venue page',
-            tip: 'The title of the entry\'s own page names the venue differently from the title of the venue\'s page it links ("Paramount Theatre" against "Paramount Theater"). A show of the day in brackets ("(Late)") and a description between the venue and its city ("Crystal Ballroom, Hotel Diplomat, New York City, NY") are accepted. Known once ▶ Pages has read the entry\'s page and its venue\'s page (one request per venue). Compared as written. The page to edit is the entry\'s, or the venue\'s.',
+            tip: 'The title of the entry\'s own page names the venue differently from the title of the venue\'s page it links ("Paramount Theatre" against "Paramount Theater"). A show of the day in brackets ("(Late)"), a description between the venue and its city ("Crystal Ballroom, Hotel Diplomat, New York City, NY"), today\'s name on the venue page ("West Germany" for "Germany"), the generic "Unknown Location" page and a room named before the venue are accepted. Known once ▶ Pages has read the entry\'s page and its venue\'s page (one request per venue). Compared as written. The page to edit is the entry\'s, or the venue\'s.',
             enabled: () => !!_isBbHost && _bbVenueOn(),
             cols: name => name === 'Venue',
             rowGate: row => !!row.querySelector('span.mb-bb-venue-data[data-mb-bb-venue-check]'),
@@ -80116,13 +80421,15 @@
                 'date-missing': 'A page that is no show lacks a tag of the date in its name ("22" for a page of 1978-08-22); a show\'s own date tags are the Tags findings\'. ',
                 'date-wrong': 'A page that is no show carries a date tag the date in its name does not have ("23" on a page of 1978-08-22). ',
                 'files-no-images': 'The page is tagged "files" but shows no picture. ',
-                'dependent-name': 'A page of a show (its Notes, Gallery, Eyewitness, Media or Recording notes page) is named differently from the show its breadcrumb names ("gallery:1967-11-00-…" under "gig:1967-11-00a-…": a missing day letter, a typo, a wrong date or show); marked on that page and on the show. ',
+                'dependent-name': 'A page of a show (its Notes, Gallery, Eyewitness, Media or Recording notes page, its show by its breadcrumb; its On stage, Off stage or soundcheck page, its show the one show of that date) is named differently from the show ("gallery:1967-11-00-…" under "gig:1967-11-00a-…": a missing day letter, a typo, a wrong date or show); marked on that page and on the show. ',
             }[kind] + 'From the Brucebase feed: BruceParser\'s full read of the wiki, published at github.com/vzell/brucebase-feed; the hover text names the run, and Brucebase may have been fixed since.',
             enabled: () => !!_isBbHost && _bbFeedKindOn(kind),
             cols: name => _BB_FEED_COLS.has(name),
             rowGate: row => _bbFeedHasData() && !!row.querySelector('a[href]'),
             test: cell => _bbFeedCellHas(cell, kind),
             detail: cell => _bbFeedCellDetail(cell, kind),
+            // the name and title kinds as the diff card (vzell, 2026-11-23)
+            compare: (kind === 'dependent-name' || kind === 'dependent-title') ? (cell => _bbFeedCellCompare(cell, kind)) : undefined,
             tint: _findingTintSetting('sa_findings_tint_bb_feed'),
         })),
         // The feed on MusicBrainz (feed 1.3; feed v2, branch 3): the Event
@@ -80583,7 +80890,8 @@
      *
      * @param {string[]} ids
      * @param {Object<string, string>} [details] - Per-cell detail text by id.
-     * @param {Object<string, object>} [compares] - Per-cell comparison by id.
+     * @param {Object<string, (object|Array<object>)>} [compares] - Per-cell comparison by id,
+     *   or several (since 2026-11-23).
      * @returns {{text: string, cmp: Array<object>}}
      */
     function _findingTitle(ids, details = {}, compares = {}) {
@@ -80591,7 +80899,13 @@
         const cmp = [];
         const text = ids.map((id, at) => {
             const f = _FINDING_BY_ID.get(id);
-            if (compares[id]) cmp.push({ ...compares[id], at, head: head(f) });
+            // a compare() may give several pairs (a show's pages named
+            // differently): one entry of kind "pairs", drawn one under another
+            const c = compares[id];
+            if (Array.isArray(c)) {
+                if (c.length === 1) cmp.push({ ...c[0], at, head: head(f) });
+                else if (c.length > 1) cmp.push({ kind: 'pairs', p: c, at, head: head(f) });
+            } else if (c) cmp.push({ ...c, at, head: head(f) });
             return `${head(f)}${details[id] ? `: ${details[id]}` : ''}`;
         }).join('\n');
         return { text, cmp };
@@ -130045,7 +130359,9 @@ a { color: #1565c0; }`;
     /**
      * The difference between two values, as blocks of shared and changed
      * text. `plain` means "show both unmarked": both have text and share
-     * under 40 % of it, or they are too long to compare.
+     * under 40 % of it, or they are too long to compare. A run that differs
+     * only in letter case counts as shared there ("BACKSTREETS" and
+     * "Backstreets" are the same title, its case marked; vzell, 2026-11-23).
      *
      * @param {string} a
      * @param {string} b
@@ -130070,7 +130386,8 @@ a { color: #1565c0; }`;
                 else blocks.push(y);
             }
         }
-        const shared = blocks.reduce((n, x) => n + (x.eq ? x.eq.length : 0), 0);
+        const shared = blocks.reduce((n, x) => n + (x.eq ? x.eq.length
+            : x.del && x.ins && x.del.toLowerCase() === x.ins.toLowerCase() ? x.del.length : 0), 0);
         return {
             same: false,
             // Only two values that both have text can "share little": an
@@ -130388,7 +130705,9 @@ a { color: #1565c0; }`;
      * line it belongs to (`at`, counting non-empty lines), optionally how
      * many lines it replaces (`span`, default 1) and the text the card shows
      * instead of them (`head`); a `kind: 'len'` entry replaces the whole card;
-     * a `kind: 'mark'` entry is one row with a run marked (`_cmpMarkHtml()`).
+     * a `kind: 'mark'` entry is one row with a run marked (`_cmpMarkHtml()`);
+     * a `kind: 'pairs'` entry holds several comparisons (`p`), drawn one
+     * under another (since 2026-11-23: a show's pages named differently).
      *
      * @param {?Element} el
      * @param {string} text
@@ -130408,6 +130727,8 @@ a { color: #1565c0; }`;
                   num(c.thresholdMs) && (c.severeMs === null || num(c.severeMs))
                 : c.kind === 'mark'
                     ? str(c.a) && str(c.la) && num(c.s) && num(c.e) && (c.sum === undefined || str(c.sum))
+                    : c.kind === 'pairs'
+                        ? Array.isArray(c.p) && c.p.length > 0 && c.p.every(x => x && str(x.a) && str(x.b) && str(x.la) && str(x.lb))
                     : c.kind === 'dup'
                         ? str(c.tier) && str(c.cut) && str(c.sig) && str(c.isrc) && Array.isArray(c.m) && Array.isArray(c.ap) &&
                           c.m.every(m => m && str(m.t) && str(m.c) && Array.isArray(m.i) && m.i.every(str) && (m.l === null || num(m.l))) &&
@@ -130507,7 +130828,7 @@ a { color: #1565c0; }`;
                 const pill = { strict: 'mb-recdup-strict', normal: 'mb-recdup-normal', loose: 'mb-recdup-loose' }[c.tier] || '';
                 return `<div class="mb-tt-title">${body} <span class="mb-tt-pill ${pill}">${_mbttEscape(c.tier)}</span></div>${_cmpDupHtml(c)}`;
             }
-            const after = c && !(opts.noOrigin && c.origin) ? (c.kind === 'mark' ? _cmpMarkHtml(c) : _cmpHtml(c)) : '';
+            const after = c && !(opts.noOrigin && c.origin) ? (c.kind === 'mark' ? _cmpMarkHtml(c) : c.kind === 'pairs' ? c.p.map(x => _cmpHtml(x)).join('') : _cmpHtml(c)) : '';
             if (i === 0 && (blocks.length > 1 || shown.length <= 60 || c)) {
                 return `<div class="mb-tt-title">${body}</div>${after}`;
             }
@@ -196760,6 +197081,9 @@ a { color: #1565c0; }`;
              * @returns {{runs: Array<object>, fixed: string}}
              */
             slMojibake: text => ({ runs: _slMojibakeScan(text), fixed: _slMojibakeFix(text) }),
+            // the song window's left column for a record, as HTML (the
+            // encoding banner's spots; no table state)
+            slSongLeftHtml: data => _slSongCols(data, null).left.join(''),
             /**
              * The lyrics index rows queued for the double-encoding finding
              * after a render (`_slMojAfterRender()`), run again.

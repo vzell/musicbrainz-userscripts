@@ -160,8 +160,8 @@
         "why": "The card would be the two plain lines again, nothing marked.",
         "edits": [
             {
-                "find": "            at: 0, span: 2, head: 'As written on the site',",
-                "replace": "            at: 5, span: 2, head: 'As written on the site',"
+                "find": "        const cmp = [{\n            at: 0, span: 2, head: 'As written on the site',",
+                "replace": "        const cmp = [{\n            at: 5, span: 2, head: 'As written on the site',"
             }
         ],
         "spec": "tests/fixtures/mb-title-case.spec.js",

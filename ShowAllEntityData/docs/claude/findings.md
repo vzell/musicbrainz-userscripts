@@ -108,7 +108,10 @@ keeps `detail`'s prose (the native fallback, and what specs and the disk file
 read); `_writeFindingAttrs()` writes each finding's `compare` value into
 `data-mb-tip-cmp` (`_setTipCmp()`), tagged with the tip line it belongs to
 and the label as its `head`, so the "Liner notes" card shows the label and
-the two values one under the other instead of the prose. The attribute also
+the two values one under the other instead of the prose (since 2026-11-23 a
+`compare` may return an ARRAY of such pairs: one entry of `kind: 'pairs'`,
+drawn one under another, e.g. a show's several pages named differently;
+`_bbFeedFactPairs()`). The attribute also
 records the text it was built for: a card shows it only while the title is
 still that text (`_cmpTipData()`), so a tip rewritten by anything else never
 pairs with an old comparison. `title-mismatch` marks its entry `origin`: under

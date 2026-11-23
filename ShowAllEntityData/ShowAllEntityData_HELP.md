@@ -4160,9 +4160,14 @@ reads, is read again on the next press once it is an hour old.
   typo (`…palais-omnisport…`), a wrong date or a wrong show. A name Wikidot
   cut at its 60 characters, a `-1`/`-2` of two pages of one date and the
   `dl-` of a download's note are no error. The show is marked too, on its
-  rows, its page and its window, and the hover text names the page and the
-  name it would have; the page itself is marked on its rows (Recent
-  changes, the tag lists), as it has no head or window of its own.
+  rows, its page and its window, and the hover card shows the page's name
+  over the name it would have, the letters that differ marked (a show with
+  several such pages: one pair each); the page itself is marked on its rows (Recent
+  changes, the tag lists), as it has no head or window of its own. Since the
+  feed of BruceParser 0.40.0 also a show's On stage, Off stage and soundcheck
+  pages: they have no breadcrumb, so their show is the one show of their
+  date (`onstage:1988-05-06-tacoma-dome-tacoma-wa` for
+  `gig:1988-05-06-dome-tacoma-wa`); a day with several shows is left out.
 - **On MusicBrainz** (since the feed of BruceParser 0.21.0): BruceParser also
   compares the artist's MusicBrainz events with Brucebase. An event whose
   Brucebase link reaches no entry (❌; most often the wiki writes that date
@@ -4466,8 +4471,11 @@ entry, with these columns:
   entry's venue page (one more request per venue, kept 30 days): a ⚠️ on
   the **Venue** cell says the entry's page names the venue differently
   from the venue's own page ("CBS Records" against "CBS"). "(Early)",
-  "(Late)" and the like, and a description between the venue and its city
-  ("Mediasound Studios, Studio C, New York City, NY"), are accepted. With
+  "(Late)" and the like, a description between the venue and its city
+  ("Mediasound Studios, Studio C, New York City, NY"), the venue page's name
+  of today ("West Germany" for "Germany"), the generic "Unknown Location"
+  page and a room named before the venue ("Spotify HQ, Adelphi (The), …")
+  are accepted, as in BruceParser 0.41.0's venue report. With
   ▶ Pages on, the year's listing (/1977-list) is read too, one more request
   a year: a ⚠️ on the **Event** cell says no line of the listing links the
   entry ("1977-07-29 - Atlantic Studios" is missing there). Each
@@ -5567,9 +5575,16 @@ page) opens in a window laid out for reading:
   opens that show's version in the window.
 - **Double-encoded text.** springsteenlyrics.com serves some names
   double-encoded, such as "CalexÃ³ns" for "Calexóns". The window shows them
-  repaired with a dotted red underline, and the tooltip gives the site's
-  text. A red banner counts them, and **Copy report for the site maintainer**
-  copies a list of every spot. The rows are also flagged as an ❌ ERROR (see
+  repaired and marked (a light red tint, a wavy line and a small 🔤; in a
+  table, a red edge on the cell), and the tooltip gives the site's text.
+  A red banner lists the spots: the section and where in it ("Covers ·
+  7 Lvvas · Note", "Lyrics · line 12"), and the garbled word over the
+  repaired one. It lists three, then "and N more · show all". A click on a
+  spot opens its section and scrolls to it, which flashes. A section's
+  heading says how many it holds ("🔤 1 encoding error"), and its chip at the
+  top carries a red count; a click on that chip goes to the section's first
+  spot. **Copy report for the site maintainer** copies a list of every spot.
+  The rows are also flagged as an ❌ ERROR (see
   [Warnings and errors](#warnings-and-errors)).
 
 </details>

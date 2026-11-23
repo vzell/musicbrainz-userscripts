@@ -13,7 +13,7 @@
  *      then `__saTest.bbEventChecks()` for the row — its `list-title` and
  *      `list-anchor` against the probe's;
  *   2. every event with a venue page: `__saTest.bbVenueCheck(title, venue)`
- *      against the probe's result ('', variant, detail, mismatch);
+ *      against the probe's result ('', variant, detail, convention, mismatch);
  *   3. every year entry: the year's listing read by the shipped listing
  *      reader (`__saTest.extBbParseYearList()`), the entry's anchor looked
  *      up in its links as `_bbYearApplyListing()` does, then

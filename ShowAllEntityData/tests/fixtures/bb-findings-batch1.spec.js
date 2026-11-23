@@ -344,6 +344,28 @@ test.describe('Brucebase year table: the name and anchor findings (bbp-parity ba
         expect(cmp.c.map(c => [c.at, c.la])).toEqual([[0, 'Year page'], [1, 'Site']]);
     });
 
+    // vzell, 2026-11-23: the "(Early)" and anchor-link findings get the diff
+    // card too (two values under each other, the letters that differ
+    // marked), not a sentence only. Pinned: the RIGHT two values each, as
+    // <year page>#<anchor> on both sides of the anchor pair.
+    test('the diff card: "(Early)" over its year heading, and the anchor over the one its page links', async ({ page }) => {
+        await loadYear(page);
+        await serveEvents(page);
+        await show(page);
+        await readAll(page);
+        const cmpOf = part => page.evaluate((sel) => {
+            const td = document.querySelector(sel).closest('td');
+            const raw = td.getAttribute('data-mb-tip-cmp');
+            return raw ? JSON.parse(raw).c.map(c => ({ head: c.head || '', la: c.la, lb: c.lb, a: c.a, b: c.b })) : [];
+        }, `td a[href*="${part}"]`);
+        const early = (await cmpOf('sunshine-in-asbury-park-nj-early')).find(c => /\(Early\)/.test(c.head || '') || c.lb === 'Event page');
+        expect(early).toEqual({ head: '⚠️ Brucebase event page adds "(Early)", "(Late)", … to the name', la: 'Year page', lb: 'Event page',
+            a: expect.stringMatching(/^1972-02-12 - SUNSHINE IN, ASBURY PARK, NJ/), b: '1972-02-12 Sunshine In, Asbury Park, NJ (Early)' });
+        const link = (await cmpOf('1972-05-00-mediasound')).find(c => c.la === 'This entry');
+        expect(link).toEqual({ head: '❌ Brucebase event page links another entry of the year page', la: 'This entry', lb: 'Its page links',
+            a: '1972#000472b', b: '1972#000572b' });
+    });
+
     test('a tint setting off: stamped and counted, not painted; a finding\'s switch off: gone', async ({ page }) => {
         await loadYear(page, { settings: { sa_findings_tint_bb_anchor: false, sa_findings_tint_bb_name: false, sa_findings_bb_name_variant: false } });
         await serveEvents(page);

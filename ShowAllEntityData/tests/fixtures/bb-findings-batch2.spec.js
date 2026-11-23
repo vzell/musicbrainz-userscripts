@@ -483,15 +483,27 @@ test.describe('Brucebase year table: the venue of an event page against the venu
                 c('1968-12-28 Crystal Ballroom, Hotel Diplomat, New York City, NY', 'Crystal Ballroom, New York City, NY'),
                 c('1973-01-01 A Hall, A College, A Campus, Richmond, VA (Late)', 'A Hall, Richmond, VA'),
                 c('1972-05-02 CBS Records, New York City, NY', 'CBS, New York City, NY'),
+                // BruceParser 0.41.0's conventions (2026-11-23): today's names on the
+                // venue pages, the generic "Unknown Location", a room named first.
                 c('1985-06-15 Waldstadion, Frankfurt, West Germany', 'Waldstadion, Frankfurt, Germany'),
+                c('1981-04-09 ICC Berlin, West Berlin, West Germany', 'ICC Berlin, Berlin, Germany'),
+                c('1970-06-05 Unknown Location, NJ', 'Unknown Location'),
+                c('2025-10-14 Spotify HQ, Adelphi (The), London, England', 'Adelphi (The), London, England'),
+                // A description for a venue page of four parts, and one of two parts.
+                c('2014-02-26 Concert Hall, QPAC, South Brisbane, Brisbane, Queensland, Australia', 'Concert Hall, South Brisbane, Brisbane, Queensland, Australia'),
+                c('2002-10-05 Rockefeller Center, GE Building, Studio 8H, New York City, NY', 'Rockefeller Center, New York City, NY'),
                 // Compared as written: case, and "(The)" where each page has it.
                 c('1972-01-21 Captain\'s Garter (The), Neptune, NJ', 'The Captain\'s Garter, Neptune, NJ'),
                 c('1972-12-29 HARA ARENA, Dayton, OH', 'Hara Arena, Dayton, OH'),
-                // Three parts cannot hold a description.
+                // A venue page of two parts is no name + place: no description.
                 c('1972-12-29 Hara Arena, Dayton, OH', 'Hara Arena, OH'),
+                // "Germany" alone is no historical name of a city.
+                c('1985-06-15 Waldstadion, Frankfurt, Germany', 'Waldstadion, Frankfurt, West Germany'),
             ];
         });
-        expect(out).toEqual(['', '', 'variant', 'variant', 'detail', 'detail', 'mismatch', 'mismatch', 'mismatch', 'mismatch', 'mismatch']);
+        expect(out).toEqual(['', '', 'variant', 'variant', 'detail', 'detail', 'mismatch',
+            'convention', 'convention', 'convention', 'convention', 'detail', 'detail',
+            'mismatch', 'mismatch', 'mismatch', 'mismatch']);
     });
 });
 

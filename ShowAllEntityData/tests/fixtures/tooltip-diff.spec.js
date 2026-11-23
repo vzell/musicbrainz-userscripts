@@ -132,6 +132,18 @@ test.describe('comparison tooltips: the diff', () => {
         expect(r.sum).toEqual(['1 letter in a different case: w → W']);
     });
 
+    // A site's all-caps title over its MusicBrainz style (vzell, 2026-11-23):
+    // the letters differ only in case, which is not "sharing little".
+    test('a title that differs only in case is marked, not shown plain', async ({ page }) => {
+        const r = await cmp(page, 'BACKSTREETS', 'Backstreets');
+        expect(r.marks).toEqual([['ACKSTREETS'], ['ackstreets']]);
+        expect(r.sum.join(' ')).not.toMatch(/share little/);
+        expect(r.sum[0]).toMatch(/^10 letters in a different case/);
+        const two = await cmp(page, 'BORN TO RUN', 'Born to Run');
+        expect(two.sum.join(' ')).not.toMatch(/share little/);
+        expect(two.marks[0].join('')).toBe('ORNTOUN');
+    });
+
     test('a typographic swap marks the character and names both, with code points', async ({ page }) => {
         const apo = await cmp(page, 'Don\'t Stop Me Now', 'Don’t Stop Me Now');
         expect(apo.marks).toEqual([['\''], ['’']]);

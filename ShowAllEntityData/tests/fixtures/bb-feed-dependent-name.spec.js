@@ -220,7 +220,67 @@ test.describe('the Brucebase feed 1.6: a page named differently from its show', 
         ]);
         const tip = await marks.nth(1).getAttribute('title');
         expect(tip).toContain('Brucebase page named differently from its show. Its page gallery:1978-07-07-roxy-west-hollywood-ca is named differently from this show: a page of it would be named gallery:1978-07-07-roxy-theatre-west-hollywood-ca.');
-        expect(tip).toContain('Report: the run\'s gignote, gallery, eye, media and recnote pages (dependent-names.awk).');
+        expect(tip).toContain('Report: the run\'s gignote, gallery, eye, media and recnote pages (dependent-names.awk) and its onstage, offstage and soundcheck pages (stage-names.awk).');
+    });
+
+    // BruceParser 0.40.0 (vzell, 2026-11-23: "the 76 pages should go into the
+    // feed"): stage-names.awk's On stage pages come as dependent-name rows
+    // whose show is the one show of their date; the script marks their show
+    // as it marks a gallery's (the kind does not ask the page's category).
+    test('an On stage page named differently: its show\'s head is ⚠️ ⇋ and names the On stage page', async ({ page }) => {
+        const STAGE = 'onstage:1978-07-07-roxy-west-hollywood-ca';
+        const feed = feedOf({
+            [STAGE]: { 'dependent-name': { event: ROXY, expected: 'onstage:1978-07-07-roxy-theatre-west-hollywood-ca' } },
+        });
+        await loadBbEventPage(page, 'gig-1978-07-07', { settingsOverride: feedOn(feed) });
+        await page.click('button[data-label="Show the event"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const marks = page.locator('p.mb-fd-sub .mb-bb-feed-mark');
+        await expect(marks).toHaveCount(1);
+        expect(await marks.evaluateAll(ms => ms.map(m => [m.dataset.mbFeedKind, m.dataset.mbLevel, m.textContent]))).toEqual([
+            ['dependent-name', 'warn', '⚠️ ⇋'],
+        ]);
+        expect(await marks.first().getAttribute('title')).toContain(`Its page ${STAGE} is named differently from this show: a page of it would be named onstage:1978-07-07-roxy-theatre-west-hollywood-ca.`);
+    });
+
+    // vzell, 2026-11-23 ("like the venue card, a diff output"): the names as
+    // the diff card, each page's name over the one it would have; two pages
+    // of one show stack as two pairs (kind "pairs"), and the title kind on
+    // the same show gets its card too, the page named in a pill.
+    test('the diff card: a show with two pages named differently carries both pairs; the title kind its own', async ({ page }) => {
+        const feed = feedOf({
+            'onstage:1978-07-07-roxy-west-hollywood-ca': { 'dependent-name': { event: ROXY, expected: 'onstage:1978-07-07-roxy-theatre-west-hollywood-ca' } },
+            'offstage:1978-07-07-the-roxy-west-hollywood-ca': { 'dependent-name': { event: ROXY, expected: 'offstage:1978-07-07-roxy-theatre-west-hollywood-ca' } },
+            'gallery:1978-07-07-roxy-theatre-west-hollywood-ca': {
+                'dependent-title': { title: '1978-07-07 Roxy, West Hollywood, CA', event: ROXY, eventTitle: '1978-07-07 Roxy Theatre (The), West Hollywood, CA' },
+            },
+        });
+        await loadBbEventPage(page, 'gig-1978-07-07', { settingsOverride: feedOn(feed) });
+        await page.click('button[data-label="Show the event"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const cmpOf = kind => page.locator(`p.mb-fd-sub .mb-bb-feed-mark[data-mb-feed-kind="${kind}"]`).evaluate((m) => {
+            const raw = m.getAttribute('data-mb-tip-cmp');
+            const d = raw ? JSON.parse(raw) : null;
+            return d ? { sameText: d.t === m.getAttribute('title'), c: d.c } : null;
+        });
+        const names = await cmpOf('dependent-name');
+        expect(names.sameText).toBe(true);
+        expect(names.c).toHaveLength(1);
+        expect(names.c[0]).toMatchObject({ kind: 'pairs', at: 0, head: 'Brucebase page named differently from its show' });
+        expect(names.c[0].p.map(p => [p.la, p.a, p.lb, p.b]).sort()).toEqual([
+            ['Its page', 'offstage:1978-07-07-the-roxy-west-hollywood-ca', 'A page of this show', 'offstage:1978-07-07-roxy-theatre-west-hollywood-ca'],
+            ['Its page', 'onstage:1978-07-07-roxy-west-hollywood-ca', 'A page of this show', 'onstage:1978-07-07-roxy-theatre-west-hollywood-ca'],
+        ]);
+        const titles = await cmpOf('dependent-title');
+        expect(titles.c).toEqual([expect.objectContaining({ at: 0, la: 'Its page', lb: 'This show', pill: 'gallery:1978-07-07-roxy-theatre-west-hollywood-ca',
+            a: '1978-07-07 Roxy, West Hollywood, CA', b: '1978-07-07 Roxy Theatre (The), West Hollywood, CA' })]);
+        // The card draws both pairs, the letters that differ marked.
+        const html = await page.evaluate(() => {
+            const m = document.querySelector('p.mb-fd-sub .mb-bb-feed-mark[data-mb-feed-kind="dependent-name"]');
+            return window.__saTest.tipTextToHtml(m.getAttribute('title'), m);
+        });
+        expect((html.match(/class="mb-tt-cmp"/g) || []).length).toBe(2);
+        expect(html).toContain('mb-tt-cmp-d');
     });
 
     test('Recent changes: the page\'s own row is ⚠️ ⇋ on its Page cell, naming its show', async ({ page }) => {

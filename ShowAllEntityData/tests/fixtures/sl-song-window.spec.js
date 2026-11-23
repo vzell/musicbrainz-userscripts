@@ -234,6 +234,108 @@ test.describe('springsteenlyrics.com song window', () => {
         await expect(row.first().locator('td[data-mb-findings~="sl-double-utf8"]').first()).toBeVisible({ timeout: 5000 });
         // Only that song: its other versions were never read.
         await expect(page.locator('table.tbl tbody tr:has(td[data-mb-findings~="sl-double-utf8"])')).toHaveCount(await row.count());
+        // The diff card (vzell, 2026-11-23): each garbled text over what it
+        // means, the bytes that differ marked; "CalexÃ³ns" is the one we know.
+        const cmp = await row.first().locator('td[data-mb-findings~="sl-double-utf8"]').first().evaluate((td) => {
+            const c = JSON.parse(td.getAttribute('data-mb-tip-cmp') || '{"c":[]}').c.find(x => /Double-encoded/.test(x.head || '')) || null;
+            return c ? (c.kind === 'pairs' ? c.p : [c]).map(x => ({ lb: x.lb, a: x.a, b: x.b })) : [];
+        });
+        expect(cmp.length).toBeGreaterThan(0);
+        expect(cmp.every(x => x.lb === 'Meant' && x.a !== x.b)).toBe(true);
+        expect(cmp.some(x => x.a.includes('Ã³') && x.b.includes('ó'))).toBe(true);
+        expect(errors).toEqual([]);
+    });
+
+    // The encoding banner lists each spot (vzell, 2026-11-23, mockup
+    // https://claude.ai/artifact/BdPcZd4TVQQ1fUhCtHP2ft, answers 1-6 as
+    // recommended): its section and place, the garbled word over the
+    // repaired one; a click on it, or on its section's chip, opens the
+    // closed section and shows the spot. Pins WHERE the click lands (the
+    // cell holding the repair, in view), not only that the section opened.
+    test('the encoding banner lists each spot; a click opens its section and shows it', async ({ page }) => {
+        const errors = trackPageErrors(page);
+        await openIndex(page);
+        const dialog = await openWindow(page, 'backstreets');
+        const spot = dialog.locator('.mb-sls-enc .mb-sls-spot');
+        await expect(spot).toHaveCount(1);
+        await expect(spot.locator('.mb-sls-spot-w')).toHaveText('Covers7 Lvvas · Note');
+        await expect(spot.locator('.mb-sls-spot-p')).toHaveText('CalexÃ³ns → Calexóns');
+        await expect(spot.locator('.mb-sls-spot-p mark')).toHaveText(['Ã³', 'ó']);
+        // The section and its chip count it.
+        const covers = dialog.locator('details[data-mb-dp-sec="sl:Covers"]');
+        await expect(covers.locator(':scope > summary .mb-sls-errn')).toHaveText('🔤 1 encoding error');
+        const chip = dialog.locator('.mb-sls-toc button[data-mb-sls-v="sl:Covers"]');
+        await expect(chip.locator('.mb-sls-errb')).toHaveText('1');
+        await expect(dialog.locator('.mb-sls-toc .mb-sls-errb')).toHaveCount(1);
+        // Covers starts closed; the click opens it and shows the cell.
+        await expect(covers).not.toHaveAttribute('open', '');
+        await spot.click();
+        await expect(covers).toHaveAttribute('open', '');
+        const flashed = dialog.locator('.mb-sls-flash');
+        await expect(flashed).toHaveCount(1);
+        await expect(flashed).toContainText('Calexóns');
+        expect(await flashed.evaluate(el => el.tagName)).toBe('TD');
+        await expect(flashed).toBeInViewport();
+        // Closed again, the chip goes to the same spot.
+        await covers.locator(':scope > summary').click();
+        await expect(covers).not.toHaveAttribute('open', '');
+        await chip.click();
+        await expect(covers).toHaveAttribute('open', '');
+        await expect(dialog.locator('.mb-sls-flash')).toContainText('Calexóns');
+
+        // The record: the spot's section and place (parser 38).
+        const rec = await page.evaluate(h => window.__saTest.dpParse('springsteenlyrics.com', h, 'https://www.springsteenlyrics.com/lyrics.php?song=backstreets').slSong.mojibake,
+            fs.readFileSync(path.join(FIXTURE_DIR, 'detail-sl-song-backstreets-logged-in.html'), 'utf8'));
+        expect(rec.map(m => [m.section, m.place, m.word, m.wordFix])).toEqual([['Covers', '7 Lvvas · Note', 'CalexÃ³ns', 'Calexóns']]);
+        // Many spots: three listed, then "and N more".
+        const many = await page.evaluate((h) => {
+            const data = window.__saTest.dpParse('springsteenlyrics.com', h, 'https://www.springsteenlyrics.com/lyrics.php?song=backstreets');
+            const m = data.slSong.mojibake[0];
+            data.slSong.mojibake = [0, 1, 2, 3, 4].map(i => Object.assign({}, m, { place: `row ${i}` }));
+            const div = document.createElement('div');
+            div.innerHTML = window.__saTest.slSongLeftHtml(data);
+            return { head: div.querySelector('.mb-sls-enc b').textContent, spots: div.querySelectorAll('.mb-sls-spot').length, more: (div.querySelector('.mb-sls-spots-more') || {}).textContent };
+        }, fs.readFileSync(path.join(FIXTURE_DIR, 'detail-sl-song-backstreets-logged-in.html'), 'utf8'));
+        expect(many).toEqual({ head: '5 encoding errors on this page', spots: 3, more: 'and 2 more · show all' });
+        expect(errors).toEqual([]);
+    });
+
+    // With the MusicBrainz title style on, the Title cell has its own tip
+    // ("As written on the site: BACKSTREETS"); the finding goes above it,
+    // not nowhere (vzell's screenshot, 2026-11-23: the card showed only the
+    // site title, and "the two share little").
+    test('the lyrics index with the title style on: the Title cell shows the finding above the site title', async ({ page }) => {
+        const errors = trackPageErrors(page);
+        const { spec } = await loadSlListPage(page, { kind: 'lyrics-b-logged-in', settingsOverride: { sa_sl_detail_preview: true, sa_foreign_mb_titles: true } });
+        await routeDetailPages(page, 'sl');
+        await page.click(`button[data-label="${spec.button}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await openWindow(page, 'backstreets');
+        await page.keyboard.press('Escape');
+        const row = page.locator('table.tbl tbody tr', { has: page.locator('a:not(.mb-fi-glyph)[href="lyrics.php?song=backstreets"]') }).first();
+        const titleTd = row.locator('td[data-mb-findings~="sl-double-utf8"]', { has: page.locator('a[href="lyrics.php?song=backstreets"]') });
+        await expect(titleTd).toHaveCount(1, { timeout: 5000 });
+        const card = await titleTd.evaluate((td) => {
+            const div = document.createElement('div');
+            div.innerHTML = window.__saTest.tipTextToHtml(td.getAttribute('title') || '', td);
+            return {
+                title: td.getAttribute('title'),
+                heads: Array.from(div.querySelectorAll('.mb-tt-title')).map(d => d.textContent),
+                rows: Array.from(div.querySelectorAll('.mb-tt-cmp-val')).map(d => d.textContent),
+                marks: Array.from(div.querySelectorAll('.mb-tt-cmp-val')).map(v => Array.from(v.querySelectorAll('mark')).map(m => m.textContent).join('')),
+                text: div.textContent,
+            };
+        });
+        // The finding's line first, then the site's own text.
+        expect(card.title).toMatch(/^❌ Double-encoded text[^\n]*\n[\s\S]*As written on the site:\nBACKSTREETS$/);
+        // The garbled word, not only its two characters.
+        expect(card.rows).toContain('CalexÃ³ns');
+        expect(card.rows).toContain('Calexóns');
+        expect(card.marks).toContain('Ã³');
+        // The site title's pair marks its case, not "share little".
+        expect(card.rows).toContain('BACKSTREETS');
+        expect(card.marks).toContain('ACKSTREETS');
+        expect(card.text).not.toMatch(/share little/);
         expect(errors).toEqual([]);
     });
 
@@ -293,9 +395,14 @@ test.describe('springsteenlyrics.com song window', () => {
         const m = await page.evaluate(() => ['CalexÃ³ns', 'Saint-Ã‰tienne', 'BernabÃ©u', 'DÃ©jÃ  Vu', 'Ã and Â alone', 'Déjà vu', 'DéjÃ Vu'].map(t => window.__saTest.slMojibake(t)));
         expect(m.map(x => x.fixed)).toEqual(['Calexóns', 'Saint-Étienne', 'Bernabéu', 'Déjà Vu', 'Ã and Â alone', 'Déjà vu', 'Déjà Vu']);
         // The no-break space a collapsing reader made plain: "Ã " after a lower-case letter.
-        expect(m[6].runs).toEqual([{ at: 3, bad: 'Ã ', fix: 'à ' }]);
-        expect(m[0].runs).toEqual([{ at: 5, bad: 'Ã³', fix: 'ó' }]);
+        // Each run with the word around it, repaired whole (the finding's card).
+        expect(m[6].runs).toEqual([{ at: 3, bad: 'Ã ', fix: 'à ', word: 'DéjÃ Vu', wordFix: 'Déjà Vu' }]);
+        expect(m[0].runs).toEqual([{ at: 5, bad: 'Ã³', fix: 'ó', word: 'CalexÃ³ns', wordFix: 'Calexóns' }]);
         expect(m[4].runs).toEqual([]);
+        // Two runs in one word give the same word, both repaired; outer
+        // punctuation stays out.
+        const w = await page.evaluate(() => window.__saTest.slMojibake('by "BernabÃ©u," and SÃ£o PaulÃ£o.').runs.map(r => [r.word, r.wordFix]));
+        expect(w).toEqual([['BernabÃ©u', 'Bernabéu'], ['SÃ£o', 'São'], ['PaulÃ£o', 'Paulão']]);
 
         // ALL CAPS song titles in prose: linked when the site's song list
         // knows them, never the page's own song, never inside a link, and a
