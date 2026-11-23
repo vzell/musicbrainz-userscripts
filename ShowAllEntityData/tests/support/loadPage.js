@@ -226,6 +226,14 @@ const ART_ARCHIVE_RE = /^https?:\/\/(?:[^/]+\.)?(?:cover|event)artarchive\.org\/
 // stub so tests/fixtures/harness-mb-static-script.spec.js can tell it apart
 // from the network. Another musicbrainz.org script in a future fixture goes
 // here too: tests/fixtures and tests/snapshots reference no other one today.
+// The website's own JSON (`/ws/js/...`): an area window asks
+// `/ws/js/entity/<id>` for the area's chain (`_mbPopChainRecordFor()`,
+// 2026-11-23) by plain fetch(), which no spec stubs. A fixture load answers
+// it 404, so a spec that does not serve it gets the Web Service climb it
+// always had and nothing leaves the sandbox. A spec that serves it registers
+// its own `page.route()` AFTER `loadUserscriptPage()`: the later page route
+// wins (a context route never does, page routes come first).
+const MB_WS_JS_RE = /^https:\/\/musicbrainz\.org\/ws\/js\//;
 const MB_BROWSER_CHECK_RE = /^https:\/\/musicbrainz\.org\/static\/scripts\/supported-browser-check\.js(?:\?.*)?$/;
 const MB_BROWSER_CHECK_STUB =
     "var msg = document.getElementById('unsupported-browser');\n" +
@@ -305,6 +313,10 @@ async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOv
         await page.route(ARCHIVE_ORG_RE, (route) => (route.request().resourceType() === 'image'
             ? route.abort('blockedbyclient')
             : route.fallback()));
+        // See MB_WS_JS_RE: the website's JSON stays in the sandbox.
+        await page.route(MB_WS_JS_RE, (route) => route.fulfill({
+            status: 404, contentType: 'application/json', body: '{"error":"no fixture"}',
+        }));
         // See MB_BROWSER_CHECK_RE: musicbrainz.org can answer it with HTML.
         await page.route(MB_BROWSER_CHECK_RE, (route) => route.fulfill({
             status: 200,

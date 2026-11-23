@@ -300,9 +300,13 @@ test.describe('the windows\' area links keep still (own flags, More Flags Everyw
         const html = (area, onMb) => page.evaluate(([a, m]) => window.__saTest.mbPopFlagHtml(a, m), [area, onMb]);
         const us = { id: '489ce91b-6658-3307-9877-795b68554c98', name: 'United States', type: 'Country', 'iso-3166-1-codes': ['US'] };
         expect(await html(us, true)).toBe('<span class="flag-US mb-pop-flag" data-hq-skip="true" role="img" aria-label="United States"></span>');
-        expect(await html(us, false)).toBe('<span class="mb-pop-flag mb-pop-flag-iso" aria-hidden="true">US</span>');
+        // Elsewhere its flagcdn.com image since 2026-11-23 (pop-area-chain.spec.js
+        // pins the fallback to the box); a code flagcdn has no flag for keeps the box.
+        expect(await html(us, false)).toContain('src="https://flagcdn.com/w40/us.png"');
+        expect(await html({ id: 'x', name: 'Europe', type: 'Country', 'iso-3166-1-codes': ['XE'] }, false))
+            .toBe('<span class="mb-pop-flag mb-pop-flag-iso" aria-hidden="true">XE</span>');
         // The artist's own area has no type: its ISO code says "country".
-        expect(await html({ id: us.id, name: 'United States', 'iso-3166-1-codes': ['US'] }, false)).toContain('>US<');
+        expect(await html({ id: us.id, name: 'United States', 'iso-3166-1-codes': ['US'] }, false)).toContain('/w40/us.png');
         expect(await html({ id: NJ, name: 'New Jersey', type: 'Subdivision', 'iso-3166-2-codes': ['US-NJ'] }, true))
             .toBe('<span class="mb-pop-flag mb-pop-flag-wait" aria-hidden="true"></span>');
         // An artist's own area has no type either: an ISO 3166-2 code says "state".
