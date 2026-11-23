@@ -16,8 +16,10 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-23)
 
-- *Now:* nothing in progress. *Next:* =refresh-majkinetor= to the clone's latest (the analysis still reads
-  d8c0030); the open half of "Entity pictures" (the area chain's ISO flags, =areaClimb=/=flagI=).
+- *Now (2026-11-23):* refreshed to =5d4d464= (=chore/refresh-majkinetor-5d4d464=). *Next:* decide the fix for
+  "Event Horizon's player plays on under our page" (vzell's note "player"; upstream + convention recommended, a post
+  to draft), then "The shared gate at eight a second" (the 30 ms lock hold; keep 1000 ms; maybe a question on the
+  pace). After that the open half of "Entity pictures" (the area chain's ISO flags, =areaClimb=/=flagI=).
 - *Shipped today:* "Title style": 9.99.1677 the guess-case word lists, 9.99.1678 the kinds of a track/recording
   name difference; "Entity pictures": 9.99.1679 an area's five Wikidata pictures with the flag badge, its links
   table, and Wikidata in the shared request gate (vzell's live check OK).
@@ -27,7 +29,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   marks (=feat/eh-version-mark=; vzell's browser check OK). Upstream =main= is at =d8c0030= (past =3716624=, which
   was 44 commits past the clone: EH UI, then =data-mbu-eh= and Apollo's =mbLastWrite=; the gate and the keys-off
   check unchanged): refresh next time.
-- *Next:* refresh-majkinetor to =d8c0030= (a new =eh-version-mark= anchor, =c7-writer-apollo= turns present); then
+- *Next (written 2026-11-21, the refresh is done 2026-11-23):* refresh-majkinetor to =d8c0030=; then
   the next adoption (the Credit Hoarder role map, column reorder, …). Fusion's follow-ups: work recordings (second
   batch), tap to pin on touch (later).
 - *majkinetor answered all three open questions* on #938 (milic-bot, 2026-11-20 17:00 CET,
@@ -45,7 +47,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   alias editor now sets =mbLastWrite= (he says his earlier comment was wrong). *Waiting on majkinetor*: nothing.
 - *Last merge:* 9.99.1676 (=feat/eh-version-mark=). Nothing since 9.99.1625 is published to
   =vzell/mb-userscripts= (vzell's call).
-- *Last refresh* of the analysis: 2026-11-20 at his =a1e8f54= (refresh-majkinetor skill). The clone lives in
+- *Last refresh* of the analysis: 2026-11-23 at his =5d4d464= (refresh-majkinetor skill; before: 2026-11-20 at
+  =a1e8f54=). Apollo still sets no =mbLastWrite= in code: its writes move the gate's own =mbu:mb-gate-edit= (item
+  "Stale-while-revalidate"). The clone lives in
   =debug/majkinetor/= (not synced between hosts: on another host, clone it fresh as "Method" says).
 - *A new post* is drafted as a TODO entry under "On the record: posts to majkinetor"; vzell posts it, then it turns
   DONE with its link. Last one sent: "thanks for =data-mbu-eh= and Apollo's =mbLastWrite=" (2026-11-21 17:13 CET,
@@ -66,6 +70,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | String Theory's idle mode over our FRP                         | TODO  | —             | Interop       |
 | C3: adopt =data-mbu-keys-off= + =keys-keep= (EH's new keys)    | DONE  | 9.99.1675     | Interop       |
 | Standalone EH: use =data-mbu-eh= for the keys marks            | DONE  | 9.99.1676     | Interop       |
+| Event Horizon's player plays on under our page                 | TODO  | —             | Interop       |
+| The shared gate at eight a second (2026.11.23)                 | TODO  | —             | Interop       |
 | C7 =mbLastWrite=, C8 =MBU.artistImage=                         | DONE  | 9.99.1643, 46 | Adoptions     |
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions     |
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions     |
@@ -120,7 +126,7 @@ is removed only while its value is still ours, and the setter offers its own way
 | C3 | =<html data-mbu-keys-off="saed">=                                                                                                                          | SAED                                                                                                                                         | EH's keydown returns early: *every* command, V and Ctrl+L included                                     | *not adopted yet*: it took V. Asked to keep V working under it (2026-11-08, 2026-11-17); *answered 2026-11-20*: =<html data-mbu-keys-keep="toggle">= beside it keeps EH's on/off command (EH 2026.11.21.190000, =a1e8f54=; anchors =conv-c3-keep=, =saed-keys-off=). *Adopted* in 9.99.1675 (=_mbuKeysSync()=): both marks while a table shows, String Theory ≥ 2026.11.20.165956. A standalone EH marks =<html data-mbu-eh>= from 2026.11.22.184100 (=d8c0030=): adopted in 9.99.1676 (item "A standalone EH")    |                                                                                            |
 | C4 | =<html data-mbu-quiet="saed">=                                                                                                                             | SAED                                                                                                                                         | =mbRestackCorner()=: =[data-mb-corner]= and =#mbu-dock-shelf= =visibility:hidden=                      | *adopted* (9.99.1580, =_mbuQuietSync()=, =sa_mbu_quiet_corner=, ☰ row)                                                                                                                                                                                                                                                                                                                                                                                                                                            |                                                                                            |
 | C5 | /dropped/ ("no SAED-specific detection"); replaced by EH's More (⋯) menu protocol: hidden =button[data-mbu-menu-item][data-mbu-menu-title]= under =<html>= | SAED                                                                                                                                         | EH projects it into its header menus and =.click()=s it; =disabled= hides it                           | *adopted* (9.99.1581, =_ehMenuSync()=, =_ehHandoff()=): "Open in ShowAllEntityData" + one item per button                                                                                                                                                                                                                                                                                                                                                                                                          |                                                                                            |
-| C6 | =mbu:mb-gate= *version 1* (=version=, =tat=, =cool=, =hot=, =lead=, =leadUntil=; Web Lock =mbu-mb-gate=)                                                   | majkinetor (documents it)                                                                                                                    | SAED books its ws/2 there                                                                              | adopted: SAED 9.99.1583 (TODO "Join majkinetor's cross-tab request gate"); upstream's code moved on since (TODO "Bring SAED's request-gate port in line with upstream")                                                                                                                                                                                                                                                                                                                                            |                                                                                            |
+| C6 | =mbu:mb-gate= *version 1* (=version=, =tat=, =cool=, =hot=, =lead=, =leadUntil=; Web Lock =mbu-mb-gate=)                                                   | majkinetor (documents it)                                                                                                                    | SAED books its ws/2 there                                                                              | adopted: SAED 9.99.1583 (TODO "Join majkinetor's cross-tab request gate"); upstream's code moved on since (TODO "Bring SAED's request-gate port in line with upstream"). =5d4d464= adds =itat=, =ilast=, =last=, =scool=, =shot=, =rhead=, =bslip= under version 1 and paces at 125 ms (TODO "The shared gate at eight a second")                                                                                                                                                                                  |                                                                                            |
 | C7 | =localStorage['mbLastWrite']= (Unix ms): a script that writes to MusicBrainz sets it to =Date.now()=; a kept answer older than it is a miss                | any script that writes: EH; since =a1e8f54= Group Therapy and Falcon too, since =d8c0030= Apollo's bulk alias editor (anchors =c7-writer-*=) | EH's =kpWrote()= / kept answers (2026-11-17, #938 point 7; =eh.kept.drop= retired; anchor =conv-c7=)   | *adopted* in 9.99.1643 (=feat/mb-last-write=, 2026-11-17): =_mbKeptStale()= for the popup engine's MusicBrainz records; the 30-day bulk stores and external readers left out (vzell's choice); SAED only reads it (anchor =saed-c7-read=)                                                                                                                                                                                                                                                                          |                                                                                            |
 | C8 | =unsafeWindow.MBU.artistImage= ={find, findAll, distinct, cached}= (EH's instance; answers are copies, in the user's provider order)                       | EH (publishes)                                                                                                                               | SAED, when present; own lookup otherwise (#938 point 8, 2026-11-17; anchor =conv-c8=)                  | *adopted* in 9.99.1646 (=feat/eh-artist-images=, 2026-11-18): the window (Space) =findAll()=, the card and the heading =cached()= only, artist and label, after SAED's own pictures; =@grant unsafeWindow=; any failure leaves SAED's (anchor =saed-c8-use=)                                                                                                                                                                                                                                                       |                                                                                            |
 
@@ -400,6 +406,75 @@ CLOSED: [2026-11-21 Sat]
 - *History*: 2026-11-09 vzell chose a convention (String Theory waits while =data-mbu-quiet= is set) and posted the
   request ([[#post-938-idle][On the record]]); declined 2026-11-16 (above).
 
+** TODO Event Horizon's player plays on under our page (V hides its controls, not its sound)
+
+- *Who fixes it*: open, to be decided (the plan's step 2). Most likely *upstream* (a missing call when EH switches
+  off) plus a *convention* (what EH's player does while SAED's table shows), with a defensive part *ours* for older
+  String Theory builds. vzell's wish (2026-11-23, "vzell's notes" → "player"): "I don't want to see and hear any
+  artifacts of his player, as we currently have our own player implementation".
+- *Symptom* (vzell, 2026-11-23, String Theory 2026.11.21.134804): on
+  https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 a track plays in EH's player
+  (=debug/eh-player.html=: the controls in EH's pinned header =#eh-pin.eh-ply=). After V, our page shows no player
+  but the track plays on (=debug/mb-no-player-still-playing.html=: =#eh-ply.ply-chip.ply-novid= with a Spotify
+  embed, no controls). When the next track starts, a visible Apple Music embed with its login card and a preview
+  appears, now with controls (=debug/mb-no-player-ads.html=: =#eh-ply.ply-chip=, a 150 px
+  =embed.music.apple.com= iframe, =.ply-ctl= inside =#eh-ply=). Note: the file names seem swapped against vzell's
+  descriptions; the contents are as listed here.
+- *Pre-test*: same URL, EH on (its default). Start a track in EH's player (=p=, or a track's ▶). Press V, then
+  SAED's "Show all tracks" button. Prediction: the sound goes on with nothing visible to stop it; at the next track a
+  frame may appear at the top right (=top:132px=, 360 px wide) for a source without EH-driven controls.
+- *Cause* (from code, EH 2026.11.23.095945 at =5d4d464=):
+  - The player has two parts. The source iframe lives in =div#eh-ply=, appended to =<html>= outside both bodies
+    (=plyRoot()=, anchor =eh-ply-root=), so V never removes it. The controls =div.ply-ctl= sit in =#eh-pin=, inside
+    EH's body, while EH shows with place "chip" (=plyPin()=).
+  - V on an entity page is =setOn1(false)=, which never calls =plyPin()=; V in the relationship editor (=relSet()=)
+    does (anchor =eh-ply-relset-pin=). So the controls leave with EH's body and the sound stays.
+  - The next track (=plyEnded()= → =plyGo()= → =plyDraw()= → =plyPin()=) brings the controls back into =#eh-ply=,
+    and a source EH cannot drive itself (Apple Music) shows its own 360 px frame (no =.ply-novid=).
+  - =#eh-ply= carries no =data-mb-corner=, so C4's =data-mbu-quiet= does not hide it.
+- *Fix options* (vzell decides; recommendation first):
+  1. *Upstream + convention* (recommended): ask majkinetor (a) to call =plyPin()= in =setOn1()= like =relSet()=, so
+     the controls stay reachable after V, and (b) for a mark under which EH's player pauses and hides, e.g. =<html
+     data-mbu-player-off="saed">= (same rules as C3/C4: the value is the owner, removed only while still ours). SAED
+     would set it while its table shows. Draft a post once vzell has chosen.
+  2. *Ours, defensive* (for builds without (b)): while SAED's table shows, hide =#eh-ply= (CSS under our host class)
+     and pause it through EH's own player channel (=BroadcastChannel('mbu-event-horizon-player-v1')=, message
+     ={type:'control', action:'play', value:false}=, answered by the tab that plays; anchor =eh-ply-bus=). That
+     channel is internal and undocumented, so it may change without notice: only with (1) asked first.
+  3. Hiding only (CSS): the sound goes on, so it does not meet vzell's wish.
+- *Tests*: a fixture spec with a planted =#eh-ply= (iframe + =.ply-ctl=) and a stub channel listener: after the
+  render the element is hidden and one pause message went out; none before a button press (IP), none while EH's
+  own view shows. Live: the pre-test above in vzell's browser.
+
+** TODO The shared gate at eight a second (majkinetor's 2026.11.23 gate)
+
+- *Who fixes it*: *ours* for the port; possibly a question *upstream* about the pace (vzell decides).
+- *What changed* (=5d4d464=, String Theory 2026.11.23.125301, #1093–#1098; analysis "Request gate"): =MBN_GAP= 125 ms
+  and =MBN_BURST= 4, eight starts a second sustained (was 1000 ms and 3); an interactive lane (=itat=/=ilast=); a
+  =search-shed= 503 holds searches only (=scool=/=shot=); no =hot= factor on a 503 with =Retry-After= or
+  =X-RateLimit-Who: global=; retries first after a hold (=rhead=, =bslip=); the lock kept 30 ms after a booking;
+  merged reads; a 5-minute Cache Storage cache. Same protocol version 1. Upstream's DEVELOP.md "Shared request-gate
+  protocol" still says "The sustained gap is 1,000 ms, with a burst of three": doc and code disagree.
+- *Where SAED stands* (from code, 9.99.1679): =_mbGateState()= writes the stored object back with its unknown fields
+  (=...s=), so the new fields survive SAED's writes. SAED books =tat= only, at its own 1000 ms (anchor
+  =saed-gate-gap=), the documented MusicBrainz pace (about one request a second per client). In one schedule a SAED
+  booking moves =tat= 1 s on, and theirs 125 ms, so SAED's requests do not speed up, but his scripts' traffic on the
+  same IP can be up to eight a second, and any 503 it draws holds SAED too (shared =cool=).
+- *Port candidates*, small and ours:
+  1. *The 30 ms lock hold* (anchor =gate-lock-hold=): two tabs taking the lock back to back could both book one slot,
+     because Chromium hands the localStorage write to another tab a moment later. Recommended.
+  2. *=search-shed=*: SAED's =_mbGateAnswer()= holds every script on any 503; under =X-RateLimit-Who: search-shed= it
+     should hold only searches (=scool=), and a SAED ws/2 search (=?query==) should wait out =scool=. SAED sends some:
+     the recording-length batch (=/ws/2/recording?query=rid:(…)=, =_MS_BATCH_SIZE=) and the Brucebase/MusicBrainz event
+     lookup (=/ws/2/event?query==, =_bbMbevGet()=). Medium.
+  3. Not needed: the interactive lane, merged reads, the cache (SAED keeps its own answers).
+- *Keep 1000 ms* (recommended): it is what MusicBrainz documents, and SAED's own pacing must not depend on a
+  neighbour's choice. A post could ask majkinetor whether 125 ms is meant for MusicBrainz's own servers too (his
+  comment cites 503s from MusicBrainz's load whatever the pace) and point out the DEVELOP.md line. vzell decides
+  whether to ask.
+- *Pre-test / measurement*: probe case D (SAED's 31-page fetch with EH on and off) at =5d4d464=, compared with the
+  2026-11-20 row: 503 count and who they hit, responses per second (see "Coexistence").
+
 * Adoptions: what SAED takes from his scripts
 
 ** DONE Findings from the release checks of Mission Control / Platform Check / ISRC Scout
@@ -644,6 +719,17 @@ CLOSED: [2026-11-20 Fri]
   Therapy and MusicBrainz's own forms do not. *Since =a1e8f54= (2026-11-20)* Group Therapy (relationship edits,
   annotation clears) and Falcon (cover art, aliases, tag votes) set it too; Apollo still does not, though the #938
   answer names it (anchors =c7-writer-gt=, =c7-writer-falcon=, =c7-writer-apollo=).
+- *2026-11-23 (=5d4d464=)*: Apollo still sets no =mbLastWrite= (the C7 row's "since =d8c0030=" rests on the #938 answer
+  of 2026-11-21, not on the code). What changed is the gate: it now keeps a second write mark,
+  =localStorage['mbu:mb-gate-edit']=, set by =mbnEdited()= on every non-GET through =mbnFetch= and on every POST form
+  submitted on a MusicBrainz page, so Apollo's, Falcon's and MusicBrainz's own form saves all move it. Apollo's bulk
+  alias editor POSTs through =mbnFetch= (=mbWebFetch=, AP:2362 → the editor's =fetchMb=, AP:18872), so it moves
+  =mbu:mb-gate-edit=, which is probably what the 2026-11-21 answer meant; EH's kept answers (=mbLastWrite()=, EH:5131)
+  and SAED's =_mbKeptStale()= read only =mbLastWrite=, so an Apollo alias edit still reaches neither. Its 5-minute
+  Cache Storage cache of ws/2 answers is dropped by it or by =mbLastWrite= (#1098, anchor =gate-edit-epoch=). *Worth
+  taking*: SAED's =_mbKeptStale()= could read =mbu:mb-gate-edit= beside =mbLastWrite= (both Unix ms); it would cover
+  the release editor and every MusicBrainz form, which =mbLastWrite= misses. Not a convention yet: ask before relying on
+  the key (it is the gate's own, not documented in DEVELOP.md).
 - *Left out by vzell's choice*: =rel-ws2=, =ms-rec-len=, "Recording of" (30-day bulk stores; dropping them re-asks a
   whole table) and the external readers. Revisit =rel-ws2= once relationship editors set =mbLastWrite=: *Group
   Therapy does now* (2026-11-20), so this is vzell's call again; MusicBrainz's own relationship editor still does
@@ -775,14 +861,14 @@ CLOSED: [2026-11-20 Fri]
   AR columns.
 - Optional: a read-only RG credit matrix, role × release with format badges (GT =openConsolidate=).
 
-* Analysis — 2026-11-20 (reference)
+* Analysis — 2026-11-23 (reference)
 
 The analysis the items above rest on: what each of his scripts does, how Event Horizon works, what SAED
 can take, and how the two behave together (measured). The refresh-majkinetor skill updates it in place.
 
-Env: 2026-11-20T22:01:09–22:07:56+01:00 (last refresh) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) ·
-Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the live part, SAED 9.99.1669 from =main=
-(=029625a4=) · code reading: n/a. Previous: 2026-11-17T19:37–19:43 on petri (SAED 9.99.1641); 2026-11-09T15:40–15:46 on petri (Linux 6.18.54.1); 2026-11-09T00:07–00:16,
+Env: 2026-11-23T14:48:02–14:53:55+01:00 (last refresh) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) ·
+Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the live part, SAED 9.99.1679 from =main=
+(=dde80ef1=) · code reading: n/a. Previous: 2026-11-20T22:01–22:07 on petri (SAED 9.99.1669); 2026-11-17T19:37–19:43 on petri (SAED 9.99.1641); 2026-11-09T15:40–15:46 on petri (Linux 6.18.54.1); 2026-11-09T00:07–00:16,
 2026-11-08T13:39–13:47 and 2026-11-06T15:04–15:13 (first analysis 2026-11-06 11:14–11:30), all on vzell-lap (WSL2
 Ubuntu 24.04.4 LTS, same Playwright and Chromium).
 
@@ -824,6 +910,10 @@ Check, IS = ISRC Scout, AS = Art Station, CH = Credit Hoarder, GT = Group Therap
   (lock race, =mbnSleep=, hold cap); SAED's port lags (new TODO). The probe at =0693aea= showed every Coexistence
   row as before, on a heavily throttled evening: with SAED in the shared gate, the 503s landed on majkinetor's
   requests and none on SAED's while both ran (case D).
+- *2026-11-23* (=5d4d464=): his shared request gate paces eight starts a second (=MBN_GAP= 125 ms, #1095), with an
+  interactive lane, search-only holds and a short cache; SAED stays at one a second in the same schedule (*measured*:
+  up to nine responses a second in case D, one 503 on SAED). EH's player keeps playing under our page after V, with
+  its controls gone (vzell, from code: =setOn1()= lacks the =plyPin()= call =relSet()= has). Two new TODOs.
 
 ** Method — clone or read from GitHub? (3.)
 
@@ -838,8 +928,14 @@ git -C debug/majkinetor sparse-checkout set --no-cone '/*' '!*.png' '!*.jpg' '!*
 git -C debug/majkinetor pull            # follow upstream later; re-pin the SHA below
 #+end_src
 
-- Pinned: =a1e8f54= (2026-11-20T21:57:11+01:00, "build: regenerated from their sources [skip ci]"), =main=. The
-  harness copies are from =a1e8f54=: ST 2026.11.20.215710, whose =@description= names EH 2026.11.21.190000 and ISRC
+- Pinned: =5d4d464= (2026-11-23T12:53:01+01:00, "build: regenerated from their sources [skip ci]"), =main=. The
+  harness copies are from =5d4d464=: ST 2026.11.23.125301, whose =@description= names EH 2026.11.23.095945 and ISRC
+  Scout 2026.11.23, the same as the standalone copies; main's raw link served the same =@version= (checked
+  2026-11-23 right after the fetch, before the probe). vzell's browser ran 2026.11.21.134804 that day (=<html
+  data-mbu-st>= in =debug/mb-no-player-*.html=). The old pin's objects were still in the shallow clone, so the diff from
+  =a1e8f54= is local.
+- Earlier pin: =a1e8f54= (2026-11-20T21:57:11+01:00, "build: regenerated from their sources [skip ci]"), =main=. Its
+  harness copies: ST 2026.11.20.215710, whose =@description= names EH 2026.11.21.190000 and ISRC
   Scout 2026.11.20.200000, the same as the standalone copies (EH's stamp is dated after the commit). main's raw link
   served the same =@version= (checked 2026-11-20 right after the fetch, before the probe). vzell's Vivaldi ran
   2026.11.20.165956 (=352510c9=, the build linked in the #938 answer), five hours older: Tampermonkey updates on its
@@ -873,28 +969,28 @@ To refresh all of this, use the *refresh-majkinetor* skill (=.claude/skills/refr
 covers the clone, the three harness copies, the manifest re-scan, the probe, and updating this section and the
 TODOs. The code anchors this analysis rests on are listed in =scripts/majkinetor-anchors.json=;
 =python3 scripts/check-majkinetor-anchors.py --versions= reports which still hold (28/28 at =326c6a4=, 34/34 at =1df6193=,
-38/38 at =65032ef=; 39 with the sidebar-handle defect anchor; 52/52 at =2d092e0=; 55/55 at =68512f9=; 68/68 at =0693aea=; 98/98 at =a1e8f54=, three rewritten and 28 added, among them the 19 =fusion-*= of the rec-dup port).
+38/38 at =65032ef=; 39 with the sidebar-handle defect anchor; 52/52 at =2d092e0=; 55/55 at =68512f9=; 68/68 at =0693aea=; 98/98 at =a1e8f54=, three rewritten and 28 added, among them the 19 =fusion-*= of the rec-dup port; 118/118 at =5d4d464=, =gate-lock-race= and =c7-writer-apollo= rewritten, nine added: six for the new gate, three for EH's player).
 
 ** Inventory
 
 | Script                       | Size / lines      | @run-at        | @match (short)                                              | What it does                                                                                                 |
 |------------------------------+-------------------+----------------+-------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------|
-| String Theory                | 8.45 MB / 104,458 | document-start | union of 13 members                                         | One-file bundle; settings window, Dropbox/Drive/WebDAV sync, themes, Ctrl+K command palette                  |
-| Event Horizon                | 1.88 MB / 18,051  | document-start | every MB page (since 2026.11.16; before: 12 entity types)   | Alternative viewer (SPA in its own body), sections, discography tables, filter language, stars, recent, keys |
-| Apollo Editor                | 1.68 MB / 18,916  | document-start | release add/edit, entity create/edit, aliases, annotation   | Replaces MB's release editor; auto-matching, guess case, confusable chars, archive links, release clone      |
-| First Contact                | 0.57 MB / 7,707   | document-start | ~21 platforms + MB release (reader)                         | Import a platform's album page into /release/add or Harmony                                                  |
-| Falcon                       | 0.72 MB / 9,749   | (default)      | every MB page, Harmony                                      | Batch editor through a pool of iframe workers submitting MB's own seeded forms                               |
-| Credit Hoarder               | dist 14,532       | (default)      | release, edit-relationships, Tidal, Metal Archives          | Import credits from Discogs/Tidal/Qobuz/… into the relationship editor; *374-entry Discogs-role → MB map*    |
+| String Theory                | 8.71 MB / 107,944 | document-start | union of 13 members                                         | One-file bundle; settings window, Dropbox/Drive/WebDAV sync, themes, Ctrl+K command palette                  |
+| Event Horizon                | 1.98 MB / 19,196  | document-start | every MB page (since 2026.11.16; before: 12 entity types)   | Alternative viewer (SPA in its own body), sections, discography tables, filter language, stars, recent, keys |
+| Apollo Editor                | 1.73 MB / 19,576  | document-start | release add/edit, entity create/edit, aliases, annotation   | Replaces MB's release editor; auto-matching, guess case, confusable chars, archive links, release clone      |
+| First Contact                | 0.58 MB / 7,882   | document-start | ~21 platforms + MB release (reader)                         | Import a platform's album page into /release/add or Harmony                                                  |
+| Falcon                       | 0.76 MB / 10,293  | (default)      | every MB page, Harmony                                      | Batch editor through a pool of iframe workers submitting MB's own seeded forms                               |
+| Credit Hoarder               | dist 15,518       | (default)      | release, edit-relationships, Tidal, Metal Archives          | Import credits from Discogs/Tidal/Qobuz/… into the relationship editor; *374-entry Discogs-role → MB map*    |
 | Discogs Credits (deprecated) | dist 6,116        | (default)      | edit-relationships                                          | Predecessor of CH (built on mattgoldspink's/vzell's/kellnerd's importers)                                    |
-| Group Therapy                | 0.76 MB / 10,104  | document-end   | edit-relationships (+create callbacks)                      | Bulk delete/copy/move/re-date credits; liner-note and ℗/© parser; RG credit matrix                           |
-| Fusion                       | 0.58 MB / 7,527   | (default)      | every MB page                                               | Duplicate-recording finder + background merges; AcoustID                                                     |
-| Mission Control              | 0.69 MB / 7,805   | (default)      | release/* overview only (=@exclude= subpages since 65032ef) | Dashboard: asks the other scripts over a CustomEvent bus (=mc:*=) what a release lacks                       |
-| Platform Check               | 0.87 MB / 11,238  | (default)      | release, release-group                                      | Finds the release on 16 platforms; barcode/format/track-count scoring                                        |
-| ISRC Scout                   | 0.82 MB / 10,684  | document-start | release/*                                                   | ISRCs and streaming links; "ISRC"/"Links" columns in the native tracklist                                    |
-| Art Station                  | 0.77 MB / 9,286   | document-start | release + cover/event-art pages                             | Cover-art gallery editor, image maximiser, full-screen viewer for the others                                 |
-| Mammoth                      | 0.33 MB / 3,908   | document-idle  | every MB page                                               | Saved/pinned edit notes and field recall                                                                     |
-| Fuzzy Logic                  | 0.34 MB / 3,659   | document-end   | release, RG, artist, label, recording                       | Genres/tags from linked sites → MB genres, batch vote                                                        |
-| Scribe                       | 126 KB / 1,624    | document-end   | every MB page                                               | Edit fields / a whole release (Markdown) in an external editor via a local helper                            |
+| Group Therapy                | 0.80 MB / 10,691  | document-end   | edit-relationships (+create callbacks)                      | Bulk delete/copy/move/re-date credits; liner-note and ℗/© parser; RG credit matrix                           |
+| Fusion                       | 0.62 MB / 8,061   | (default)      | every MB page                                               | Duplicate-recording finder + background merges; AcoustID                                                     |
+| Mission Control              | 0.74 MB / 8,423   | (default)      | release/* overview only (=@exclude= subpages since 65032ef) | Dashboard: asks the other scripts over a CustomEvent bus (=mc:*=) what a release lacks                       |
+| Platform Check               | 0.92 MB / 11,821  | (default)      | release, release-group                                      | Finds the release on 16 platforms; barcode/format/track-count scoring                                        |
+| ISRC Scout                   | 0.87 MB / 11,364  | document-start | release/*                                                   | ISRCs and streaming links; "ISRC"/"Links" columns in the native tracklist                                    |
+| Art Station                  | 0.82 MB / 9,926   | document-start | release + cover/event-art pages                             | Cover-art gallery editor, image maximiser, full-screen viewer for the others                                 |
+| Mammoth                      | 0.33 MB / 4,011   | document-idle  | every MB page                                               | Saved/pinned edit notes and field recall                                                                     |
+| Fuzzy Logic                  | 0.39 MB / 4,245   | document-end   | release, RG, artist, label, recording                       | Genres/tags from linked sites → MB genres, batch vote                                                        |
+| Scribe                       | 159 KB / 2,067    | document-end   | every MB page                                               | Edit fields / a whole release (Markdown) in an external editor via a local helper                            |
 | Bandcamp Player Enhanced     | 83 KB / 1,447     | (default)      | *.bandcamp.com/album/*                                      | Keyboard player for Bandcamp                                                                                 |
 | =picard/*.py=, =scripts/=    | —                 | —              | —                                                           | Picard v2 plugins; PowerShell MB client (≈1 req/s with a shared hold) and collection sync — n/a for SAED     |
 
@@ -906,6 +1002,15 @@ TODOs. The code anchors this analysis rests on are listed in =scripts/majkinetor
   Web Lock =navigator.locks.request('mbu-mb-gate')= (3 s abort, unlocked fallback). Only =/ws/2= is gated (=mbnGated=).
 - *Pacing*: GCRA-style, =MBN_GAP=1000= ms. Background requests may burst to =MBN_BURST=3=; foreground requests book at
   once. A slot is reserved first, then waited for in 250 ms slices so cancellation is prompt (=mbnSlot= ≈94).
+  *Since =5d4d464= (2026-11-23, #1095)*: =MBN_GAP=125= ms and =MBN_BURST=4=, eight starts a second sustained (anchor
+  =gate-gap-125=). Its comment: MusicBrainz's 503s come from its own load (=X-RateLimit-Who: global=) whatever the
+  pace, and Credit Hoarder's preflight took 52 s instead of 173 s. Interactive requests book their own line
+  (=itat=/=ilast=) beside the background one (=tat=/=last=); while =hot= no burst after a hold (#1096); retries and
+  searches waiting out a hold go to the head (=rhead=, =bslip=). The lock is kept 30 ms after a booking
+  (=MBN_LOCK_HOLD=), so the write reaches other tabs before the next holder reads (=gate-lock-hold=). Reads that differ
+  only in =inc= merge after 100 ms (#1094/#1097), and a 5-minute Cache Storage cache =mbu:mb-gate-cache= answers a
+  repeated read until any write (#1098, =gate-edit-epoch=). String Theory has a gate log viewer (=gatelog.js=, #1093).
+  Same protocol version 1; the new fields are written beside the old ones (TODO "The shared gate at eight a second").
 - *Transport* (since =1df6193=): the gate's own requests go through =GM_xmlhttpRequest= with a
   =User-Agent= header (=mbnWsFetch=; EH got =@connect musicbrainz.org=), no longer the page's =fetch()=.
 - *Lead*: =mbnLead(token, ms)= (≈126), capped at 10 s. The tab whose page is loading leads, and every other script and
@@ -913,7 +1018,9 @@ TODOs. The code anchors this analysis rests on are listed in =scripts/majkinetor
 - *429/503* (=mbnAnswer= ≈132):
   - honours =Retry-After= (seconds or a date);
   - =hot= rises by one per throttle /episode/ (max 6) and resets after 30 s of quiet;
-  - hold = =min(max(1 s, RA) × max(1, hot), 60 s)=, written to the shared =cool=, so *every script in every tab holds*;
+  - hold = =min(max(1 s, RA) × max(1, hot), 60 s)=, written to the shared =cool=, so *every script in every tab holds*
+    (since =5d4d464=: without the =hot= factor when the 503 carries =Retry-After= or =X-RateLimit-Who: global=, and a
+    =search-shed= 503 holds searches only, in =scool=/=shot=, anchor =gate-search-shed=);
   - =mbnFetch= retries up to 4 times.
 - *Browser check*: =mbnIsCheck= / =mbnReverify= (≈193-243) pass "Verifying your browser" in a hidden 1×1 same-origin
   iframe, then retry.
@@ -1132,8 +1239,18 @@ development version, which has the link previews, the other sites, the findings 
 Probe: =tests/support/probe-majkinetor-interop.js= (cases 0/A/B/C/D, E, F/G, I; JSON output). Runs at every
 refresh (see the Refresh log): 2026-11-06 (=326c6a4=, =1df6193=), 2026-11-08 (=65032ef=), 2026-11-09 (=2d092e0=,
 =68512f9=, the first with SAED in the shared gate), 2026-11-17 (=0693aea=, SAED 9.99.1641), 2026-11-20
-(=a1e8f54=, SAED 9.99.1669; both on petri, Playwright 1.62.1, Chromium 151.0.7922.34, GM stubs). Every structural row came out the same each time; case D's 503s vary
+(=a1e8f54=, SAED 9.99.1669), 2026-11-23 (=5d4d464=, SAED 9.99.1679; all three on petri, Playwright 1.62.1, Chromium 151.0.7922.34, GM stubs). Every structural row came out the same each time; case D's 503s vary
 with MusicBrainz's load.
+
+*2026-11-23* (2026-11-23T14:48:02–14:53:55+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright
+1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · SAED 9.99.1679 =dde80ef1= · ST 2026.11.23.125301, EH
+2026.11.23.095945, ISRC Scout 2026.11.23): every structural row as before. The new gate shows in case D: *up to nine
+MusicBrainz responses in one second* (four or five at every earlier refresh), six 503s, five on EH's own search
+(=release-group?query=arid:…=, offsets 100–400) and *one on SAED's* entity-pictures lookup
+(=/ws/2/artist/…?inc=url-rels=, =_mbGateFetch()=): SAED booked two slots, took one hold and waited 1.5 s in the gate;
+its 31-page fetch took 32.7 s (28.7 s alone, case 0). With the bundle, cases B and I had four 503s each, all on the
+members' gated GM requests (ISRC Scout's release load, a =url?resource== batch, =inc=aliases=), none on SAED. The stored
+schedule carries the new fields (=itat=, =ilast=, =last=, =rhead=, =slip=, =scool=, =shot=) beside SAED's writes.
 
 Pages: release-tracks =1d404e1d-…= and artist-releasegroups (Springsteen). The results with ST were the same as
 with EH alone.
@@ -1193,7 +1310,8 @@ Answers to your three questions:
      (the release gained a link): 37/37 =data-ii-platform= natively, 37/37 stamped on the FRP, 51/51 cells.
      *Re-measured 2026-11-20* (ISRC Scout 2026.11.20.200000, in the bundle and alone): the same. The first run alone
      got two 503s on ISRC Scout's release load (its try and its one retry) and showed no columns at all; the re-run
-     at 22:07 had none.
+     at 22:07 had none. *Re-measured 2026-11-23* (ISRC Scout 2026.11.23, in the bundle and alone): the same, 37/37 and
+     51/51; in the bundle four 503s on the members' loads, and the columns came all the same.
   6. *Document-wide observers* from IS, Fuzzy Logic (2), Mammoth and PC run on every SAED re-render.
      Perf: not measured, worth a =run-perf-comparison= arm with the ST bundle.
   7. *State that sticks*: EH remembers on/off per browser; Apollo's toggle is global "on every tab until you switch
@@ -1202,6 +1320,15 @@ Answers to your three questions:
 ** Refresh log
 
 Newest first; one line per refresh (refresh-majkinetor skill). The full notes are in git history.
+
+- 2026-11-23 14:35–15:20 CET, petri: =a1e8f54= → =5d4d464= (ST 2026.11.23.125301, EH 2026.11.23.095945, ISRC Scout
+  2026.11.23). No new #938 comment from majkinetor. The shared gate went to eight starts a second (#1095) with an
+  interactive lane, search-only holds, a 30 ms lock hold, merged reads and a 5-minute cache (#1093–#1098); its
+  DEVELOP.md still says 1,000 ms. EH's player grew (#1079, #1083, #1084, #1069); vzell found it playing on under our
+  page. Apollo still sets no =mbLastWrite= (the gate now only reads it). Probe: structure unchanged; case D up to nine
+  responses a second (was four or five), six 503s, one on SAED's entity-pictures lookup. Anchors 118/118
+  (=gate-lock-race=, =c7-writer-apollo= rewritten; nine added). New TODOs "Event Horizon's player plays on under our
+  page" and "The shared gate at eight a second".
 
 - 2026-11-20 21:58–22:20 CET, petri: =0693aea= → =a1e8f54= (ST 2026.11.20.215710, EH 2026.11.21.190000, ISRC Scout
   2026.11.20.200000). #938 answered all three open questions: the gate's caps (first sight on read, a clamp on write),
@@ -2353,3 +2480,17 @@ Maybe the test failers have to do with what I sometimes experience in the detail
   4. In the code, SAED's own request pacing is already immune since c8e71ba8. The shared gate with majkinetor's scripts still reads the wall clock. He could make the same performance.timeOrigin + performance.now() change on his side; I can draft that for #938 if you want.
 
   If you like, I'll keep the clock check as a reusable script (scripts/check-clock-jumps.js, with a line in tests/README.org), so a "flaky" run on a freshly booted machine can be checked in 30 seconds.
+
+** player
+
+On e.g. https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 when on the Event Horizon page of String Theory and the majkinetor player is active and playing
+
+#+begin_example
+@debug/eh-player.html - raw HTML of the player on the Event Horizon page of String Theory playing song number 1
+@debug/mb-no-player-ads.html - our page, no player shown but still playing song number 1
+@debug/mb-no-player-still-playing.html  - our page, no player shown but instead the Apple music dialog for login and playing a sample for song number 2 (where the majkinetor side has already advanced to)
+#+end_example
+
+I dont want to see and hear any artifacts of his player, as we currently have our own player implementation
+
+

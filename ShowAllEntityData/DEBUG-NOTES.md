@@ -31035,3 +31035,53 @@ pictures or Wikidata. popup-mb's area window test now counts two requests (the
 url-rels). Mutations `scripts/mutations/area-pictures.json` 13/13; five older
 finds re-pointed (sidebar-overhaul.json ×4, entity-images.json ×1), those
 entries 4/4 and 7/7. test:full deferred to the merge.
+
+## 2026-11-23 — majkinetor refresh: a1e8f54 → 5d4d464 (the gate at eight a second, EH's player under our page)
+
+Env: 2026-11-23T14:48:02+01:00 – 2026-11-23T14:53:55+01:00 (probe) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · SAED 9.99.1679 (`dde80ef1`) · code reading: n/a
+
+refresh-majkinetor skill, branch `chore/refresh-majkinetor-5d4d464`. Clone
+`debug/majkinetor/` moved `a1e8f54` → `5d4d464` (2026-11-23T12:53:01+01:00);
+harness copies ST 2026.11.23.125301, EH 2026.11.23.095945, ISRC Scout
+2026.11.23, the bundle's `@description` naming the same member versions;
+main's raw link served the same `@version`. No new #938 comment from
+majkinetor. Everything else is in `org/majkinetor.org` (Refresh log, the two
+new TODOs, "Coexistence").
+
+- **The shared gate went to eight starts a second** (`dev/net/mb-gate.mjs`,
+  #1095): `MBN_GAP` 125 ms and `MBN_BURST` 4 (was 1000 ms and 3), an
+  interactive lane (`itat`/`ilast`), search-only holds on a 503 with
+  `X-RateLimit-Who: search-shed` (`scool`/`shot`), a 30 ms lock hold after a
+  booking, merged reads, a 5-minute Cache Storage cache keyed by a new write
+  mark `localStorage['mbu:mb-gate-edit']`. Same protocol version 1; its own
+  DEVELOP.md still says 1,000 ms. SAED's `_mbGateState()` writes the unknown
+  fields back unchanged and books `tat` at its own 1000 ms (anchor
+  `saed-gate-gap`). Probe case D measured it: up to nine MusicBrainz responses
+  in one second (four or five at every earlier refresh), six 503s, five on
+  EH's search and one on SAED's entity-pictures lookup
+  (`/ws/2/artist/…?inc=url-rels`); SAED waited 1.5 s in the gate, its 31-page
+  fetch 32.7 s (28.7 s alone). Bundle cases B and I: four 503s each, all on
+  members' gated requests. Every structural row (bodies, bar, V/V, `h`, the
+  C reload, ISRC Scout's 37/37 icons and 51/51 cells) as before.
+- **EH's player plays on after V** (vzell's note "player" in
+  `org/majkinetor.org`; snapshots `debug/eh-player.html`,
+  `debug/mb-no-player-ads.html`, `debug/mb-no-player-still-playing.html`,
+  String Theory 2026.11.21.134804 in his browser). From code: the source
+  iframe lives in `#eh-ply` on `<html>` (`plyRoot()`), the controls in
+  `#eh-pin` in EH's body; `setOn1(false)` never calls `plyPin()`, while
+  `relSet()` does, so after V the controls go and the sound stays. The next
+  track's `plyPin()` brings controls into `#eh-ply`, and Apple Music shows its
+  own 150 px embed (login card, preview). `#eh-ply` has no `data-mb-corner`,
+  so C4 does not hide it. The two snapshot file names look swapped against
+  vzell's descriptions: `mb-no-player-ads.html` holds the Apple embed with
+  controls, `mb-no-player-still-playing.html` the hidden Spotify one.
+- **Apollo and `mbLastWrite`**: still no setter in code. Its bulk alias editor
+  POSTs through `mbnFetch` (`mbWebFetch`), which moves `mbu:mb-gate-edit`;
+  EH's kept answers and SAED read only `mbLastWrite`. Anchor
+  `c7-writer-apollo` had gone BACK only because the inlined gate now READS
+  `mbLastWrite`; rewritten to match a setter.
+
+Anchors 118/118 (`gate-lock-race` rewritten to the new `answered` race,
+`c7-writer-apollo` rewritten, nine added). New helper
+`scripts/refresh-majkinetor-sizes.py` rewrites the Inventory's size cells at
+their old width. Nothing in `ShowAllEntityData.user.js` changed.
