@@ -847,6 +847,59 @@ BruceParser 0.43.0 (=675cda3=, vzell: "yes commit and push"): =relation-tags.awk
 =./feed.sh -r 2026-11-23= rebuilt =bb/2026-11-23/bb-feed.json= (relationTags 2,166, 15 overrides; the kinds'
 counts unchanged), published: feed repo =1332fa8=, its FORMAT.md =b83b288=. No =bbp.sh= run.
 
+** Built (WIP.1, =436fa049=, 2026-11-24; vzell: "ok, tackle it")
+
+Env: 2026-11-24T01:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) ·
+probe: Python over =bb/2026-11-23= and its feed 1.10, n/a; checker and spec: Playwright Chromium, no Tampermonkey
+(GM stubs)
+
+- *Code:* =_bbTagPagePlaceExpected()= (with =_bbTagPlacePartsExpected()= split out of the show's place rule),
+  =_bbTagPageNameExpected()=, =_bbTagPageReleaseExpected()=, the release's not-expected date in
+  =_bbTagPageSpurious()=, =_bbTagReleaseDates()=, =_bbTagRetailTab()= (the four cut tab pages), facts =name=,
+  =dates=, =releaseLetter=; the wait note and "as expected" for pages; the family =name= in the People row;
+  =relationTags= wanted with the relation family on. Settings: the place switch reworded,
+  =sa_bb_tag_family_relation=, =sa_bb_tag_family_release= (=default: false=). =_DP_PARSER_VERSION= 39.
+- *The probe's =ship4b=* (the shipped rule with the three on): venue place 73, relation name 17 (the 16 of the
+  map's record and =david-mansfield=, which has no tags at all), release dates missing 6 and not expected 6,
+  release letter 38; 130 pages more than batch 4's 41. Release pages checked 209 (the four cut tab pages are
+  tab pages now: 859 counted only).
+- *The checker* (=scripts/check-bb-page-tag-findings.js=): without =--feed= 6,986 pages, 0 differ, 41 flagged
+  (batch 4 unchanged); =--feed bb/2026-11-23/bb-feed.json= (the three switches on, the feed kept): 0 differ, 171
+  flagged.
+- *Tests:* =bb-findings-page-tags.spec.js= 26/26 (11 new, on 9 more mirror pages and
+  =tests/fixtures/bb-feed-batch4b.json=); mutations =scripts/mutations/bb-findings-page-tags-4b.json= 15/15 as
+  expected; four older finds my edits had moved, rewritten and re-run (as recorded). Lint within the baseline.
+  =test:full= at =436fa049= on NB-3641: 3,512/3,512, 01:55:49–02:20:18 CET (=tests/MEASUREMENTS.org=). Not
+  measured: the render ratio against main (the three families are off by default and read nothing but the page
+  and the kept feed).
+
+** The browser check of batch 4b, for vzell (pages of the mirror of 2026-11-23; unverified on the live wiki)
+
+Install the script from =feat/bb-page-tag-families=. In ⚙️ Settings → ⚠️ Findings turn on the three: "Also check
+the place tags of a Brucebase show and of a venue page", "Also check a Brucebase person's or band's own name tag",
+"Also check a Brucebase release's date and first-letter tags"; "Read the Brucebase feed" on (feed 1.10, published).
+Every stored preview is read once more (parser version 39).
+
+| Page                                                                                  | Step                                         | Expected                                                                                                       |
+|---------------------------------------------------------------------------------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/venue:bow-tie-cinemas-red-bank-nj                       | Show the venue                               | Place row: "redbank missing", "usa missing"; ❌ 2 missing; "The title names the city "Red Bank"."             |
+| https://brucebase.wikidot.com/venue:aami-park-melbourne-australia                     | Show the venue                               | "✓ kind, first-letter, place and construction tags as expected" (an Australian title)                         |
+| https://brucebase.wikidot.com/venue:center-for-american-music-west-long-branch-nj     | Show the venue                               | "longbranch missing": the title reads "… Music West, Long Branch, NJ" (a comma in the wrong place)            |
+| https://brucebase.wikidot.com/relation:dan-aykroyd                                    | Show the person                              | People row: "danaykroyd missing" (tagged "danakroyd")                                                         |
+| https://brucebase.wikidot.com/relation:donald-dunn                                    | Show the person                              | "✓ person/band, first-letter, name and construction tags as expected" (the stage name "duckdunn")            |
+| https://brucebase.wikidot.com/relation:tony-pallagrosi                                | Show the person                              | "tonypallagrosi missing" (tagged "tonypalligrosi")                                                            |
+| https://brucebase.wikidot.com/stats:relations                                         | the A tab: Ctrl+hover "Aykroyd, Dan", Space  | the window's Tags: "danaykroyd missing"                                                                        |
+| https://brucebase.wikidot.com/retail:life-death-and-dennis-hopper                     | Show the release                             | Date row: "2025 missing"; "2024" marked ⚠️, "No date of the page's "Commercially Released" line (April 4, 2025) has it." |
+| https://brucebase.wikidot.com/retail:american-babylon-25                              | Show the release                             | "17", "1995" and "a" missing; "2021" and "29" ⚠️ (the line has the 1995 original's date)                     |
+| https://brucebase.wikidot.com/retail:a-good-life                                      | Show the release                             | Letter row: "a missing"; no date mark (the first of its two dates is tagged)                                   |
+| https://brucebase.wikidot.com/retail:born-to-run                                      | Show the release                             | "✓ kind, date, first-letter and construction tags as expected" (the line "Commercially Released*:")           |
+| https://brucebase.wikidot.com/retail:the-concert-for-the-rock-and-roll-hall-of-fame-credit | open it                                 | no pill, no ✓ line: a tab page (its name cut at 60 characters)                                                 |
+| the venue, person and release pages above                                             | the three settings off, reload, Show         | batch 4's marks only (the Bow Tie venue: "✓ kind, first-letter and construction tags as expected")            |
+| https://brucebase.wikidot.com/venue:bow-tie-cinemas-red-bank-nj                       | "Read the Brucebase feed" off, reload, Show  | no place mark; the note "The place tags are not checked: the Brucebase feed is off."                          |
+
+Unverified: all of it on the live site (Claude made no request to the wiki). Whether =retail:the-concert-…-credit=
+shows a button is not known; the row says "open it".
+
 * Closing the matrix (2026-11-19): coexistence, then the HOME row
 
 Env: 2026-11-19T00:46:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright
