@@ -16,6 +16,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-24)
 
+- *Now (2026-11-24, latest):* the "shine through" item is *corrected* (vzell): it means a switch between SAED's view
+  and the original page, as EH's V does, not EH's =#eh-hide=. Renamed "Switch between SAED's view and the original
+  page (EH's V)"; branch =feat/original-page-toggle=, a mockup next.
 - *Now (2026-11-24, later):* item 1 of the "what next" list *shipped* in 9.99.1692: the EH launcher
   icon and the idle-mode HELP paragraph ("String Theory's idle mode" DONE); the scrollbar gutter was dropped
   (26 tests 15 px off, see "Smaller adoptions"). vzell's browser check OK.
@@ -100,7 +103,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Stale-while-revalidate: popup engine done, =rel-ws2= left      | PART  | 9.99.1643     | Adoptions     |
 | In-page log window (=mbuLog=)                                  | DONE  | 9.99.1689     | Adoptions     |
 | In-page log: past sessions (mbuLog's history)                  | TODO  | —             | Adoptions     |
-| Hide the native page until the render ("shine through")        | TODO  | —             | Adoptions     |
+| Switch between SAED's view and the original page (EH's V)      | TODO  | —             | Adoptions     |
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
@@ -809,18 +812,33 @@ CLOSED: [2026-11-20 Fri]
   (=history.auto=), flushed on =pagehide=, a session picker and Clear history in the window. A log that survives a
   reload or a crashed tab. Deferred by vzell (2026-11-23: "later phase"); needs its own mockup step.
 
-** TODO Hide the native page until our render is ready ("shine through", =#eh-hide=) (moved from org/TODO.org)
+** TODO Switch between SAED's view and the original page (EH's V) (moved from org/TODO.org)
 
 - *Who fixes it*: *ours*.
-
-- From the same item. EH injects =body{visibility:hidden!important}= at document-start, prefetches the page's data
-  and draws a skeleton (EH:12542, =prefetch= 12248, =skeleton= 12232).
-- *Ours*: SAED is =@run-at document-idle= and renders after a button press, so this applies only where native
-  content shows and then is replaced. Collect those pageTypes first from the org/TODO.org "shine through" notes
-  (under "on 'release-tracks' PTs render the front image …" and "make the doubling of the IP information on non-MB
-  PTs shine through …").
-- An =@run-at= change is a big step (TDZ, library load order). Prefer a narrowly scoped CSS hide injected as early
-  as possible.
+- *Corrected 2026-11-24 (vzell)*: this item first read "shine through" as hiding the native page until our render
+  is ready (EH's =#eh-hide=). That was wrong; the old text is in git history. What is meant: majkinetor's scripts
+  replace the original MB page with an enhanced version, and the user can switch back to the original page at any
+  time. SAED should do the same:
+  1. *MB pages*: after a "Show all …" press has rendered the table view, switch back to the original page and
+     forth again, any time, without a reload.
+  2. *Non-MB pages*: most of them still show the site's own page below our table (org/TODO.org: "make the doubling
+     of the IP information on non-MB PTs shine through …"). Show only the table view, with a way to show the
+     original page again (back and forth).
+- *Decisions (vzell, 2026-11-24)*:
+  - MB's original is a *copy of the page taken at the press*, before anything changes. It switches instantly and
+    costs no request; MusicBrainz's own controls in it (rating stars, "Load all tracks", the credits toggle) may not
+    respond.
+  - On non-MB sites the table view keeps the *site's header/navigation* and hides its content.
+  - The choice is *not remembered*: every render opens in the table view.
+- *Today*: on MB the pipeline edits =#content= and the sidebar in place and keeps no copy; the only way back is a
+  reload (=startFetchingProcess='s second press). Discogs, archive.org and setlist.fm put our section
+  (=#mb-dg-root=, =#mb-ia-root=, =#mb-sfm-root=) above the site, which stays fully visible below. SL, JL, BS and BB
+  remove the native list in their converters (some live parts stay, e.g. BB detail's folded "Brucebase page").
+- *Plan*: branch =feat/original-page-toggle=, plan file
+  =~/.claude/plans/a-correction-to-the-enchanted-seahorse.md=. A mockup first; then MB (a copy of =#page=, the live
+  root hidden, never removed), then the live non-MB originals (dg, ia, sfm: hide the site's content roots), then the
+  removed ones (sl, jl, bs, bb: the same copy as MB). How EH does it: "Switching to the original page: EH's body
+  swap" in the analysis below.
 
 ** PART Entity pictures: more providers, area map with flag badge (moved from org/TODO.org)
 
@@ -1138,19 +1156,30 @@ majkinetor" means.
 - *Verdict*: *adopt* a ring buffer + viewer behind =Lib.*=, with SAED's debug channels as categories. That lets a
   user send us a log without opening DevTools.
 
-*** "Orig page shine through" (the same org/TODO.org item)
+*** Switching to the original page: EH's body swap (the same org/TODO.org item)
 
-Most likely EH's technique for a native page that must not flash:
+Corrected 2026-11-24: the org/TODO.org item means EH's switch between its view and MusicBrainz's page (V), not the
+=#eh-hide= anti-flash style. Read at =5d4d464= (EH 2026.11.23.095945, =event_horizon.user.js=; petri,
+2026-11-24, code reading, n/a browser):
 
-- At document-start it injects =<style id=eh-hide>body{visibility:hidden!important}</style>= (EH:12542) and starts
-  the page's own requests before DOMContentLoaded (=prefetch= EH:12248).
-- It draws a skeleton matching the final layout (=skeleton= EH:12232).
-- It removes the hide in =setOn=, and disables MB's stylesheets while EH shows (=mbSheets=).
+- *One body each*: =build()= (17699) creates =ehBody= once; =setOn1(on)= (17835-17876) swaps it in front of MB's
+  body (=insertBefore(ehBody, mbBody); mbBody.hidden = true=) or removes it (=ehBody.remove(); mbBody.hidden =
+  false=). MB's body is never detached (other scripts still read it, #853); EH's view is reused, not re-rendered,
+  so its filters and folds survive a switch.
+- *Stylesheets*: =mbSheets(!on)= (17668) disables MB's =link[rel~=stylesheet]= while EH shows; =<style>= elements
+  are left alone.
+- *Navigated inside EH*: switching off reloads with sessionStorage =eh-off= (17839), because MB's body belongs to
+  the page the tab loaded.
+- *Switch*: key V (=KEY_CMDS=, 18989; kept under =data-mbu-keys-off= by =data-mbu-keys-keep="toggle"=), the
+  =#eh-launch= corner launcher (18667), "Show MusicBrainz's page" buttons (=[data-mbpage]=).
+- *Remembered*: =S.on= in GM storage (one global setting: the next page opens the same way).
+- *No event on a switch*; other scripts watch =data-mbu-dock= / =data-mbu-page= on =<html>=. Scroll is not saved
+  per view.
+- (=#eh-hide= itself, 19158-19167: a document-start =body{visibility:hidden}= until the first switch-on, so MB's page
+  never flashes. Not what this item is about.)
 
-SAED runs at document-idle and renders after a button press, so the equivalent would be: hide the native table
-until our render replaces it, for the pageTypes that auto-render. That needs checking against the org/TODO.org notes on the "shine through" effect (under "on 'release-tracks'
-PTs render the front image from the sidebar …" and "make the doubling of the IP information on non-MB PTs shine
-through …").
+SAED's equivalent (vzell's decisions in the item): a copy of the page taken at the press stands in for MB's body,
+since SAED edits the page in place; the live root is hidden, never removed; the choice is not remembered.
 
 *** Theme detection — =mbuTheme= (UI:1991)
 

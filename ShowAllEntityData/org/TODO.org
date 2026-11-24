@@ -1844,7 +1844,8 @@ I get
 
 Moved on 2026-11-06, as two items:
 - [[file:majkinetor.org::*In-page log window behind =Lib.*= (=mbuLog=) (moved from org/TODO.org)][In-page log window behind Lib.* (mbuLog)]]
-- [[file:majkinetor.org::*Hide the native page until our render is ready ("shine through", =#eh-hide=) (moved from org/TODO.org)][Hide the native page until our render is ready ("shine through")]]
+- [[file:majkinetor.org::*Switch between SAED's view and the original page (EH's V) (moved from org/TODO.org)][Switch between SAED's view and the original page (EH's V)]]
+  (corrected 2026-11-24: first read as "hide the native page until our render is ready")
 
 
 * TODO add sanojjanos event stuff in a nice popup (cachable)
@@ -6358,6 +6359,9 @@ on the POH the "/ She's the One" from the medley "Mona / She's the One" is in th
 * TODO make the doubling of the IP information on non-MB PTs shine through instead of appending it again on the FRP
 
 make the doubling of the IP information on non-MB PTs shine through instead of appending it again on the FRP
+
+Planned 2026-11-24 as part 2 of [[file:majkinetor.org::*Switch between SAED's view and the original page (EH's V) (moved from org/TODO.org)][Switch between SAED's view and the original page (EH's V)]]:
+only the table view, with a switch back to the site's own page.
 
 
 * TODO BUG: When marking text on a POH and pressing "Ctrl-C", then text is not copied but instead the first table column is focused
