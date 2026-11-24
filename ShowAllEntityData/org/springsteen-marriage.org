@@ -713,6 +713,18 @@ Whether to ask Eddy, Danny and Stefano before the launch is vzell's call; Claude
   and SL, so show page links rather than copies. Also check whether the public SL mirror at =/springsteenlyrics/= is
   allowed; if not, put it behind auth.
 - *Shared hosting limits.* Check whether the package includes SSH and cron, and what its PHP and MySQL versions and its space are. Without cron, everything is pushed from petri, which is fine.
+  Checked 2026-11-24 (read-only, =ssh vzell=):
+  - SSH works without a prompt.
+  - The bare =php= CLI is PHP 4.4.9, and versioned binaries sit beside it, so server scripts name one (=php8.x=, list
+    not yet read). The site's PHP version is set in the IONOS panel.
+  - Client tools: MariaDB 11.8 (=mysql=, =mariadb=, =mysqldump=), =rsync=, =git=, =python3=.
+  - =~/.my.cnf= and =~/.my.cnf.forum= exist (not opened).
+  - Cron: no crontab, but vzell has cron jobs in the IONOS package (panel-managed).
+  - Space: 83 GB used, quota not visible.
+  - *The home directory is the web root* (=…/htdocs=: =index.html=, =images/=, two =wsb…= folders). So credentials need a
+    folder the domain does not serve, or an =.htaccess= =Require all denied=.
+  - Open (vzell): which folder volkerzell.de points to, whether the =wsb…= folders are the current site, and a new
+    database or an existing one.
 
 ** TODO First steps (own repo, e.g. =~/git/volkerzell.de=, own CLAUDE.md)
 
