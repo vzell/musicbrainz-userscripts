@@ -847,6 +847,14 @@ BruceParser 0.43.0 (=675cda3=, vzell: "yes commit and push"): =relation-tags.awk
 =./feed.sh -r 2026-11-23= rebuilt =bb/2026-11-23/bb-feed.json= (relationTags 2,166, 15 overrides; the kinds'
 counts unchanged), published: feed repo =1332fa8=, its FORMAT.md =b83b288=. No =bbp.sh= run.
 
+Then (vzell: "also run bbp.sh afterwards") the first full run of 0.43.0: 2026-11-24 02:20 CET on NB-3641, 41 min
+(2,472 s), no failed step; 6 wiki pages changed (3 content, 2 relation, 1 system), every feed kind's count the
+same, relationTags 2,166; =bb/latest= → =2026-11-24=, 2026-11-21 slimmed (1,191 MB). The probe check moved one
+line: a new SpringsteenLyrics collection item (10302, an LP of 1973), 4,634 → 4,635 rows, the site's; its values
+saved as =tests/expected/sl-kf-jl-2026-11-24.tsv=. The feed published (feed repo =196581d=, only the run stamp).
+The run's tracked data in BruceParser (timings row, the report org stamps, the new baseline) is staged but *not
+committed*: Claude Code's permission check refused that commit; it waits for vzell.
+
 ** Built (WIP.1, =436fa049=, 2026-11-24; vzell: "ok, tackle it")
 
 Env: 2026-11-24T01:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) ·
