@@ -432,6 +432,149 @@ def ship_judge(kind, name, doc, markup, title, own, more):
     return dict(miss), dict(spur), ''
 
 
+# --- Batch 4b candidates (2026-11-24; not decided) ----------------------------
+# vzell, 2026-11-24: take up the three families batch 4 left out. Each
+# candidate follows what the wiki does (measured here) and the chat's rulings
+# (org/brucebase-chat.org), not BruceBaseParser's guesses:
+# - venue place: batch 3b's place rule (probe-bb-place-tags.py
+#   rule_expected(): city, US/Canadian state, country, the expected regions,
+#   the feed's placeTags) on the venue's own title, and the venue's own tag
+#   from the feed's venueTags (what its shows carry); never "not expected";
+# - relation own name: a person's (Bands tab, "Surname, Name") or band's
+#   (Members tab) own name tag in SAED's cast forms (_bbTagCastItems());
+#   the Bands/Members entries are NOT checked: both tabs are ListPages boxes
+#   built from the tags, so an entry IS a shared tag;
+# - release dates: every date of the "Commercially Released(*):" line in
+#   "Month D, YYYY", "Month, YYYY" or "YYYY"; one listed date with all its
+#   parts tagged is enough, else the first date's year, month and day
+#   (zero-padded) are named missing (first-date-plus-later-years flagged 18,
+#   this 9); a month, day or year tag of no listed date is "not expected";
+# - release letter: the title's first letter, a leading "The "/"A " dropped
+#   (measured as two variants).
+
+_PLACE_SPEC = importlib.util.spec_from_file_location(
+    'place', os.path.join(_HERE, 'probe-bb-place-tags.py'))
+place_probe = importlib.util.module_from_spec(_PLACE_SPEC)
+_PLACE_SPEC.loader.exec_module(place_probe)
+
+
+def cand_place(name, title, have, feed):
+    """Venue place candidate: ({tag: why} missing, checked parts count)."""
+    tables = feed.get('tagTables') or {}
+    exp = place_probe.rule_expected('2000-01-01 ' + title, tables) or []
+    vt = (feed.get('venueTags') or {}).get(name)
+    if vt:
+        exp = exp + [('venue', name, vt)]
+    miss = {}
+    for part, pname, tags in exp:
+        if not any(t in have for t in tags):
+            miss[tags[0]] = f'{part} "{pname}"'
+    return miss, len(exp)
+
+
+def cast_items(name, tables):
+    """SAED's _bbTagCastItems(): [(label, [alts])]."""
+    dotted_table = tables.get('eStreetDotted') or {}
+    alias = tables.get('relationAlias') or {}
+
+    def nslug(s):
+        return re.sub(r'[^a-z0-9]', '', b3.strip_diacritics(s).lower())
+
+    def nickless(n):
+        return re.sub(r'\s+', ' ', re.sub(r'\s*"[^"]*"\s*', ' ', n)).strip()
+
+    def dotted(n):
+        out = []
+        for v in (n, nickless(n)):
+            parts = [p for p in re.sub(r'^the\s+', '', v, flags=re.I).split() if p]
+            if len(parts) >= 2:
+                out.append(f'{nslug(parts[0])}.{nslug(" ".join(parts[1:]))}')
+        return out
+
+    def one(n):
+        key = n.lower().strip()
+        alts = [nslug(n), nslug(re.sub(r'^the\s+', '', n, flags=re.I)),
+                nslug(re.sub(r'\s+(?:Jr\.?|Sr\.?|III|II|IV)$', '', n, flags=re.I).strip()), nslug(nickless(n))]
+        alts += [dotted_table[key]] if key in dotted_table else []
+        alts += [alias[key]] if key in alias else []
+        alts += dotted(n)
+        return list(dict.fromkeys(a for a in alts if a))
+    m = re.match(r'^(.+?)\s*&\s*(.+)$', name)
+    if not m:
+        return [(name, one(name))]
+    combined = nslug(re.sub(r'\s*&\s*', '', re.sub(r'^the\s+', '', name, flags=re.I)))
+    return [(p.strip(), list(dict.fromkeys(one(p.strip()) + [combined]))) for p in (m.group(1), m.group(2))]
+
+
+def cand_relation(title, labels, have, feed):
+    """Relation own-name candidate: {tag: why} missing; None when not checked."""
+    tables = feed.get('tagTables') or {}
+    if 'Bands' in labels:
+        p = relation_person(title)
+        if not p:
+            return None
+        name = f'{p[1]} {p[0]}'
+    elif 'Members' in labels:
+        name = re.sub(r'\s*\(The\)$', '', re.sub(r',\s*The$', '', title.strip(), flags=re.I)).strip()
+        if '&' in name:
+            return None
+    else:
+        return None
+    miss = {}
+    for label, alts in cast_items(name, tables):
+        if alts and not any(a in have for a in alts):
+            miss[alts[0]] = f'its own name "{label}"'
+    return miss
+
+
+_DATE_RE = re.compile(r'(?:\b(' + '|'.join(sorted(MONTHS)) + r')\b\.?\s*(\d{1,2})?\s*,?\s*)?\b(\d{4})\b', re.I)
+
+
+def cand_retail_dates(markup):
+    """Every date of the "Commercially Released(*):" line: [(month, day, year)]; None when no line."""
+    m = re.search(r'Commercially Released\*?:([^\n<]*)', markup, re.I)
+    if not m:
+        return None
+    out = []
+    for d in _DATE_RE.finditer(m.group(1)):
+        mon, day, year = d.group(1), d.group(2), d.group(3)
+        out.append(((mon or '').lower(), day.zfill(2) if day else '', year))
+    return out
+
+
+def cand_retail(markup, title, own, have):
+    """Release candidate: ({tag: why} missing, {tag: why} not expected, letters, dates)."""
+    dates = cand_retail_dates(markup)
+    miss, spur = {}, {}
+    if dates:
+        mon, day, year = dates[0]
+        for t in (year, mon, day):
+            if t and not b3.present(t, have):
+                miss[t] = 'the first release date'
+        for _m, _d, y in dates[1:]:
+            if y not in have:
+                miss[y] = 'a later release date'
+        # one listed date with all its parts is enough (the wiki tags the
+        # later date on some releases, and a later date's year on few)
+        if any(all(not p or b3.present(p, have) for p in d) for d in dates):
+            miss = {}
+        parts = {p for d in dates for p in d if p}
+        for t in own:
+            if (t in MONTHS or re.fullmatch(r'\d{4}', t) or (re.fullmatch(r'\d{1,2}', t) and 1 <= int(t) <= 31)) \
+                    and not any(b3.present(p, {t}) for p in parts):
+                spur[t] = 'no date of the "Commercially Released" line'
+    t = title.lower()
+    letters = {}
+    for variant, tt in (('plain', t), ('the', re.sub(r'^(?:the|a)\s+', '', t))):
+        c = b3.strip_diacritics(tt[:1]).lower()
+        if c in ('"', "'"):
+            c = b3.strip_diacritics(tt[1:2]).lower()
+        if re.fullmatch(r'[0-9]', c):
+            c = '0-9'
+        letters[variant] = c if re.fullmatch(r'[a-z]|0-9', c) else ''
+    return miss, spur, letters, dates
+
+
 def page_names(mirror, kind):
     """Every page name of a kind in the mirror, sorted."""
     d = os.path.join(mirror.root, kind)
@@ -441,7 +584,24 @@ def page_names(mirror, kind):
                   if fn.startswith(kind + '_') and fn.endswith('.html'))
 
 
-def analyse(mirror, name):
+def analyse_cand(kind, name, markup, doc, title, own, more, skip, feed):
+    """The batch 4b candidates of one page (None for a page the shipped rule skips)."""
+    if skip or not feed:
+        return None
+    have = set(own) | set(more)
+    if kind == 'venue':
+        miss, n = cand_place(name, title, have, feed)
+        return {'place': {'missing': miss, 'parts': n}}
+    if kind == 'relation':
+        return {'name': {'missing': cand_relation(title, tab_labels(doc), have, feed)}}
+    if kind == 'retail':
+        miss, spur, letters, dates = cand_retail(markup, title, own, have)
+        return {'date': {'missing': miss, 'spurious': spur, 'dates': dates},
+                'letter': {v: (c, bool(c) and c in have) for v, c in letters.items()}}
+    return None
+
+
+def analyse(mirror, name, feed=None):
     """One page: its facts, tags and both results."""
     kind = name.split(':', 1)[0]
     markup = mirror.read(name)
@@ -478,6 +638,7 @@ def analyse(mirror, name):
         'bpLetter': bpl,
         'bpMissing': bool(own) and bpl is not None and bpl not in own_set,
         'noTags': not own,
+        'cand': analyse_cand(kind, name, markup, doc, title, own, more, skip, feed),
     }
 
 
@@ -495,6 +656,46 @@ def bp_report(mirror, kind):
     return out
 
 
+def print_cand(kind, kept):
+    """Batch 4b's candidate counts for one kind, with the most frequent tags and examples."""
+    rows = [r for r in kept if r.get('cand')]
+    if not rows:
+        return
+
+    def top(counter, n=8):
+        return ', '.join(f'{t} {c}' for t, c in counter.most_common(n))
+    if kind == 'venue':
+        fl = [r for r in rows if r['cand']['place']['missing']]
+        why = Counter(w.split(' ')[0] for r in fl for w in r['cand']['place']['missing'].values())
+        print(f'  CANDIDATE place: {len(fl)} of {len(rows)} flagged; by part {dict(why)}; '
+              + top(Counter(t for r in fl for t in r['cand']['place']['missing'])))
+        for r in fl[:10]:
+            print(f'      {r["name"]} "{r["title"]}" {r["cand"]["place"]["missing"]}')
+    elif kind == 'relation':
+        ch = [r for r in rows if r['cand']['name']['missing'] is not None]
+        fl = [r for r in ch if r['cand']['name']['missing']]
+        print(f'  CANDIDATE own name: {len(ch)} checked, {len(fl)} flagged; '
+              + top(Counter(t for r in fl for t in r['cand']['name']['missing'])))
+        for r in fl[:25]:
+            print(f'      {r["name"]} "{r["title"]}" wants {list(r["cand"]["name"]["missing"])}; '
+                  f'has {" ".join(sorted(r["tags"]))[:110]}')
+    elif kind == 'retail':
+        nd = Counter(len(r['cand']['date']['dates']) if r['cand']['date']['dates'] is not None else -1 for r in rows)
+        dm = [r for r in rows if r['cand']['date']['missing']]
+        ds = [r for r in rows if r['cand']['date']['spurious']]
+        print(f'  CANDIDATE dates: dates per page {dict(sorted(nd.items()))} (-1: no line); missing on {len(dm)}, '
+              f'not expected on {len(ds)}, flagged {len({r["name"] for r in dm + ds})}')
+        for r in sorted(dm + [x for x in ds if x not in dm], key=lambda x: x['name'])[:30]:
+            c = r['cand']['date']
+            print(f'      {r["name"]} dates {c["dates"]} miss {list(c["missing"])} spur {list(c["spurious"])}')
+        for v in ('plain', 'the'):
+            have = sum(1 for r in rows if r['cand']['letter'][v][1])
+            want = sum(1 for r in rows if r['cand']['letter'][v][0])
+            print(f'  CANDIDATE letter ({v}): {have} of {want} carry it; missing on '
+                  + ', '.join(f'{r["name"].split(":", 1)[1]}={r["cand"]["letter"][v][0]}' for r in rows
+                              if r['cand']['letter'][v][0] and not r['cand']['letter'][v][1])[:600])
+
+
 def main(argv):
     """Run the probe."""
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
@@ -503,10 +704,16 @@ def main(argv):
     ap.add_argument('--list')
     ap.add_argument('--show')
     ap.add_argument('--limit', type=int)
+    ap.add_argument('--feed', help="a bb-feed.json for batch 4b's candidates (default: the mirror's own)")
     args = ap.parse_args(argv)
     mirror = b3.Mirror(os.path.realpath(args.mirror))
+    feed_path = args.feed or os.path.join(mirror.root, 'bb-feed.json')
+    feed = None
+    if os.path.isfile(feed_path):
+        with open(feed_path, encoding='utf-8') as fh:
+            feed = json.load(fh)
     if args.show:
-        print(json.dumps(analyse(mirror, args.show), indent=1, ensure_ascii=False))
+        print(json.dumps(analyse(mirror, args.show, feed), indent=1, ensure_ascii=False))
         return 0
     print(f'mirror {mirror.root}')
     rows = []
@@ -516,7 +723,7 @@ def main(argv):
         main_names = [n for n in names if n not in set(tabs)]
         if args.limit:
             main_names = main_names[:args.limit]
-        kr = [analyse(mirror, n) for n in main_names]
+        kr = [analyse(mirror, n, feed) for n in main_names]
         # a page read as another page's "-N" tag sibling is no page of its own
         sib = {p for r in kr for p in r['pages']}
         kept = [r for r in kr if r['name'] not in sib]
@@ -552,6 +759,7 @@ def main(argv):
             print(f'    {fam:12} {len(mp):5} / {len(sp):5}   '
                   + ', '.join(f'{r["name"].split(":", 1)[1]} {r["ship"]["missing"].get(fam, []) + r["ship"]["spurious"].get(fam, [])}'
                               for r in (mp + sp)[:6]))
+        print_cand(kind, kept)
         rep = bp_report(mirror, kind)
         ours = {r['name']: r['bpLetter'] for r in kept if r['bpMissing']}
         letter = {r['name']: r['bbp']['missing'].get('letter') for r in kept
