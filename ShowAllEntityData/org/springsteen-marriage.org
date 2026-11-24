@@ -33,6 +33,10 @@ left out by decision), NOT (not done, with the reason).
   rulings against BruceParser and SAED. To act on: SAED marks private residences ❌ =bb-name-mismatch= (Danny: on
   purpose) and 18 tour openers ❌ for the premiere count; =efc.sh='s storyteller exemption hides a backlog Danny named;
   the Danny draft repeats three things he answered in 2024 (items 5, 9, 13). Fixes listed only (vzell: "List only").
+- *Batch 4b is merged* (vzell, 2026-11-24: "all tested live OK") as 9.99.1690 (a venue's place, a person's or band's
+  name with the feed's =relationTags= from BruceParser 0.43.0, a release's dates and letter; three switches, off) and
+  9.99.1691 (the feed read whole: 1.10 is 530,953 bytes, past the old 512 KiB cut). bbp-parity.org's last PART row
+  is DONE.
 - *For vzell:* the Danny draft has items 1–14 (venues and date letters added); trim it by brucebase-chat.org first.
 - *The audit of the five flat reports, and 0.36.0–0.39.0* (vzell: "do 1 with 2 and 3", then "go ahead with your
   recommendations"). 0.36.0: =tests/check-probes.sh= after every run (warns only), a second run of the day moves the

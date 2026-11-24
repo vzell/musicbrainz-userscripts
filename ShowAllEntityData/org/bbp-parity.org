@@ -39,7 +39,7 @@ State: DONE (SAED has it), PART, TODO, NOT (not ported, with the reason).
 | Expected tags: setlist songs                                                 | =checkSetlistSongTags=, =computeSongTagAlias=   | the songs family (=…_songs=, off): the feed's song map, the link's title; 465 shows    | DONE  | 3b    |
 | Spurious tags (present, not expected)                                        | =SPURIOUS_TAG_REASONS=                          | =bb-tag-spurious=: batch 3, tour; content: storyteller, eyewitness                     | DONE  | 3/3b  |
 | Tag source highlight (which text made a tag expected)                        | doc/TAGS.md, opt-in                             | NOT (vzell, 2026-11-19): each finding says its reason in words, in the cell and card   | NOT   | 3b    |
-| VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | Tags card + window: kind, letter, banner, song title; dates/place/names left out       | PART  | 4     |
+| VENUE / SONG / RELATION / RETAIL page tag checks                             | =annotate*PageTags=                             | Tags card + window: kind, letter, banner, song title; place, names, dates (9.99.1690)  | DONE  | 4/4b  |
 | Help-icon tag check                                                          | =hasHelpIcon=                                   | the icon family of =bb-tag-missing= / =bb-tag-spurious= (Help Us and Featured)         | DONE  | 4     |
 | HOME page: fetch every year, mismatch filter                                 | doc/HOME_PAGE.md                                | bb-home; /YYYY-list "all years"; All errors (9.99.1655); Read every row (9.99.1658)    | DONE  | —     |
 | ⇄ Original Page toggle                                                       | every page                                      | the wiki's page folded under "Brucebase page"                                          | DONE  | —     |
@@ -750,7 +750,7 @@ Unverified: all of it on the live site (the pages are the mirror's of 2026-11-15
 Not checked here whether each page shows its button: =retail:tracks-ii= shows none in the fixture run, so its row
 uses the window.
 
-* Batch 4b: the families batch 4 left out (=feat/bb-page-tag-families=, 2026-11-24)
+* Batch 4b: the families batch 4 left out (=feat/bb-page-tag-families=, 2026-11-24; tested live OK and merged on 2026-11-24 as 9.99.1690–9.99.1691)
 
 Env: 2026-11-24T01:12:39+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
 (Python over the mirror =bb/2026-11-23= and its =bb-feed.json=; =scripts/probe-bb-page-tags.py=, its "CANDIDATE"
@@ -855,7 +855,7 @@ saved as =tests/expected/sl-kf-jl-2026-11-24.tsv=. The feed published (feed repo
 The run's tracked data in BruceParser (timings row, the report org stamps, the new baseline) is committed and
 pushed as BruceParser =d80cee3= (vzell: "commit and push the run's data").
 
-** Built (WIP.1, =436fa049=, 2026-11-24; vzell: "ok, tackle it")
+** Built (9.99.1690, =436fa049=, 2026-11-24; vzell: "ok, tackle it"; the feed read whole: 9.99.1691)
 
 Env: 2026-11-24T01:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) ·
 probe: Python over =bb/2026-11-23= and its feed 1.10, n/a; checker and spec: Playwright Chromium, no Tampermonkey

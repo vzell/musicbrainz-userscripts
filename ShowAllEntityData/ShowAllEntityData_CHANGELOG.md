@@ -4,9 +4,24 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1860 versions; the month pages hold all of them.
+This page shows the newest 100 of 1862 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1691 — 2026-11-24
+
+**🐛 Fix**
+
+- Brucebase feed: the feed of 2026-11-24 (BruceParser 0.43.0, with its relation map) did not load: "Brucebase feed: not loaded (the file is not a feed of format 1)", and the script went on using an older run. The file had grown past 512 KB, where the script cut every answer it reads from another site; it now reads the feed whole, up to 16 MB, and a bigger file is refused by name.
+
+
+## 9.99.1690 — 2026-11-24
+
+**✨ Improve**
+
+- Brucebase tag checks on venue, person/band and release pages: three more checks, each off by default (⚙️ Settings → ⚠️ Findings). "Also check the place tags of a Brucebase show and of a venue page" (the place setting, renamed) now checks a venue page too: the city, US state or Canadian province, country and region of its own title, and the venue's own tag as its shows carry it (73 of 2,168 venue pages; BruceBaseParser's rule flagged 369). "Also check a Brucebase person's or band's own name tag": a person's or band's page should carry its own name as a tag, in the forms the cast check accepts, or the name the wiki itself uses for it from the Brucebase feed's new relation map, so a stage name such as "duckdunn" for Donald Dunn passes (17 of 1,292). "Also check a Brucebase release's date and first-letter tags": a release with a "Commercially Released" line should carry the year, month and day of one of the dates it names, a date tag that is none of them is marked ⚠️ (Life, Death And Dennis Hopper: tagged 2024, released 2025), and it should carry its title's first letter. Missing tags show in their row of the Tags card (Place, People, Date, Letter) and in the window, as the other checks do.
+- Brucebase: the four release tab pages whose names the wiki cut at 60 characters ("…-hall-of-fame-credit") are no longer checked as releases.
+
 
 ## 9.99.1689 — 2026-11-24
 
@@ -842,20 +857,6 @@ This page shows the newest 100 of 1860 versions; the month pages hold all of the
 **🚀 Feature**
 
 - A Discogs release's image revision page (…/images/history?rev=N, "Previous State of Images") gets a button: "Show every image revision". Until now the script did not run on that page at all, so it had no button and no link previews. The button shows one sub-table per revision of the release's images, newest first. Each heading names the revision, when it was made, by whom and its note; the page's own revision says "this page". Each image has a Change column comparing it with the revision before (+ added, moved, → primary, → secondary), and an image the revision removed gets its own greyed row, "− removed". The Image column has the image card and the viewer, as on the Images page. The button reads the release's edit history (one request a page), then one request a revision, with your Discogs session. The page's own links now have link previews too, as on the other older Discogs pages.
-
-
-## 9.99.1591 — 2026-11-10
-
-**🐛 Fix**
-
-- The preview window of a Discogs release's image history (…/images/update, opened for example from a link on the release's edit history page): a hover on a thumbnail in its table now shows that image big with its type, uploader, date, size and file size, and a click opens the image viewer on the full image, where Shift+→ / Shift+← step through the rows. Before, the thumbnails had no card, and on MusicBrainz a click opened the image in a new tab instead of the viewer.
-
-
-## 9.99.1590 — 2026-11-10
-
-**🐛 Fix**
-
-- A release's Images page and its image editor on discogs.com ("Show every image"): a hover on an image in the Image column now shows that image big with its type, uploader, date, size and file size, and a click opens the image viewer, where Shift+→ / Shift+← step through the rows in the order shown. Until now these tables had no hover card at all: the card looked for the row's release in a Title column, and these tables have none. The card asks Discogs for nothing (the row is the image); it is switched off with the setting for the Discogs Image column's hover card. A table saved to disk earlier gets the card too.
 
 
 ---

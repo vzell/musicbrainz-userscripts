@@ -5007,3 +5007,19 @@ Env: 2026-11-24T01:55:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 | =npm run test:full=, =436fa049=             |  3512 |      14 | *24 m 29 s* | =run-test-full.py=, 01:55:49–02:20:18 CET |
 
 3512 passed. The branch adds 11 tests (=bb-findings-page-tags.spec.js=, "batch 4b").
+
+* 2026-11-24 — =npm run test:full= on =NB-3641=, =main= after merging feat/bb-page-tag-families (9.99.1690–9.99.1691)
+
+Env: 2026-11-24T08:44:54+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                              | Tests | Workers | Wall clock  | Basis                                         |
+|--------------------------------------------------------+-------+---------+-------------+-----------------------------------------------|
+| =npm run test:full=, merge =38f8bfb5=                  |  3520 |      14 | *25 m 17 s* | =run-test-full.py=, 08:44:54–09:10:11 CET     |
+| =popup-mb.spec.js=, the failed test, =--repeat-each 3= |     3 |       3 | 3 s         | =run-test-full.py --script test=, 09:10       |
+| =popup-mb.spec.js=, whole file                         |   149 |       1 | 9 m 3 s     | =run-test-full.py --script test=, 09:10–09:19 |
+
+3519 passed, 1 failed: =popup-mb.spec.js= "the event window: a Brucebase review link opens in the window, and Back
+returns to the event" hit the 90 s test timeout, with no assertion failing. In that run, its neighbours took 7–9 s each
+where alone they take about 1 s (=popup-ext.spec.js= 11.6 m). Run again on the same tree, it passed 3/3 alone and
+in its whole file, 149/149, so it is counted as a timeout under load, not a defect of the merge. Its trace was lost:
+the rerun cleared =test-results/=.
