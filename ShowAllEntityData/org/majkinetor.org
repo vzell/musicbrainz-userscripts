@@ -835,7 +835,8 @@ CLOSED: [2026-11-20 Fri]
   (=#mb-dg-root=, =#mb-ia-root=, =#mb-sfm-root=) above the site, which stays fully visible below. SL, JL, BS and BB
   remove the native list in their converters (some live parts stay, e.g. BB detail's folded "Brucebase page").
 - *Plan*: branch =feat/original-page-toggle=, plan file
-  =~/.claude/plans/a-correction-to-the-enchanted-seahorse.md=. A mockup first; then MB (a copy of =#page=, the live
+  =~/.claude/plans/a-correction-to-the-enchanted-seahorse.md=. Mockup (2026-11-24, waiting for vzell's answers to its
+  eight questions): https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf. Then MB (a copy of =#page=, the live
   root hidden, never removed), then the live non-MB originals (dg, ia, sfm: hide the site's content roots), then the
   removed ones (sl, jl, bs, bb: the same copy as MB). How EH does it: "Switching to the original page: EH's body
   swap" in the analysis below.
