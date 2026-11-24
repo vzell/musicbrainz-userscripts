@@ -230,6 +230,57 @@ test.describe('Lib activity log: the window', () => {
         expect((await entries(page)).length, 'closing keeps the lines').toBe(3);
     });
 
+    // 4.7.1 (vzell, 2026-11-24): "when filtering the filter string should be highlighted".
+    test('the filter text is marked in the lines, case-insensitively, data and links included', async ({ page }) => {
+        await loadPage(page);
+        await log(page, [['warn', 'rel-ws2', 'HTTP 503 (Retry-After: 1)', 'status 503'],
+            ['info', 'fetch', 'see https://musicbrainz.org/ws/2/http-test'], ['info', 'render', 'rendered']]);
+        await openWin(page);
+        const q = page.locator(`${WIN} .vz-log-q`);
+        await q.fill('http');
+        await expect(page.locator(ROWS)).toHaveCount(2);
+        const marks = page.locator(`${WIN} mark.vz-log-hl`);
+        // "HTTP" in the warning, and "https" + "http" inside the link of the second line
+        await expect(marks).toHaveText(['HTTP', 'http', 'http']);
+        await expect(page.locator(`${ROWS} a mark.vz-log-hl`)).toHaveCount(2);
+
+        await q.fill('503');
+        await expect(marks).toHaveText(['503', '503']);       // the message and its data
+        await expect(page.locator(`${ROWS} .vz-log-dt mark.vz-log-hl`)).toHaveCount(1);
+
+        // a line arriving while the filter is set is marked too
+        await log(page, [['info', 'fetch', 'page 6: 503 again']]);
+        await expect(marks).toHaveCount(3);
+
+        await page.keyboard.press('Escape');
+        await expect(page.locator(ROWS)).toHaveCount(4);
+        await expect(marks).toHaveCount(0);
+    });
+
+    // 4.7.1 (vzell, 2026-11-24): "reuse our icons from the real browser console".
+    test("each line shows the console's icon, an error ❌; the copy stays plain text", async ({ page }) => {
+        await loadPage(page);
+        await page.evaluate(() => {
+            Object.defineProperty(navigator, 'clipboard', {
+                configurable: true,
+                value: { writeText: (t) => { window.__copied = t; return Promise.resolve(); } },
+            });
+        });
+        await log(page, [['info', 'fetch', 'page 1'], ['warn', 'rel-ws2', 'HTTP 503'], ['error', 'render', 'failed'],
+            ['info', 'ui', 'menu built']]);
+        await openWin(page);
+        await expect(page.locator(`${ROWS} .vz-log-ct`)).toHaveText(['📥 fetch', '📝 rel-ws2', '❌ render', '🖥️ ui']);
+        await expect(page.locator(`${WIN} .vz-log-chip[data-cat="fetch"]`)).toContainText('📥 fetch');
+        await expect(page.locator(`${WIN} .vz-log-chip[data-cat="ui"]`)).toContainText('🖥️ ui');
+
+        await page.locator(`${WIN} .vz-log-copybtn`).click();
+        await expect(page.locator(`${WIN} .vz-log-copymsg`)).toHaveText(/^Copied ✓/);
+        const md = await page.evaluate(() => window.__copied);
+        expect(md).toMatch(/ {2}INFO \[fetch\] page 1\n/);
+        expect(md).toMatch(/ {2}ERR {2}\[render\] failed\n/);
+        expect(md).not.toMatch(/[📥📝❌🖥]/u);
+    });
+
     test('Clear asks first inside the window: Cancel keeps every line, Clear empties and says how many', async ({ page }) => {
         await loadPage(page);
         await log(page, [['info', 'fetch', 'a'], ['info', 'fetch', 'b'], ['warn', 'fetch', 'c']]);
