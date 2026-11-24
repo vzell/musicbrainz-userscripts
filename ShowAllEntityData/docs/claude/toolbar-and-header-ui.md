@@ -1555,3 +1555,53 @@ with no setting of its own), and the Tampermonkey menu. Test hook:
 Specs: `gm-store.spec.js` (6) and `gm-store.mobile.spec.js` (1); mutations
 `scripts/mutations/gm-store.json` (11, all caught, two of them for the
 Browser cache window's geometry).
+
+## 🧾 Activity log (`Lib.logWindow`, `_saedLog*`)
+
+An in-page log window, so a user can send a log without the browser's
+console (org/majkinetor.org, "In-page log window behind `Lib.*`"; based on
+majkinetor's `mbuLog`, with his permission, #938). Approved mockup:
+https://claude.ai/artifact/4gzcR5shSasSuRWYvJ2wMT (v1 2026-11-23, v2
+2026-11-24: the filter text marked, the console's icons).
+
+**It lives in VZ_MBLibrary, not here** (4.7.0, section 1b; 4.7.1 the marks
+and icons): every line `loggerInterface.log()` prints also goes into a ring
+buffer (20,000 lines, trimmed in chunks), and `Lib.logWindow.open()` shows
+it. Library rules that matter here: a debug line while debug logging is off
+is not recorded at all, so the 882 `Lib.debug(` call sites cost what they
+did before; extra data becomes a short text at once (`_logDescribe()`), so
+the buffer never keeps a row or a page element alive; `error()` hands its
+channel to the log (the console keeps ❌). The library's own spec is
+`lib-log-window.spec.js` (17), mutations `lib-log-window.json` (20, from
+`scripts/make-lib-log-window-mutations.py`). A library change is exercised
+in a real browser only once it is on `main` and Tampermonkey re-fetched the
+script (CLAUDE.md "Publishing"), which is why it shipped in two steps.
+
+**SAED's side is three functions**, all feature-detected (the stub `Lib`
+and an older library have neither `configureLog` nor `logWindow`, and
+nothing happens):
+
+- `_saedLogConfigure()`, called right after `Lib.prefix` is set:
+  `Lib.configureLog({ host: () => _saBody(), title: SCRIPT_BASE_NAME,
+  subtitle: () => pageType, onCounts })`. The host is MusicBrainz's body, so
+  a window opened while Event Horizon's view is on (from Tampermonkey's
+  menu; ☰ SAED is under the view) is hidden with MusicBrainz's page and
+  comes back after V, instead of leaving the document with EH's body. Like
+  every other `_saBody()` host it is therefore not visible while EH's view
+  is on. The subtitle puts the page type into the copied Markdown.
+- `_saedLogRow()`: the ☰ SAED → Help row `#mb-saed-log-btn` "🧾 Activity
+  log", after ❓ Help (`_TOOLBAR_MENU_ROW_ORDER.help`). It opens the window
+  anchored on `#mb-saed-menu-btn`. No key: Ctrl+M L is Load from Disk, and
+  the mockup allowed L only if free.
+- `_saedLogCounts()`: the warning and error counts as `data-mb-log-warn` /
+  `data-mb-log-err` on the row, painted as amber and red pills by
+  `::before`/`::after` (flex `order` puts both after the label span). Never
+  row text: a read of the row is its label (`saed-toolbar.spec.js`'s rule).
+  The library calls `onCounts` once per burst, and after Clear.
+
+Specs: `saed-log-window.spec.js` (4: the row, the page type in the copy, the
+counts, EH's body swap with `thirdPartyScripts/eh-body-swap.js`) and
+`saed-log-window.mobile.spec.js` (1: tap, full screen, ✕); mutations
+`scripts/mutations/saed-log-window.json` (7). `window.__saTest.log` (warn,
+error, counts) calls the shipping logger, so a spec can raise a warning.
+Left for later: past sessions kept across a reload (mbuLog's history half).

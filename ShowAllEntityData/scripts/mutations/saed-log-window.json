@@ -1,0 +1,94 @@
+[
+  {
+    "name": "the ☰ SAED row is never built",
+    "why": "The Help row is SAED's way into the activity log; the Tampermonkey entry alone is hard to find.",
+    "edits": [
+      {
+        "find": "    // https://claude.ai/artifact/4gzcR5shSasSuRWYvJ2wMT).\n    _saedLogRow();\n",
+        "replace": "    // https://claude.ai/artifact/4gzcR5shSasSuRWYvJ2wMT).\n"
+      }
+    ],
+    "spec": "tests/fixtures/saed-log-window.spec.js",
+    "grep": "opens SAED's own log, named ShowAllEntityData",
+    "expect": "fail"
+  },
+  {
+    "name": "the log is named after the long @name",
+    "why": "The window and every pasted report would carry the 120-character @name instead of ShowAllEntityData.",
+    "edits": [
+      {
+        "find": "            title: SCRIPT_BASE_NAME,\n            subtitle: () => pageType || '',",
+        "replace": "            subtitle: () => pageType || '',"
+      }
+    ],
+    "spec": "tests/fixtures/saed-log-window.spec.js",
+    "grep": "opens SAED's own log, named ShowAllEntityData",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy does not name the page type",
+    "why": "A pasted report must say which page it came from.",
+    "edits": [
+      {
+        "find": "            subtitle: () => pageType || '',\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/saed-log-window.spec.js",
+    "grep": "the copied Markdown names the page type",
+    "expect": "fail"
+  },
+  {
+    "name": "the row never hears about the counts",
+    "why": "The counts on the row are how a user notices that something went wrong without opening the log.",
+    "edits": [
+      {
+        "find": "            onCounts: (c) => _saedLogCounts(c),\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/saed-log-window.spec.js",
+    "grep": "warnings and errors show as counts on the row",
+    "expect": "fail"
+  },
+  {
+    "name": "the error count is not painted",
+    "why": "An attribute nobody draws is no count at all; the test reads the computed ::after content.",
+    "edits": [
+      {
+        "find": "            content: attr(data-mb-log-err); order: 2; color: #9b2218; background: #f5dfdb;",
+        "replace": "            order: 2; color: #9b2218; background: #f5dfdb;"
+      }
+    ],
+    "spec": "tests/fixtures/saed-log-window.spec.js",
+    "grep": "warnings and errors show as counts on the row",
+    "expect": "fail"
+  },
+  {
+    "name": "the window goes into document.body",
+    "why": "Under Event Horizon document.body is its body, which V removes: a window opened there is lost.",
+    "edits": [
+      {
+        "find": "            host: () => _saBody(),",
+        "replace": "            host: () => document.body,"
+      }
+    ],
+    "spec": "tests/fixtures/saed-log-window.spec.js",
+    "grep": "lives in MusicBrainz's body and comes back after V",
+    "expect": "fail"
+  },
+  {
+    "name": "the ☰ SAED row is never built (phone)",
+    "why": "On a phone the row is the only way in: Tampermonkey's menu is out of reach in most mobile browsers.",
+    "edits": [
+      {
+        "find": "    // https://claude.ai/artifact/4gzcR5shSasSuRWYvJ2wMT).\n    _saedLogRow();\n",
+        "replace": "    // https://claude.ai/artifact/4gzcR5shSasSuRWYvJ2wMT).\n"
+      }
+    ],
+    "spec": "tests/fixtures/saed-log-window.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "a tap on the row opens the log full screen",
+    "expect": "fail"
+  }
+]

@@ -14,8 +14,11 @@ Claude drafts, vzell sends.*
 Keywords: TODO (open), NEXT (the next one to start), WAIT (someone else's call, here mostly majkinetor's), DONE,
 PART (partly done, the rest left out by decision), NOT (not done, with the reason).
 
-* PICKUP HERE (2026-11-23)
+* PICKUP HERE (2026-11-24)
 
+- *Now (2026-11-24):* "In-page log window": VZ_MBLibrary 4.7.0 and 4.7.1 on =main= (vzell's live checks OK);
+  SAED's side on =feat/saed-log-window= (WIP.1), waiting for vzell's browser check before the merge. Next of
+  the item: past sessions (new TODO).
 - *Now (2026-11-23):* refreshed to =5d4d464= (=chore/refresh-majkinetor-5d4d464=), and on top of it
   =feat/eh-player-quiet= (9.99.1680, merged 2026-11-23): our fallback for "Event Horizon's player plays on under our page" is built and
   tested (fixtures and mutations), *vzell's browser check OK* (2026-11-23); the post ([[#post-938-player][On the
@@ -92,7 +95,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Query mode for the global filter (EH's language)               | DONE  | 9.99.1668–69  | Adoptions     |
 | Columns: reorder, named sets, EH's resize rule                 | TODO  | —             | Adoptions     |
 | Stale-while-revalidate: popup engine done, =rel-ws2= left      | PART  | 9.99.1643     | Adoptions     |
-| In-page log window (=mbuLog=)                                  | TODO  | —             | Adoptions     |
+| In-page log window (=mbuLog=)                                  | DONE  | WIP.1         | Adoptions     |
+| In-page log: past sessions (mbuLog's history)                  | TODO  | —             | Adoptions     |
 | Hide the native page until the render ("shine through")        | TODO  | —             | Adoptions     |
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
@@ -761,7 +765,19 @@ CLOSED: [2026-11-20 Fri]
   SUCCESSFUL ws/2 answer is cached (=fetch-and-render-pipeline.md=), the Relationships load states and the four
   post-render cell-write duties (=filter-and-cache-invariants.md=).
 
-** TODO In-page log window behind =Lib.*= (=mbuLog=) (moved from org/TODO.org)
+** DONE In-page log window behind =Lib.*= (=mbuLog=) (moved from org/TODO.org)
+
+- *Done (2026-11-24)*, in two steps because a library change reaches a real browser only from =main=:
+  VZ_MBLibrary 4.7.0 (the buffer, the window, =Lib.logWindow=, =configureLog()=, Tampermonkey's "🧾 Activity log")
+  and 4.7.1 (the filter text marked, the console's icons; vzell's live check of 4.7.0), both on =main= and checked
+  live by vzell; SAED's side on =feat/saed-log-window= (WIP.1): the ☰ SAED → Help row with the ⚠/✖ counts, the
+  window in =_saBody()=, the page type in the copy. Mockup: https://claude.ai/artifact/4gzcR5shSasSuRWYvJ2wMT.
+  Decisions (vzell, the mockup's six questions): info/warn/error always, debug only while debug logging is on;
+  "Record detail" for this page only; no key (Ctrl+M L is taken); counts on the row only; extra data as a short
+  text; the copy names script and library versions, page type and path, no icons. Left out: past sessions (new
+  TODO below), String Theory's "New issue with log" registry (=window.__mbuLogs=: its issues go to his tracker),
+  minimise. Design notes: docs/claude/toolbar-and-header-ui.md, "🧾 Activity log".
+- *The plan as it stood:*
 
 - *Who fixes it*: *ours* (Lib.*). =mbuLog= (adoption question 5) may be based on his code; it gained a phone layout
   since (full screen under 600 px, =dev/ui/ui-components.mjs=).
@@ -777,6 +793,13 @@ CLOSED: [2026-11-20 Fri]
   this lives in the library (a library version bump) or in SAED.
 - *Mind*: 846 =Lib.debug(= call sites. The buffer must cost nothing while debug logging is off (no string building
   on the hot path).
+
+** TODO In-page log: past sessions (mbuLog's history)
+
+- *Who fixes it*: *ours* (VZ_MBLibrary). mbuLog's =history= half (ui-components.mjs, "History (#705)"): the last 10
+  sessions per host in the page's localStorage, a session kept automatically at its first warning or error
+  (=history.auto=), flushed on =pagehide=, a session picker and Clear history in the window. A log that survives a
+  reload or a crashed tab. Deferred by vzell (2026-11-23: "later phase"); needs its own mockup step.
 
 ** TODO Hide the native page until our render is ready ("shine through", =#eh-hide=) (moved from org/TODO.org)
 

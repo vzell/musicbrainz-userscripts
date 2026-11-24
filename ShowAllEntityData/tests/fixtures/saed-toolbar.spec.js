@@ -167,7 +167,8 @@ test.describe('the SAED button', () => {
         // INITIAL render and would otherwise head the View list.
         // 💾 Browser cache after Statistics, before Keyboard Shortcuts (vzell, 2026-10-24).
         expect(groups.view).toEqual(['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-shortcuts-help-btn']);
-        expect(groups.help, 'Settings before Help (approved)').toEqual(['mb-settings-btn', 'mb-app-help-btn']);
+        // 🧾 Activity log after Help (approved mockup, 2026-11-23).
+        expect(groups.help, 'Settings before Help (approved)').toEqual(['mb-settings-btn', 'mb-app-help-btn', 'mb-saed-log-btn']);
         expect(groups.log).toEqual(['mb-saed-whatsnew-btn', 'mb-saed-devlog-btn']);
         expect(groups.load, 'the Load group is for narrow screens only').toBeUndefined();
         // Editing history: this page is about one artist (2026-10-26).
@@ -181,7 +182,7 @@ test.describe('the SAED button', () => {
         await openToolbarMenu(page, 'saed');
         const groups = await shownGroups(page);
         expect(groups.view, 'View would hold only Keyboard Shortcuts').toBeUndefined();
-        expect(groups.help).toEqual(['mb-settings-btn', 'mb-app-help-btn', 'mb-shortcuts-help-btn']);
+        expect(groups.help).toEqual(['mb-settings-btn', 'mb-app-help-btn', 'mb-saed-log-btn', 'mb-shortcuts-help-btn']);
         expect(groups.data).toEqual(['mb-load-from-disk-btn']);
         expect(groups.attn, 'nothing needs attention before a render').toBeUndefined();
     });
@@ -322,6 +323,7 @@ test.describe('the SAED button', () => {
             ['#mb-load-from-disk-btn', '📂 Load from Disk'],
             ['#mb-settings-btn', '⚙️ Settings'],
             ['#mb-app-help-btn', '❓ Help ↗'],
+            ['#mb-saed-log-btn', '🧾 Activity log'],
             ['#mb-saed-whatsnew-btn', "📜 What's new ↗"],
             ['#mb-saed-devlog-btn', '🗒 Full development log ↗'],
         ]) {

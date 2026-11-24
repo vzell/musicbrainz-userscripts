@@ -107219,7 +107219,7 @@
     const _TOOLBAR_MENU_ROW_ORDER = {
         data: ['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn'],
         view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-mbu-quiet-btn', 'mb-shortcuts-help-btn'],
-        help: ['mb-settings-btn', 'mb-app-help-btn', 'mb-shortcuts-help-btn'],
+        help: ['mb-settings-btn', 'mb-app-help-btn', 'mb-saed-log-btn', 'mb-shortcuts-help-btn'],
         disc: ['mb-disc-complete-btn', 'mb-disc-official-btn', 'mb-disc-nonofficial-btn', 'mb-disc-merged-btn'],
     };
 
@@ -110197,6 +110197,75 @@ ${sections.join('\n')}
     function parseCondensedStyle(raw, defaultRaw) {
         const src = (typeof raw === 'string' && raw.trim()) ? raw : defaultRaw;
         return src.split('|').map(s => s.trim());
+    }
+
+    /**
+     * Tells VZ_MBLibrary's activity log (4.7.0+, `Lib.logWindow`) how to show
+     * itself here: in MusicBrainz's own body (`_saBody()`, so Event Horizon's
+     * view neither covers nor removes it), named "ShowAllEntityData", with
+     * the page type in the copied Markdown's summary, and with its warning
+     * and error counts reported to the ☰ SAED row (`_saedLogCounts()`).
+     * Feature-detected: the stub `Lib` (library failed to load) and an older
+     * library have no `configureLog`, and nothing happens.
+     * Approved mockup: https://claude.ai/artifact/4gzcR5shSasSuRWYvJ2wMT.
+     *
+     * @returns {void}
+     */
+    function _saedLogConfigure() {
+        if (typeof Lib.configureLog !== 'function') return;
+        Lib.configureLog({
+            host: () => _saBody(),
+            title: SCRIPT_BASE_NAME,
+            subtitle: () => pageType || '',
+            onCounts: (c) => _saedLogCounts(c),
+        });
+    }
+
+    /**
+     * Shows the activity log's warning and error counts on the ☰ SAED →
+     * Help → "🧾 Activity log" row, as two small pills after the label
+     * (amber "2 ⚠", red "1 ✖"). They are attributes drawn by CSS, never row
+     * text, so a read of the row is its label alone (as for the keyboard
+     * hints, saed-toolbar.spec.js). No count, no pill.
+     *
+     * @param {{warn: number, error: number}|null} c - The counts, or null to read them now.
+     * @param {HTMLElement} [row] - The row; looked up by id when omitted.
+     * @returns {void}
+     */
+    function _saedLogCounts(c, row) {
+        const el = row || document.getElementById('mb-saed-log-btn');
+        if (!el) return;
+        const counts = c || (typeof Lib.logCounts === 'function' ? Lib.logCounts() : { warn: 0, error: 0 });
+        const fmt = (n) => n.toLocaleString('en-US');
+        if (counts.warn) el.dataset.mbLogWarn = `${fmt(counts.warn)} ⚠`; else delete el.dataset.mbLogWarn;
+        if (counts.error) el.dataset.mbLogErr = `${fmt(counts.error)} ✖`; else delete el.dataset.mbLogErr;
+    }
+
+    /**
+     * Builds the ☰ SAED → Help → "🧾 Activity log" row: it opens VZ_MBLibrary's
+     * activity log window under the ☰ SAED button (`Lib.logWindow`), the same
+     * window Tampermonkey's menu entry opens. No key: Ctrl+M L is Load from
+     * Disk (the approved mockup's question 3 allowed L only if free).
+     * Feature-detected like `_saedLogConfigure()`.
+     *
+     * @returns {HTMLElement|null} The row, or null without the library's log.
+     */
+    function _saedLogRow() {
+        if (!Lib.logWindow || typeof Lib.logWindow.open !== 'function') return null;
+        const row = document.createElement('button');
+        row.id = 'mb-saed-log-btn';
+        row.type = 'button';
+        // A span, so the CSS can push the count pills to the row's end.
+        const label = document.createElement('span');
+        label.textContent = '🧾 Activity log';
+        row.appendChild(label);
+        _setTip(row, 'What the script did on this page, line by line: filter it, and copy it as Markdown for a bug report — no browser console needed');
+        row.addEventListener('click', () => {
+            Lib.logWindow.open({ anchor: document.getElementById('mb-saed-menu-btn') });
+        });
+        _saedLogCounts(null, row);
+        _saedGroup('help').adopt(row);
+        return row;
     }
 
     // ── UI Appearance CSS helpers ────────────────────────────────────────────────
@@ -119746,6 +119815,8 @@ a { color: #1565c0; }`;
     if (!_isBbHost && !_foreignHost && /^\/(?:event|work)\/[0-9a-f-]{36}\/?$/.test(window.location.pathname)) _bbFeedMbSidebarDraw();
 
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
+    // The activity log's window in MusicBrainz's body, its counts on the ☰ row.
+    _saedLogConfigure();
     Lib.debug('init', 'Initializing script for path:', path);
 
     // Capture entity name immediately from the pristine DOM — before any
@@ -120403,6 +120474,10 @@ a { color: #1565c0; }`;
     appHelpBtn.type = 'button';
     appHelpBtn.onclick = openAppHelp;
     _saedGroup('help').adopt(appHelpBtn, `${getPrefixDisplay()} H`);
+
+    // 🧾 Activity log, after Help (VZ_MBLibrary 4.7.0+; approved mockup:
+    // https://claude.ai/artifact/4gzcR5shSasSuRWYvJ2wMT).
+    _saedLogRow();
 
     // Changelog: two pages on GitHub, one per reader (scripts/build-changelog-pages.py).
     [
@@ -126451,6 +126526,26 @@ a { color: #1565c0; }`;
             font-variant-numeric: tabular-nums;
         }
         .mb-saed-attn-row .mb-saed-row-arrow { color: #7a6d5c; font-size: 14px; }
+        /* The Activity log row: its warning and error counts as pills after
+           the label, drawn from attributes so the row text stays its label. */
+        .mb-toolbar-menu-panel #mb-saed-log-btn > span { order: 0; margin-right: auto; }
+        .mb-toolbar-menu-panel #mb-saed-log-btn[data-mb-log-warn]::before,
+        .mb-toolbar-menu-panel #mb-saed-log-btn[data-mb-log-err]::after {
+            margin-left: 6px;
+            padding: 0 7px;
+            border: 1px solid currentColor;
+            border-radius: 999px;
+            font: 600 10px/16px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            letter-spacing: .06em;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        .mb-toolbar-menu-panel #mb-saed-log-btn[data-mb-log-warn]::before {
+            content: attr(data-mb-log-warn); order: 1; color: #9a6a00; background: #f6ecd2;
+        }
+        .mb-toolbar-menu-panel #mb-saed-log-btn[data-mb-log-err]::after {
+            content: attr(data-mb-log-err); order: 2; color: #9b2218; background: #f5dfdb;
+        }
         .mb-saed-attn-row.mb-saed-lv-alert .mb-saed-row-glyph { color: #9b2218; }
         .mb-saed-attn-row.mb-saed-lv-warn .mb-saed-row-glyph { color: #9a6a00; }
         /* A row that opens a submenu shows the arrow after its hint. */
@@ -196502,6 +196597,16 @@ a { color: #1565c0; }`;
              * Recording of refresh) a fixture cannot reach.
              */
             recDupRegroup: () => _recDupRegroupSoon(),
+            /**
+             * The shipping logger (`Lib.warn`/`Lib.error`) and the activity
+             * log's counts, so a spec can raise a warning without staging a
+             * failure (saed-log-window.spec.js).
+             */
+            log: {
+                warn:   (cat, msg) => Lib.warn(cat, msg),
+                error:  (cat, msg) => Lib.error(cat, msg),
+                counts: () => (typeof Lib.logCounts === 'function' ? Lib.logCounts() : null),
+            },
             /**
              * An area's flag markup (`_mbPopFlagHtml()`, the shipping
              * builder) as on musicbrainz.org or on another host, so a spec
