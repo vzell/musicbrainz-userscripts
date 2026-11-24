@@ -222,5 +222,61 @@
     "spec": "tests/fixtures/lib-log-window.spec.js",
     "grep": "under 600 px the window is full screen",
     "expect": "fail"
+  },
+  {
+    "name": "the filter text is not marked",
+    "why": "vzell, 2026-11-24: \"when filtering the filter string should be highlighted\".",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                if (q) { _logMark(ct, q); _logMark(m, q); }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "the filter text is marked in the lines",
+    "expect": "fail"
+  },
+  {
+    "name": "a line shows no icon",
+    "why": "vzell, 2026-11-24: the console's icons, reused in the window.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                const ct = _logEl('span', 'vz-log-ct', `${e.ico} ${e.cat}`, { title: e.cat });",
+        "replace": "                const ct = _logEl('span', 'vz-log-ct', e.cat, { title: e.cat });"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "each line shows the console's icon",
+    "expect": "fail"
+  },
+  {
+    "name": "the console's icon is not handed to the log",
+    "why": "An error must show the ❌ the console printed, not the channel's icon.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                _logRecord(level, cat, msg, data, iconChar);",
+        "replace": "                _logRecord(level, cat, msg, data);"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "each line shows the console's icon",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy carries the icons",
+    "why": "vzell, 2026-11-24: the copied Markdown stays plain text, greppable and aligned.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "${_LOG_LV[e.lvl].padEnd(5)}${e.cat ? '['",
+        "replace": "${_LOG_LV[e.lvl].padEnd(5)}${e.ico} ${e.cat ? '['"
+      }
+    ],
+    "spec": "tests/fixtures/lib-log-window.spec.js",
+    "grep": "each line shows the console's icon",
+    "expect": "fail"
   }
 ]
