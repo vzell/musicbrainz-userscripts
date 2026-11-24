@@ -812,6 +812,42 @@ plain first letter fits better than one without "The"/"A" (158 against 134 of 21
 =_BB_TAGCHK_RETAIL_TAB= (=/-(?:overview|credits|addinfo|release|recgig)$/=) takes them for releases. No finding
 today (they carry =retail=, and no release letter or date is checked); batch 4b must skip them.
 
+** Decisions (vzell, 2026-11-24)
+
+1. *Venue place:* batch 3b's place rule on the venue's title, the venue's tag from =venueTags=, never "not
+   expected"; under the shows' switch =sa_bb_tag_family_place= (73 flagged).
+2. *Relation names:* "Own name + feed map": the page's own name tag in SAED's cast forms, or a tag of BruceParser's
+   new feed map =relationTags= (so the wiki's stage names pass); the Bands/Members entries are not checked.
+3. *Release dates:* "Any one date" (9 flagged; 8 once the cut tab page is skipped).
+4. *Release letter:* "Every release" with a "Commercially Released" line: missing 34, a wrong letter 6.
+
+Switches (Claude's choice, one per family as batch 3b; open to vzell at the browser check): venue place shares
+=sa_bb_tag_family_place=; new =sa_bb_tag_family_relation= and =sa_bb_tag_family_release=, =default: false=.
+
+** The relation map: BruceParser 0.43.0 (=relation-tags.awk=, feed 1.10, =relationTags=)
+
+Env: 2026-11-24T01:40+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+
+A first map, "the shows' best tag", fails: band members share every show, so another member's or the band's tag
+wins. The map as built: a relation page's own tags that at least half of the shows listing it on their On Stage
+tab carry and that name no other relation page (the other titles' plain name forms). Without the last rule 9 real
+rows go (=curtis-king= without its own tag, =danakroyd= behind =usaforafrica=, =richieteeter=, =rosefriedman=).
+=scripts/probe-bb-relation-tags.py= (the rule in Python; default 1 show, recall 0.5) and BruceParser's
+=relation-tags.awk= agree on all 2,166 mapped pages (=scripts/compare-bb-relation-tags.py=, 0 differences; the
+awk takes 5 s). With the map, the own-name check flags 16 of 1,318 person and band pages: =al-barr=, =curtis-king=,
+=dan-aykroyd=, =darryl-mcdaniels=, =freddie-lonzo=, =jersey-artists-for-mankind-choir=, =karen-dreyfus= (tagged
+=name=), =marc-stuart=, =new-york-string-section=, =prince-rogers-nelson=, =ritchie-teeter=, =ross-friedman=,
+=the-1992-93-world-tour-band= (gone once the alias has the hyphen, below), =the-horns-of-love=,
+=the-max-weinberg-7=, =tony-pallagrosi= (tagged =tonypalligrosi=). The stage names pass (=duckdunn=,
+=popsstaples=, =obiebenson=, =kathigoldmark=).
+
+BruceParser (=~/git/scripts/BruceParser=, *not committed*: the commit and push to that repo were refused by
+Claude Code's permission check, so they wait for vzell): =relation-tags.awk= (new), =feed.sh= 1.10 (=relationTags=
+in the feed, its shape check and summary), =docs/feed-repo/FORMAT.md=, =brucebase/tag-tables.json= (the 1992-93
+band's alias also with a hyphen), CHANGELOG 0.43.0; =tests/check-probes.sh 2026-11-23= equal to the baseline.
+=./feed.sh -r 2026-11-23= rebuilt =bb/2026-11-23/bb-feed.json= with it (relationTags 2,166, 15 overrides); its
+=run= still says 0.42.0 / =04cc153+= until the commit. Not published.
+
 * Closing the matrix (2026-11-19): coexistence, then the HOME row
 
 Env: 2026-11-19T00:46:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright
