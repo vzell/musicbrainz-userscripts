@@ -1,57 +1,5 @@
 [
   {
-    "name": "the scrollbar's room is never kept",
-    "why": "A filter that shrinks the page below the window would move it sideways by the scrollbar's width again.",
-    "edits": [
-      {
-        "find": "        _scrollGutterStable();\n        if (_foreignHost) return;\n",
-        "replace": "        if (_foreignHost) return;\n"
-      }
-    ],
-    "spec": "tests/fixtures/scroll-gutter.spec.js",
-    "grep": "MusicBrainz: the initial page keeps its layout",
-    "expect": "fail"
-  },
-  {
-    "name": "the scrollbar's room is kept on MusicBrainz only",
-    "why": "_mbuTableShown() returns early on a foreign host; the gutter must come before that return, since the jump is the same there.",
-    "edits": [
-      {
-        "find": "        _scrollGutterStable();\n        if (_foreignHost) return;\n",
-        "replace": "        if (_foreignHost) return;\n        _scrollGutterStable();\n"
-      }
-    ],
-    "spec": "tests/fixtures/scroll-gutter.spec.js",
-    "grep": "another host \\(jungleland.it\\)",
-    "expect": "fail"
-  },
-  {
-    "name": "the class is set but no rule draws it",
-    "why": "The test reads the computed scrollbar-gutter, not just the class.",
-    "edits": [
-      {
-        "find": "        html.mb-sa-gutter { scrollbar-gutter: stable; }\n",
-        "replace": ""
-      }
-    ],
-    "spec": "tests/fixtures/scroll-gutter.spec.js",
-    "grep": "MusicBrainz: the initial page keeps its layout",
-    "expect": "fail"
-  },
-  {
-    "name": "the gutter is kept on the initial page too",
-    "why": "Before a button is pressed the page is the site's own layout; the rule must wait for our class.",
-    "edits": [
-      {
-        "find": "        html.mb-sa-gutter { scrollbar-gutter: stable; }\n",
-        "replace": "        html { scrollbar-gutter: stable; }\n"
-      }
-    ],
-    "spec": "tests/fixtures/scroll-gutter.spec.js",
-    "grep": "MusicBrainz: the initial page keeps its layout",
-    "expect": "fail"
-  },
-  {
     "name": "the launchers carry no icon",
     "why": "An item moved into Event Horizon's main row (#981) would be words only.",
     "edits": [

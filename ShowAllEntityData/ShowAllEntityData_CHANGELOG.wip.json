@@ -6,7 +6,6 @@
       {
         "label": "✨ Improve",
         "items": [
-          "Once a table is shown, typing in a filter no longer moves the page sideways: when the filtered table got shorter than the window, the scrollbar went away and everything shifted by its width under the pointer. The scrollbar's room is now kept (on every site the script supports); the page before you press a button keeps the site's own layout. From majkinetor's Event Horizon.",
           "This script's items in Event Horizon's menus (\"Open in ShowAllEntityData\", \"SAED: Show all Tracks for Release\", …) now carry a small table icon, so an item you move from ⋯ into Event Horizon's main row no longer shows as words only. It reads on light and dark themes, and costs no request."
         ]
       },

@@ -948,13 +948,6 @@ init code (no TDZ). One `MutationObserver` on `<html>` attributes
   reload with a table loaded gets the browser's "Leave site?" prompt from
   Guard 4, as V does.
 
-**The scrollbar's room** (`_scrollGutterStable()`, 2026-11-24, from EH:2711):
-`_mbuTableShown()` first sets `html.mb-sa-gutter` (`scrollbar-gutter: stable`),
-on EVERY host, before its `_foreignHost` return: a filter that shrinks the
-page below the window no longer moves it sideways by the scrollbar's width.
-Never on the initial page. Spec `tests/fixtures/scroll-gutter.spec.js`,
-mutations `scripts/mutations/small-adoptions.json` (with the icon's).
-
 Simulator: `eh-body-swap.js` (`data-mbu-page`, the launcher's click,
 `menuItems()`/`select()` as EH's `foreignMenuSync()`, `navigate()`). Spec:
 `tests/fixtures/eh-interop-markers.spec.js`; mutations:

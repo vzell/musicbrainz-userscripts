@@ -113549,32 +113549,14 @@ ${sections.join('\n')}
     }
 
     /**
-     * Keeps the scrollbar's room on the page once a table of ours shows:
-     * `html.mb-sa-gutter`, whose rule is `scrollbar-gutter: stable` (from
-     * majkinetor's Event Horizon, EH:2711; org/majkinetor.org, "Smaller
-     * adoptions"). Typing in a filter can shrink the page below the window's
-     * height; the vertical scrollbar then went away and everything moved
-     * sideways by its width, under the pointer. On every host, since the
-     * jump is the same everywhere. Only the initial page (no table yet) is
-     * left as the site lays it out.
-     *
-     * @returns {void}
-     */
-    function _scrollGutterStable() {
-        document.documentElement.classList.add('mb-sa-gutter');
-    }
-
-    /**
      * Called from the render tail (a fetched render and a load from disk):
-     * the scrollbar's room is kept from now on (`_scrollGutterStable()`, on
-     * every host), and on MusicBrainz's page the quiet mark
+     * from now on a table of ours is on MusicBrainz's page, so the quiet mark
      * (`_mbuQuietSync()`), the keys marks (`_mbuKeysSync()`) and the player
      * mark (`_mbuPlayerSync()`) may go up.
      *
      * @returns {void}
      */
     function _mbuTableShown() {
-        _scrollGutterStable();
         if (_foreignHost) return;
         _mbuInterop.tableShown = true;
         _ehInteropObserve();
@@ -126561,10 +126543,6 @@ a { color: #1565c0; }`;
             font-variant-numeric: tabular-nums;
         }
         .mb-saed-attn-row .mb-saed-row-arrow { color: #7a6d5c; font-size: 14px; }
-        /* Once a table of ours shows (_scrollGutterStable()): the scrollbar's
-           room is kept, so a filter that changes the page height no longer
-           shifts the page sideways (Event Horizon, EH:2711). */
-        html.mb-sa-gutter { scrollbar-gutter: stable; }
         /* The Activity log row: its warning and error counts as pills after
            the label, drawn from attributes so the row text stays its label. */
         .mb-toolbar-menu-panel #mb-saed-log-btn > span { order: 0; margin-right: auto; }
