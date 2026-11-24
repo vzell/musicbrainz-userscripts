@@ -292,9 +292,9 @@ SAED is ever offered to him.
 * Open questions for vzell
 
 1. SAED 1 (private residences): fix now as a small branch? Recommended: yes, it is a false ❌ on 22 rows.
-   vzell, 2026-11-24: "go with 1". Built on =fix/bb-residence-name= (WIP.1): =_bbResidenceByStreet()=, BruceParser's
-   rule; 38 → 16, all 16 in BruceParser's report. Open: 1991-02-09 "STING RESIDENCE" / "Sumner Residence" stays
-   ❌ in both (the rule wants a street on the year page), though Danny ignores it (Danny draft, item 5 above).
+   vzell, 2026-11-24: "go with 1". Built on =fix/bb-residence-name= (WIP.1): =_bbPrivateResidence()=; 38 → 15.
+   1991-02-09 "STING RESIDENCE" / "Sumner Residence" accepted too (vzell: "Yes"), in BruceParser as well (0.43.2,
+   =residence_by_street()= no longer wants a street on the year page), so the two stay equal.
 2. SAED 2 (tour openers): ask Danny first, or exempt the opener now? Recommended: ask; until then leave it.
 3. BruceParser 1, 2, 4, 6: one BruceParser version for the comments and the storyteller rule? Recommended: yes; the
    storyteller change adds the 1970s rows to the date report, so with a "before 1981" section.
