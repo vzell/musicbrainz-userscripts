@@ -5052,3 +5052,22 @@ Env: 2026-11-24T14:12:10+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 
 3522 passed, none failed. The merge gate of 9.99.1693 (the branch on top of 9.99.1692's =feat/small-adoptions=);
 neither of the day's two timing failures (=popup-mb.spec.js=, =bb-place.spec.js=) came back.
+
+* 2026-11-25 — the original-page copy (=_origViewCapture()=) on =petri=, feat/original-page-toggle (WIP.1)
+
+Env: 2026-11-25T00:12:43+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium 151.0.7922.34 (headless), no Tampermonkey, no userscript (the clone alone).
+
+What a press now costs extra on MusicBrainz: one =document.getElementById('page').cloneNode(true)= of the native
+page and the removal of our controls from it, timed 15 times per saved page by =scripts/measure-orig-copy.js=
+(00:12:43–00:12:44 CET). Not on the filter, sort or render path; no request.
+
+| Page (saved, =tests/fixtures/=)            | pageType         | tableMode | Elements in =#page= | Median | Max    |
+|--------------------------------------------+------------------+-----------+---------------------+--------+--------|
+| =release-tracks-sidebar-search-links.html= | =release-tracks= | multi     |                5327 | 2.5 ms | 3.2 ms |
+| =release-tracks-video-on-cd.html=          | =release-tracks= | multi     |                4303 | 1.0 ms | 1.6 ms |
+| =html-fetch-transient-events.html=         | =artist-events=  | single    |                3804 | 0.9 ms | 1.0 ms |
+| =release-tracks-brixton-night.html=        | =release-tracks= | multi     |                3191 | 0.7 ms | 0.9 ms |
+| =release-tracks-ms-length.html=            | =release-tracks= | multi     |                1875 | 0.5 ms | 0.5 ms |
+
+At most 3.2 ms once per press, on the largest saved release page: no gate to raise (CLAUDE.md "Performance is a
+priority"). The copy is the native page only, never the fetched rows, so a 5,000-row render costs the same.

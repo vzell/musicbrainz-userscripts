@@ -18,7 +18,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 - *Now (2026-11-24, latest):* the "shine through" item is *corrected* (vzell): it means a switch between SAED's view
   and the original page, as EH's V does, not EH's =#eh-hide=. Renamed "Switch between SAED's view and the original
-  page (EH's V)"; branch =feat/original-page-toggle=, a mockup next.
+  page (EH's V)"; branch =feat/original-page-toggle=. Mockup approved (all eight recommendations); the MB part is
+  built (2026-11-25, WIP.1), waiting for vzell's browser check; the non-MB sites next.
 - *Now (2026-11-24, later):* item 1 of the "what next" list *shipped* in 9.99.1692: the EH launcher
   icon and the idle-mode HELP paragraph ("String Theory's idle mode" DONE); the scrollbar gutter was dropped
   (26 tests 15 px off, see "Smaller adoptions"). vzell's browser check OK.
@@ -835,11 +836,17 @@ CLOSED: [2026-11-20 Fri]
   (=#mb-dg-root=, =#mb-ia-root=, =#mb-sfm-root=) above the site, which stays fully visible below. SL, JL, BS and BB
   remove the native list in their converters (some live parts stay, e.g. BB detail's folded "Brucebase page").
 - *Plan*: branch =feat/original-page-toggle=, plan file
-  =~/.claude/plans/a-correction-to-the-enchanted-seahorse.md=. Mockup (2026-11-24, waiting for vzell's answers to its
-  eight questions): https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf. Then MB (a copy of =#page=, the live
+  =~/.claude/plans/a-correction-to-the-enchanted-seahorse.md=. Mockup (2026-11-24; vzell took all eight
+  recommendations): https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf. Then MB (a copy of =#page=, the live
   root hidden, never removed), then the live non-MB originals (dg, ia, sfm: hide the site's content roots), then the
   removed ones (sl, jl, bs, bb: the same copy as MB). How EH does it: "Switching to the original page: EH's body
   swap" in the analysis below.
+- *Phase 2, MB: built* (2026-11-25, WIP.1, =a68d43dc=): ☰ View "📄 Show the original page", Ctrl+M P, "▦ Back to the
+  tables" bottom right (majkinetor's corner marks, out of his dock); the #938 marks down while the original shows.
+  Spec =original-page-toggle.spec.js= (7), mutations 13/13 as expected, neighbouring specs 105/105. The copy costs
+  at most 3.2 ms (tests/MEASUREMENTS.org). Design: docs/claude/toolbar-and-header-ui.md, "Switching to the original
+  page". *Waiting*: vzell's browser check. *Next*: phase 3 (dg, ia, sfm). Possible post to majkinetor (not drafted):
+  a public restack entry point (=MBU.restackCorner=), since ours nudges his through the visual viewport's =resize=.
 
 ** PART Entity pictures: more providers, area map with flag badge (moved from org/TODO.org)
 

@@ -31326,3 +31326,40 @@ springsteenlyrics.com sticky headers would first have to read the gutter
 (e.g. `window.innerWidth - document.documentElement.clientWidth` taken once
 per layout pass, not per scroll event) — scroll-path code, so with a
 performance comparison. These 18 tests are the regression set for it.
+
+## 2026-11-25 — The original page as a copy of `#page`, and two scroll/value traps in its spec (feat/original-page-toggle, WIP.1)
+
+Env: 2026-11-24T23:59:50+01:00 → 2026-11-25T00:12:14+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
+
+The org/majkinetor.org "shine through" item was misread as Event Horizon's
+`#eh-hide` (hide the page until the render); vzell corrected it on
+2026-11-24: a switch between our tables and the original page, as EH's V.
+EH swaps two bodies (`setOn1()`, EH:17835-17876 at `5d4d464`). SAED edits
+MusicBrainz's page in place and kept no copy anywhere (no `_origContent`, the
+only way back was the second press's reload), so the original is a clone of
+`#page` taken before the first change of a press (`_origViewCapture()`), and
+the switch hides the live `#page` instead of removing it, so the same `tbody`
+comes back. Design: docs/claude/toolbar-and-header-ui.md, "Switching to the
+original page".
+
+Two spec failures on the way, both in the test, not the code, and both worth
+knowing for any spec that switches views:
+
+- **Restored to 1251 px instead of 300.** A probe wrapping `scrollTo`,
+  `scrollBy`, `scrollIntoView` and `focus` saw one call only, ours. The
+  position saved for the table view was already 1251: `clickToolbarItem()`
+  opened ☰ SAED, and Playwright scrolled the sticky toolbar into view before
+  the click, so the switch faithfully kept the position Playwright made. The
+  spec switches with Ctrl+M P where the scroll is the subject.
+- **"🔍 2026‐11‐09:" for "2026‐11‐09:".** Not a focus leak: the global
+  filter's value ALWAYS starts with `sa_filter_focus_prefix` (the invariant
+  above `debouncedRunFilter`). Compare with the value read before the
+  switch. And the filter runs debounced: `expect.poll(rows).toBeLessThan(all)`,
+  not `toBeLessThanOrEqual`, or the count is taken before it narrowed.
+
+Found while updating seven older mutation finds that quoted the lines this
+change touched: the `replace_all` that put `_mbuTableVisible()` into the
+three `const want = …` lines lost the space after `&&`
+(`_mbuTableVisible() &&Lib.settings…`). It ran, but broke the finds. Fixed
+in the userscript, not in the finds. Mutations: 13 entries, all as expected
+(12 fail, the snapshot path recorded `"expect": "pass"`).

@@ -895,8 +895,10 @@ init code (no TDZ). One `MutationObserver` on `<html>` attributes
   (`_mbuQuietRowPaint()`, in `_TOOLBAR_MENU_ROW_ORDER.view` before Keyboard
   Shortcuts), created only when one of majkinetor's scripts is there
   (`[data-mb-corner]` or `<html data-mbu-st>`), toggles
-  `_mbuInterop.quietUserShown` for the page view. No SAED element carries
-  `data-mb-corner`; giving one that attribute would hide it under the mark.
+  `_mbuInterop.quietUserShown` for the page view. Only one SAED element
+  carries `data-mb-corner`: "Back to the tables" (`#mb-orig-back-btn`), which
+  exists only while the original page shows, when our mark is down (next
+  section). Any other would hide under the mark.
 - **Keys marks** (`_mbuKeysSync()`, `sa_block_eh_single_keys`):
   `<html data-mbu-keys-off="saed" data-mbu-keys-keep="toggle">` while a table
   shows, under the same observer and render-tail call as the quiet mark, but
@@ -954,6 +956,73 @@ Simulator: `eh-body-swap.js` (`data-mbu-page`, the launcher's click,
 `scripts/mutations/eh-interop-markers.json`. The `data-mbu-foreign` table
 mark is `_markForeignTable()` (docs/claude/release-tracks-and-length.md, "ISRC
 Scout's ISRC and Links columns").
+
+## Switching to the original page (`_origView*`, Ctrl+M P)
+
+vzell, 2026-11-24 (org/majkinetor.org, "Switch between SAED's view and the
+original page (EH's V)"); approved mockup, all eight recommendations taken:
+https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf. MusicBrainz only so far
+(WIP.1); the non-MusicBrainz sites are the next phases of the item.
+
+Event Horizon switches by swapping two bodies. This script cannot: it edits
+MusicBrainz's page in place and keeps no copy. So the original page is a
+COPY, taken before the first change of the page view:
+
+- **`_origViewCapture(label)`**: a deep clone of the live `#page` (content
+  and sidebar), once per page view. Called at the top of
+  `startFetchingProcess()` right after the second-press reload guard (a
+  resume keeps the first copy), at the start of `loadTableDataFromDisk()`,
+  and before `_clearNativeTableSectionsForSnapshot()` on the
+  `#mb-sa-snapshot=` path. Our controls are removed from it
+  (`_ORIG_VIEW_STRIP_SEL`: the h1 toolbar container, the status lines, the
+  Ctrl+M card), so no second press can start from the copy (question 8). It
+  is marked `data-mb-orig-copy` and gets the note (`_origViewNote()`: "A copy
+  of this page from before you pressed …; MusicBrainz's own buttons may not
+  respond here", question 2). Their handlers stay with the live nodes, so
+  rating stars, "Load all tracks" and the credits toggle in the copy are
+  inert; links, pictures and our delegated hover cards work. A page without
+  `#page` gets no copy, and then no ☰ row (most trimmed fixtures have none).
+- **`_origViewShow(want)`**: the live `#page` is HIDDEN, never removed
+  (`mb-orig-view` on `_saBody()`, CSS `#page:not([data-mb-orig-copy])`), so
+  every listener, cache and rewired clone of the render stays as it was and
+  the same `tbody` comes back. The copy goes right AFTER the live `#page`:
+  `getElementById('page')`, `#content` and `#sidebar` keep finding the live
+  nodes first. Each view's `scrollY` is kept; open menus close, windows and
+  cards stay (question 6). Esc never switches. Not remembered: every render
+  opens on the tables.
+- **Entry points** (question 1): the ☰ View row `#mb-orig-view-btn` "📄 Show
+  the original page" (`addOrigViewButton()`, from both render tails beside
+  `_mbuTableShown()`, only when a copy exists; in
+  `_TOOLBAR_MENU_ROW_ORDER.view` before Keyboard Shortcuts; hint
+  `${getPrefixDisplay()} P`), the prefix key `p` in `ctrlMFunctionMap`
+  (`_origViewToggle()`), and on the original page the corner button. No
+  single key (question 7: Event Horizon's V and its letters).
+- **"▦ Back to the tables"** (`#mb-orig-back-btn`, `_origViewCornerSync()`,
+  question 3): bottom right, in `_saBody()`, shown only while the copy shows
+  and Event Horizon's view does not (the `<html>` observer resyncs it on
+  `data-mbu-dock`). It carries majkinetor's corner marks: `data-mb-corner="br"`,
+  order 50 (above his launchers, theirs keep their places),
+  `data-mb-corner-dock="no"` (never folded into String Theory's dock). His
+  `mbRestackCorner()` has no public entry point, so a change nudges it
+  through the visual viewport's `resize`, the one listener all copies of his
+  corner code share (only when `<html data-mb-corner-vv>` says it is
+  installed). Without his scripts our CSS places it where his restack would.
+- **The #938 marks** read `_mbuTableVisible()` (`tableShown && !origShown`):
+  while the original page shows, quiet, keys and player marks are down as on
+  an unrendered page, and they come back with the tables.
+
+Cost: one `cloneNode` of the native page per press, at most 3.2 ms on the
+largest saved release page (5,327 elements; tests/MEASUREMENTS.org,
+2026-11-25, `scripts/measure-orig-copy.js`). Nothing on the filter, sort or
+render path.
+
+Two traps for a spec: open the ☰ menu and Playwright scrolls the sticky
+toolbar into view first, so the scroll position the switch saves is not the
+one the test set (switch with Ctrl+M P instead); and the global filter's
+value always starts with its 🔍 prefix (compare with the value read before).
+Spec: `tests/fixtures/original-page-toggle.spec.js`; mutations:
+`scripts/mutations/original-page-toggle.json` (the snapshot path is
+`"expect": "pass"`: no fixture opens a snapshot tab).
 
 ## Hover tooltips must ignore a tap (`_isTouchCompatMouseEvent()`)
 
