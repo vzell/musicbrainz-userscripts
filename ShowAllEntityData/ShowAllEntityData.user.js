@@ -113968,7 +113968,10 @@ ${sections.join('\n')}
             '.mb-orig-pill { font: 600 10px/1 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: .08em;',
             '    text-transform: uppercase; color: #9a6a00; border: 1px solid currentColor; border-radius: 999px; padding: 3px 7px; }',
             '#mb-orig-back-btn { position: fixed; right: calc(14px + env(safe-area-inset-right, 0px));',
-            '    bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 2147482980; display: flex;',
+            // 2147482990: the tier of String Theory's dock entries, above its open
+            // dock's frosted shelf (#mbu-dock-shelf, 2147482989), which his restack
+            // can lay over our button's place in the row (vzell, 2026-11-25).
+            '    bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 2147482990; display: flex;',
             '    flex-direction: column; align-items: flex-start; gap: 2px; padding: 7px 12px; cursor: pointer;',
             '    background: #fbf8f1; color: #2f5f9e; border: 1px solid #2f5f9e; border-radius: 3px;',
             '    box-shadow: 0 10px 24px -8px rgba(60,40,20,.35); font: 600 11px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;',
@@ -114037,7 +114040,11 @@ ${sections.join('\n')}
      * their places; `data-mb-corner-dock="no"`: never folded into String
      * Theory's dock), so his `mbRestackCorner()` stacks it with his
      * launchers; without his scripts our CSS puts it 14 px from the corner, as
-     * his restack would. His restack has no public entry point, so a change
+     * his restack would. Its z-index is his dock entries' (2147482990): in a
+     * row his restack can place it under the frosted shelf of his open dock
+     * (2147482989), which then took the click (vzell, 2026-11-25). His
+     * restack also scales it by his corner size (`--mbu-cs`), as his own
+     * launchers. His restack has no public entry point, so a change
      * here nudges it through the one listener every copy of it shares, the
      * visual viewport's `resize` (installed when `<html data-mb-corner-vv>`
      * is there).

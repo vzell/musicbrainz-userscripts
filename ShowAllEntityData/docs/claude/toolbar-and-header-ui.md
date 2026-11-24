@@ -1007,6 +1007,13 @@ COPY, taken before the first change of the page view:
   through the visual viewport's `resize`, the one listener all copies of his
   corner code share (only when `<html data-mb-corner-vv>` says it is
   installed). Without his scripts our CSS places it where his restack would.
+  Its z-index is his dock entries' tier, 2147482990: in a row
+  (`data-mbu-flow="row"`) his restack puts it inside his dock's row, and the
+  frosted shelf of his OPEN dock (`#mbu-dock-shelf`, 2147482989, visible
+  under `data-mbu-dock-open`) lay over it at 2147482980, so the key worked
+  and the click went to the shelf (vzell, 2026-11-25,
+  `debug/mb-p-toggle-not-working.html`). His restack also scales it by his
+  corner size (`--mbu-cs`, 0.6 there), like his own launchers.
 - **The #938 marks** read `_mbuTableVisible()` (`tableShown && !origShown`):
   while the original page shows, quiet, keys and player marks are down as on
   an unrendered page, and they come back with the tables.

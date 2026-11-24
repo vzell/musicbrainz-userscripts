@@ -204,6 +204,32 @@ test.describe('the original page on a single-table page', () => {
         expect(await views(page)).toMatchObject({ liveVisible: true, copyVisible: false });
     });
 
+    // vzell, 2026-11-25 (debug snapshot mb-p-toggle-not-working.html): with
+    // String Theory's dock open in a row, his restack puts our button in the
+    // dock's row, and the frosted shelf behind the dock's icons
+    // (#mbu-dock-shelf, z-index 2147482989, visible while the dock is open)
+    // lay over it: the key worked, the click went to the shelf. His docked
+    // entries sit at 2147482990, above the shelf; ours must too.
+    test('the corner button takes the click over String Theory\'s open dock shelf', async ({ page }) => {
+        await openEvents(page);
+        await render(page, EVENTS.label);
+        await clickToolbarItem(page, ROW);
+        const top = await page.evaluate(() => {
+            const shelf = document.createElement('div');
+            shelf.id = 'mbu-dock-shelf';
+            // As his CSS draws it while the dock is open: fixed, over the corner's row.
+            shelf.style.cssText = 'position:fixed;z-index:2147482989;right:0;bottom:0;width:400px;height:80px;'
+                + 'background:rgba(255,255,255,.6);opacity:1;visibility:visible';
+            document.documentElement.appendChild(shelf);
+            const r = document.getElementById('mb-orig-back-btn').getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            return hit && (hit.closest('#mb-orig-back-btn') ? 'button' : hit.id || hit.tagName);
+        });
+        expect(top).toBe('button');
+        await page.locator(BACK).click();
+        expect((await views(page)).liveVisible).toBe(true);
+    });
+
     test('nothing of ours shows outside the copy while it shows, except the corner button', async ({ page }) => {
         await openEvents(page);
         await render(page, EVENTS.label);

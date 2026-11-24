@@ -31363,3 +31363,25 @@ three `const want = …` lines lost the space after `&&`
 (`_mbuTableVisible() &&Lib.settings…`). It ran, but broke the finds. Fixed
 in the userscript, not in the finds. Mutations: 13 entries, all as expected
 (12 fail, the snapshot path recorded `"expect": "pass"`).
+
+## 2026-11-25 — "Back to the tables" takes no click under String Theory's open dock (feat/original-page-toggle, WIP.1)
+
+Env: 2026-11-25T00:38+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · vzell's browser (Chrome-based, version unknown), Tampermonkey 5.5.1, String Theory 2026.11.24.195159 · fix verified in Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs)
+
+Snapshot: `debug/mb-p-toggle-not-working.html` (vzell), the release group
+"Born to Run" (https://musicbrainz.org/release-group/39b22944-7503-3937-8bba-09b17281cc6a)
+after "Show all Releases for ReleaseGroup", the original page shown. Symptom:
+Ctrl+M P switched back, a click on "▦ Back to the tables" did nothing.
+
+Cause, from the snapshot: majkinetor's restack had taken our button into
+his corner as intended (`right: 78px`, `scale: 0.6` from his corner size
+`--mbu-cs: 0.6`), but his layout is a row (`<html data-mbu-flow="row">`) and
+his dock was open (`data-mbu-dock-open`). The open dock draws its frosted
+shelf over the row (`#mbu-dock-shelf`, fixed, z-index 2147482989, here
+263 × 32 px from x 1591), and our button sat below it at 2147482980, so the
+shelf took the click. His docked entries are at 2147482990, above it. Fix:
+ours at 2147482990 too. Regression test "the corner button takes the click
+over String Theory's open dock shelf" (a shelf at his z-index over the corner;
+`elementFromPoint` at the button's centre must be the button), failed before
+("mbu-dock-shelf"), passes after; mutation entry in
+`scripts/mutations/original-page-toggle.json`, caught.

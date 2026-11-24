@@ -167,5 +167,18 @@
     "spec": "tests/fixtures/original-page-toggle.spec.js",
     "grep": "a copy from before the press",
     "expect": "pass"
+  },
+  {
+    "name": "the corner button sits under String Theory's open dock shelf",
+    "why": "His open dock's shelf (z-index 2147482989) lies over the row his restack puts our button in; below it, the click goes to the shelf (vzell, 2026-11-25).",
+    "edits": [
+      {
+        "find": "bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 2147482990; display: flex;",
+        "replace": "bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 2147482980; display: flex;"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "dock shelf",
+    "expect": "fail"
   }
 ]
