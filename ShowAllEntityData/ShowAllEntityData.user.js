@@ -114061,6 +114061,22 @@ ${sections.join('\n')}
     }
 
     /**
+     * The 16 px icon of `_ehMenuSync()`'s launchers, `data-mbu-menu-icon`
+     * (Event Horizon 2026.11.17+, anchor `eh-menu-icon`: an http(s) or
+     * `data:image` URL drawn as an `<img>`): a table with its header row, ink
+     * on the paper colour of this script's panels, in a hairline frame, so it
+     * reads on Event Horizon's light and dark themes alike (a picture cannot
+     * take the theme's text colour). Without one, a launcher moved into Event
+     * Horizon's main row (#981) is words only. A data URI: no request.
+     * Approved mockup (candidate A): https://claude.ai/artifact/CGdis3f8ZGjgnrDNiJwGJ1.
+     */
+    const _EH_MENU_ICON = 'data:image/svg+xml,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">'
+        + '<rect x=".5" y=".5" width="15" height="15" rx="3" fill="#fbf8f1" stroke="#2b2622"/>'
+        + '<rect x="3" y="3.5" width="10" height="2.5" fill="#2b2622"/>'
+        + '<path d="M3 8.5h10M3 11h10M3 13.5h10M6.5 6v7.5" stroke="#2b2622" stroke-width="1" fill="none"/></svg>');
+
+    /**
      * This script's launchers in Event Horizon's More (⋯) menu (#938,
      * upstream 9e4cdd59, Event Horizon's DEVELOP.md "External menu items"):
      * hidden `button[data-mbu-menu-item][data-mbu-menu-title]` elements
@@ -114110,6 +114126,7 @@ ${sections.join('\n')}
                 el.type = 'button';
                 el.hidden = true;
                 el.setAttribute('data-mbu-menu-item', id);
+                el.setAttribute('data-mbu-menu-icon', _EH_MENU_ICON);
                 el.addEventListener('click', () => _ehHandoff(el));
                 root.appendChild(el);
                 _mbuInterop.menu.set(id, el);

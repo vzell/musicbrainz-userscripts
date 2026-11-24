@@ -94,6 +94,12 @@ Not affected, and worth knowing so the diff is not over-read:
     `npm test` reads a snapshot baseline at all. The review window expiring can
     never turn the suite red.
 
+** Activity log row (9.99.1689, 2026-11-24) — NOT yet re-captured
+
+A script change. The ☰ SAED menu's Help group gained =#mb-saed-log-btn= "🧾 Activity log", and the
+page-wide stylesheet its count-pill rules. *Expected — commit it.* The EH launcher icon
+(=data-mbu-menu-icon=, branch feat/small-adoptions) needs Event Horizon's view and never shows in a capture.
+
 ** #938 interop marks (branch docs/majkinetor-refresh-2026-11-08) — NOT yet re-captured
 
 Every =table.tbl= a render builds on MusicBrainz carries =data-mbu-foreign="saed"= (=_markForeignTable()=),

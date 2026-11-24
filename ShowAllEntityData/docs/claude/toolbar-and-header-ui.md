@@ -930,6 +930,13 @@ init code (no TDZ). One `MutationObserver` on `<html>` attributes
   the tab loaded. `saed:open` does what V does; `saed:btn:<i>` presses button
   `i` of that page's definition. `showIf` is not evaluated (it may read the
   hidden body): an item whose button turns out absent just shows the page.
+  Each carries `data-mbu-menu-icon` = `_EH_MENU_ICON` (2026-11-24): a 16 px
+  data: SVG, a table with its header row on a paper tile (approved mockup,
+  candidate A: https://claude.ai/artifact/CGdis3f8ZGjgnrDNiJwGJ1), so an item
+  moved into EH's main row (#981) is not words only. EH draws it as an
+  `<img>` and accepts only http(s) or `data:image/(png|gif|jpeg|webp|svg+xml)`
+  (EH 5643 at `5d4d464`, anchor `eh-menu-icon`; ours `saed-menu-icon`); a
+  picture cannot take the theme's text colour, hence the tile.
 - **Handoff** (`_ehHandoff()`, `_ehHandoffResume()`): a button item writes
   sessionStorage `sa_eh_handoff` `{page, idx, at}`, then clicks `#eh-launch`
   (EH's `switchOn(!ehOn)`). On the loaded page EH switches synchronously and

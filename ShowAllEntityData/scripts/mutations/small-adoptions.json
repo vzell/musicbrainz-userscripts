@@ -1,0 +1,28 @@
+[
+  {
+    "name": "the launchers carry no icon",
+    "why": "An item moved into Event Horizon's main row (#981) would be words only.",
+    "edits": [
+      {
+        "find": "                el.setAttribute('data-mbu-menu-icon', _EH_MENU_ICON);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "every launcher carries the table icon",
+    "expect": "fail"
+  },
+  {
+    "name": "the icon's address is one Event Horizon drops",
+    "why": "Event Horizon accepts only http(s) or data:image/(png|gif|jpeg|webp|svg+xml); anything else is dropped without a word.",
+    "edits": [
+      {
+        "find": "    const _EH_MENU_ICON = 'data:image/svg+xml,' + encodeURIComponent(",
+        "replace": "    const _EH_MENU_ICON = 'data:image/svg,' + encodeURIComponent("
+      }
+    ],
+    "spec": "tests/fixtures/eh-interop-markers.spec.js",
+    "grep": "every launcher carries the table icon",
+    "expect": "fail"
+  }
+]

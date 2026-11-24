@@ -31289,3 +31289,40 @@ instead of a misleading format error. Regression test in
 a ~600 KB feed); the spec file 47/47; mutation entry "feed: read at the
 default 512 KiB cut" in `scripts/mutations/bb-feed.json`, expected fail, got
 fail.
+
+## 2026-11-24 — `scrollbar-gutter: stable` after a render puts every right-edge layout 15 px off (feat/small-adoptions, dropped)
+
+Env: 2026-11-24T02:25:20+01:00 → 02:48:19 (test:full) and 2026-11-24T02:49:26+01:00 (re-run, finished) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
+
+From org/majkinetor.org "Smaller adoptions" (Event Horizon, EH:2711): set
+`html{scrollbar-gutter:stable}` once a table of ours shows, so a filter that
+shrinks the page below the window no longer moves it sideways when the
+vertical scrollbar goes. Built as `_scrollGutterStable()` (`html.mb-sa-gutter`,
+called first in `_mbuTableShown()`, every host); its own spec passed.
+
+`test:full` on `248e738b` (3,511 tests): 3,485 passed, **26 failed**, 18 tests
+in 8 files: `sticky-page-headers.spec.js` (8), `sticky-filter-bars.spec.js` (3),
+`sidebar-collapse-handle.spec.js` (2), `sl-sticky-headers.spec.js` (all its
+collection/sampler/memorabilia/bootlegs variants), `bb-sidebar.spec.js`,
+`mb-dialog-above-bars.spec.js`, `eh-body-swap-floating.spec.js` and one
+`popup-ext.spec.js` test (G8, a Discogs window link). The sticky-page-headers
+message shows the mechanism: "pinned elements whose left edge moved while
+scrolling", `body > div.header` from 0 to -15, every h2/tabs bar from 20 to 5.
+**15 px is the gutter.** With it kept, the root's `clientWidth` is the
+window's width minus the scrollbar's even where no scrollbar shows, and these
+layouts place things against the window's right edge or follow sideways
+scrolling as if the page were as wide as the window.
+
+Proof that the gutter is the whole cause, not flakes: the same 18 tests,
+re-run against a copy of the userscript with only the
+`_scrollGutterStable();` call removed (`SA_USERSCRIPT_PATH`, scratchpad), all
+26 pass.
+
+Decision (vzell): drop the gutter, ship the EH launcher icon and the
+idle-mode HELP paragraph. To adopt it later, the sticky page headers, the
+sticky filter bars and their right-edge mask, the MusicBrainz sidebar and its
+handle, the Brucebase side bar, MusicBrainz's dialog placement and the
+springsteenlyrics.com sticky headers would first have to read the gutter
+(e.g. `window.innerWidth - document.documentElement.clientWidth` taken once
+per layout pass, not per scroll event) — scroll-path code, so with a
+performance comparison. These 18 tests are the regression set for it.

@@ -1,0 +1,20 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "This script's items in Event Horizon's menus (\"Open in ShowAllEntityData\", \"SAED: Show all Tracks for Release\", …) now carry a small table icon, so an item you move from ⋯ into Event Horizon's main row no longer shows as words only. It reads on light and dark themes, and costs no request."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Help: a paragraph on String Theory's idle mode (a random theme and an animated effect over the page after five minutes without input, our tables included): what it costs and where in String Theory's settings to switch it off or give it a longer time."
+        ]
+      }
+    ]
+  }
+]

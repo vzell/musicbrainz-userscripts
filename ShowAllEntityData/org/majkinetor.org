@@ -16,6 +16,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-24)
 
+- *Now (2026-11-24, later):* item 1 of the "what next" list on =feat/small-adoptions= (WIP.1): the EH launcher
+  icon and the idle-mode HELP paragraph ("String Theory's idle mode" DONE); the scrollbar gutter was dropped
+  (26 tests 15 px off, see "Smaller adoptions"). Waiting for vzell's browser check before the merge.
 - *Now (2026-11-24):* "In-page log window": VZ_MBLibrary 4.7.0 and 4.7.1 on =main= (vzell's live checks OK);
   SAED's side *shipped* in 9.99.1689 (=feat/saed-log-window=, merged 2026-11-24, vzell's browser check OK).
   Next of the item: past sessions (new TODO).
@@ -78,7 +81,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | The shared gate's clock: SAED's half                           | DONE  | 9.99.1651     | Interop       |
 | The shared gate's clock: upstream's half (=a1e8f54=)           | DONE  | —             | Interop       |
 | The shared gate's clock: port upstream's write clamp           | DONE  | 9.99.1674     | Interop       |
-| String Theory's idle mode over our FRP                         | TODO  | —             | Interop       |
+| String Theory's idle mode over our FRP                         | DONE  | WIP.1         | Interop       |
 | C3: adopt =data-mbu-keys-off= + =keys-keep= (EH's new keys)    | DONE  | 9.99.1675     | Interop       |
 | Standalone EH: use =data-mbu-eh= for the keys marks            | DONE  | 9.99.1676     | Interop       |
 | Event Horizon's player plays on under our page                 | DONE  | 9.99.1680     | Interop       |
@@ -379,7 +382,12 @@ CLOSED: [2026-11-21 Sat]
 - *Shipped* in 9.99.1676 (2026-11-21), after vzell's browser check OK (standalone EH at =d8c0030=, String Theory
   off; then String Theory back on).
 
-** TODO String Theory's idle mode over our FRP (random theme, EH effect layers)
+** DONE String Theory's idle mode over our FRP (random theme, EH effect layers)
+
+- *Done (2026-11-24, WIP.1, =feat/small-adoptions=)*: option 1, docs only: HELP "String Theory's idle mode" (after
+  "Event Horizon's player") says what it does, what it costs (about 0.4 s more per render of 2,000 rows, measured
+  below) and where to switch it off or lengthen it (String Theory's settings, General tab, *Idle*: Off / *After
+  (minutes)*, checked in =userscripts/string_theory/settings.js= at =5d4d464=).
 
 - *Who fixes it*: *ours* since 2026-11-16 (low priority). majkinetor *declined* the convention:
   "Not exactly typical use. Disable idle effects or extend time."
@@ -900,14 +908,24 @@ CLOSED: [2026-11-20 Fri]
 
 ** TODO Smaller adoptions
 
+- *Done (2026-11-24, WIP.1, =feat/small-adoptions=)*: the launcher icon (=_EH_MENU_ICON=, a 16 px data: SVG, mockup
+  candidate A: https://claude.ai/artifact/CGdis3f8ZGjgnrDNiJwGJ1; anchor renamed =saed-menu-icon=, expected present).
+  The scrollbar gutter was built and *dropped* (below). Left: the gutter, theme detection, the image maximiser
+  rules, the Wayback links.
+
 - *Who fixes it*: *ours*; for =data-mbu-theme=, *upstream* already provides it.
 - *New (2026-11-17)*: EH's menu items take an optional =data-mbu-menu-icon= (an http(s) or =data:image= URL, 16 px;
   anchor =eh-menu-icon=), and since #981 a user can move them from ⋯ into EH's main row (=external:<id>= in its
   header menu configuration). Give SAED's launchers (=_ehMenuSync()=) a small =data:image/svg+xml= icon, so they
-  read in the main row too. Anchor =saed-no-menu-icon= turns BACK when it lands.
+  read in the main row too. Anchor =saed-no-menu-icon= turns BACK when it lands. *Done, see above.*
 
 - =html{scrollbar-gutter:stable}= on our FRPs (EH:2711): a filter that changes the page height then no longer
-  shifts the page sideways when the scrollbar comes and goes.
+  shifts the page sideways when the scrollbar comes and goes. *Tried and dropped (2026-11-24, vzell's choice)*:
+  with =html{scrollbar-gutter:stable}= after a render, 26 fixture tests failed, every layout that measures the
+  page as wide as the window ending 15 px (the gutter) off: sticky page headers and filter bars (and the
+  right-edge mask), the MusicBrainz sidebar and its handle, the Brucebase side bar, MusicBrainz's dialog above the
+  bars, the springsteenlyrics.com sticky headers; all 26 pass without it (DEBUG-NOTES.md 2026-11-24). A later
+  branch would have to make those layouts gutter-aware first, with a performance check (scroll path).
 - Theme detection like =mbuTheme= (UI:1991), or read =<html data-mbu-theme>= when String Theory is present.
 - Image maximiser rules for non-CAA images in the viewer, previews and foreign pages (AS =ImageMaximizer=
   2420-2881: mzstatic, dzcdn, scdn, bcbits, Tidal, Qobuz, Amazon …; =PLACEHOLDERS= for empty covers).
