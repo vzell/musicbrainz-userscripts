@@ -930,6 +930,13 @@ init code (no TDZ). One `MutationObserver` on `<html>` attributes
   the tab loaded. `saed:open` does what V does; `saed:btn:<i>` presses button
   `i` of that page's definition. `showIf` is not evaluated (it may read the
   hidden body): an item whose button turns out absent just shows the page.
+  Each carries `data-mbu-menu-icon` = `_EH_MENU_ICON` (2026-11-24): a 16 px
+  data: SVG, a table with its header row on a paper tile (approved mockup,
+  candidate A: https://claude.ai/artifact/CGdis3f8ZGjgnrDNiJwGJ1), so an item
+  moved into EH's main row (#981) is not words only. EH draws it as an
+  `<img>` and accepts only http(s) or `data:image/(png|gif|jpeg|webp|svg+xml)`
+  (EH 5643 at `5d4d464`, anchor `eh-menu-icon`; ours `saed-menu-icon`); a
+  picture cannot take the theme's text colour, hence the tile.
 - **Handoff** (`_ehHandoff()`, `_ehHandoffResume()`): a button item writes
   sessionStorage `sa_eh_handoff` `{page, idx, at}`, then clicks `#eh-launch`
   (EH's `switchOn(!ehOn)`). On the loaded page EH switches synchronously and
@@ -940,6 +947,13 @@ init code (no TDZ). One `MutationObserver` on `<html>` attributes
   query and be under `_EH_HANDOFF_TTL_MS` (60 s); it is dropped either way. A
   reload with a table loaded gets the browser's "Leave site?" prompt from
   Guard 4, as V does.
+
+**The scrollbar's room** (`_scrollGutterStable()`, 2026-11-24, from EH:2711):
+`_mbuTableShown()` first sets `html.mb-sa-gutter` (`scrollbar-gutter: stable`),
+on EVERY host, before its `_foreignHost` return: a filter that shrinks the
+page below the window no longer moves it sideways by the scrollbar's width.
+Never on the initial page. Spec `tests/fixtures/scroll-gutter.spec.js`,
+mutations `scripts/mutations/small-adoptions.json` (with the icon's).
 
 Simulator: `eh-body-swap.js` (`data-mbu-page`, the launcher's click,
 `menuItems()`/`select()` as EH's `foreignMenuSync()`, `navigate()`). Spec:

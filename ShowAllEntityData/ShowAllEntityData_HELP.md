@@ -1949,7 +1949,9 @@ box) or editable text.
 **From Event Horizon's view.** On a page this script supports, Event
 Horizon's **More (⋯)** menu in the page header has *Open in
 ShowAllEntityData* (what `V` does) and one *SAED: …* item per button of that
-page, for example *SAED: Show all Tracks for Release*. Such an item switches
+page, for example *SAED: Show all Tracks for Release*, each with this
+script's small table icon, so it also reads when you move it from ⋯ into
+Event Horizon's main row. Such an item switches
 to MusicBrainz's page and presses that button. It works after you moved to
 another page inside Event Horizon's view too: Event Horizon first reloads
 into MusicBrainz's page of the page it shows. As with `V`, Event Horizon then
@@ -1976,6 +1978,15 @@ Event Horizon's own view, and in a tab that only shows the controls of a
 player playing in another window or tab, nothing changes, and nothing starts
 again afterwards. Setting: *Stop Event Horizon's player while a table is
 shown* in ⚙️ Settings → 🎨 UI FEATURES.
+
+**String Theory's idle mode.** After five minutes without a key or a pointer
+move, *String Theory* switches the page to a random theme and Event Horizon
+draws an animated effect over it, our table included. The table stays
+readable, and the first key or pointer move ends it. While an effect
+animates, drawing a large table takes a little longer (about 0.4 s more for
+2,000 rows). To keep it away from your tables, open String Theory's settings
+and, on the *General* tab under *Idle*, set it to *Off* or give *After
+(minutes)* a longer time.
 
 **One request budget.** MusicBrainz allows about one Web Service request a
 second per computer, for all scripts together. majkinetor's scripts share

@@ -236,6 +236,28 @@ test.describe('launchers in Event Horizon\'s More (⋯) menu', () => {
         expect(where.every((w) => w.parent === 'HTML' && w.hidden)).toBe(true);
     });
 
+    // org/majkinetor.org "Smaller adoptions" (2026-11-24): an item moved into Event
+    // Horizon's main row (#981) is words only without data-mbu-menu-icon. Approved
+    // mockup, candidate A: https://claude.ai/artifact/CGdis3f8ZGjgnrDNiJwGJ1.
+    test('every launcher carries the table icon, as a data: SVG Event Horizon accepts', async ({ page }) => {
+        await openRelease(page, { ehOn: true });
+        const icons = await page.evaluate(() => [...document.querySelectorAll('button[data-mbu-menu-item]')]
+            .map((b) => b.getAttribute('data-mbu-menu-icon')));
+        expect(icons.length).toBeGreaterThan(1);
+        expect(new Set(icons).size, 'one icon for all of them').toBe(1);
+        // Event Horizon's own acceptance test (EH 5643 at 5d4d464): anything else is dropped silently.
+        expect(icons[0]).toMatch(/^data:image\/(?:png|gif|jpeg|webp|svg\+xml)[;,]/i);
+        // It decodes to an image the browser can draw, at 16 px, with no request.
+        const drawn = await page.evaluate((src) => new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve({ ok: true, w: img.naturalWidth, h: img.naturalHeight });
+            img.onerror = () => resolve({ ok: false });
+            img.src = src;
+        }), icons[0]);
+        expect(drawn.ok, 'the SVG is valid').toBe(true);
+        expect(decodeURIComponent(icons[0])).toContain('viewBox="0 0 16 16"');
+    });
+
     test('they follow the page Event Horizon shows, never MusicBrainz\'s hidden one', async ({ page }) => {
         await openRelease(page, { ehOn: true });
         // An in-view move to a page we have no pageType for: no launcher.

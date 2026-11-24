@@ -113549,14 +113549,32 @@ ${sections.join('\n')}
     }
 
     /**
+     * Keeps the scrollbar's room on the page once a table of ours shows:
+     * `html.mb-sa-gutter`, whose rule is `scrollbar-gutter: stable` (from
+     * majkinetor's Event Horizon, EH:2711; org/majkinetor.org, "Smaller
+     * adoptions"). Typing in a filter can shrink the page below the window's
+     * height; the vertical scrollbar then went away and everything moved
+     * sideways by its width, under the pointer. On every host, since the
+     * jump is the same everywhere. Only the initial page (no table yet) is
+     * left as the site lays it out.
+     *
+     * @returns {void}
+     */
+    function _scrollGutterStable() {
+        document.documentElement.classList.add('mb-sa-gutter');
+    }
+
+    /**
      * Called from the render tail (a fetched render and a load from disk):
-     * from now on a table of ours is on MusicBrainz's page, so the quiet mark
+     * the scrollbar's room is kept from now on (`_scrollGutterStable()`, on
+     * every host), and on MusicBrainz's page the quiet mark
      * (`_mbuQuietSync()`), the keys marks (`_mbuKeysSync()`) and the player
      * mark (`_mbuPlayerSync()`) may go up.
      *
      * @returns {void}
      */
     function _mbuTableShown() {
+        _scrollGutterStable();
         if (_foreignHost) return;
         _mbuInterop.tableShown = true;
         _ehInteropObserve();
@@ -113808,6 +113826,22 @@ ${sections.join('\n')}
     }
 
     /**
+     * The 16 px icon of `_ehMenuSync()`'s launchers, `data-mbu-menu-icon`
+     * (Event Horizon 2026.11.17+, anchor `eh-menu-icon`: an http(s) or
+     * `data:image` URL drawn as an `<img>`): a table with its header row, ink
+     * on the paper colour of this script's panels, in a hairline frame, so it
+     * reads on Event Horizon's light and dark themes alike (a picture cannot
+     * take the theme's text colour). Without one, a launcher moved into Event
+     * Horizon's main row (#981) is words only. A data URI: no request.
+     * Approved mockup (candidate A): https://claude.ai/artifact/CGdis3f8ZGjgnrDNiJwGJ1.
+     */
+    const _EH_MENU_ICON = 'data:image/svg+xml,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">'
+        + '<rect x=".5" y=".5" width="15" height="15" rx="3" fill="#fbf8f1" stroke="#2b2622"/>'
+        + '<rect x="3" y="3.5" width="10" height="2.5" fill="#2b2622"/>'
+        + '<path d="M3 8.5h10M3 11h10M3 13.5h10M6.5 6v7.5" stroke="#2b2622" stroke-width="1" fill="none"/></svg>');
+
+    /**
      * This script's launchers in Event Horizon's More (⋯) menu (#938,
      * upstream 9e4cdd59, Event Horizon's DEVELOP.md "External menu items"):
      * hidden `button[data-mbu-menu-item][data-mbu-menu-title]` elements
@@ -113857,6 +113891,7 @@ ${sections.join('\n')}
                 el.type = 'button';
                 el.hidden = true;
                 el.setAttribute('data-mbu-menu-item', id);
+                el.setAttribute('data-mbu-menu-icon', _EH_MENU_ICON);
                 el.addEventListener('click', () => _ehHandoff(el));
                 root.appendChild(el);
                 _mbuInterop.menu.set(id, el);
@@ -126526,6 +126561,10 @@ a { color: #1565c0; }`;
             font-variant-numeric: tabular-nums;
         }
         .mb-saed-attn-row .mb-saed-row-arrow { color: #7a6d5c; font-size: 14px; }
+        /* Once a table of ours shows (_scrollGutterStable()): the scrollbar's
+           room is kept, so a filter that changes the page height no longer
+           shifts the page sideways (Event Horizon, EH:2711). */
+        html.mb-sa-gutter { scrollbar-gutter: stable; }
         /* The Activity log row: its warning and error counts as pills after
            the label, drawn from attributes so the row text stays its label. */
         .mb-toolbar-menu-panel #mb-saed-log-btn > span { order: 0; margin-right: auto; }
