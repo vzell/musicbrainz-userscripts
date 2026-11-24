@@ -31259,3 +31259,33 @@ discogs.com box expectation updated to the flag image),
 `pop-area-pictures.spec.js` 7/7, the five popup specs 280/282 before the
 fourth fix (the pictures spec, then green, and G8 above); mutations
 `area-chain.json` 15/15, the three re-anchored `poh-fixes.json` entries 3/3.
+
+## 2026-11-24 — The Brucebase feed past 512 KiB: "not a feed of format 1" (feat/bb-page-tag-families, WIP.2)
+
+Env: 2026-11-24T08:38+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 (Linux 6.18.58.1) · Playwright Chromium, no Tampermonkey (GM stubs); the report from vzell's own browser (version unknown), 9.99.1688 installed
+
+Seen: on `venue:bow-tie-cinemas-red-bank-nj` the ☰ menu's Brucebase line read
+"Brucebase feed: not loaded (the file is not a feed of format 1) · using the
+run of 2026-11-19 · BruceParser 0.27.0 · 261 pages · Retry".
+
+Ruled out: the published file. Downloaded from
+`raw.githubusercontent.com/vzell/brucebase-feed/main/bb-feed.json`, it is
+valid JSON, `format: 1`, run 2026-11-24, 383 pages, every map.
+
+Cause: `_bbFeedLoad()` asked `_extGet()` with `_extFetch()`'s defaults, and
+`_extFetch()` cuts every body at `maxBytes` = `_EXT_MAX_BYTES` (512 KiB =
+524,288 bytes, sized for a page's head in a card). The feed had grown from
+402,630 bytes (1.9, 2026-11-23) to 530,953 (1.10, `relationTags`, first
+published 2026-11-24 01:38). The cut text is no JSON, `JSON.parse` failed,
+and `_bbFeedValid(null)` gave the format message. Every read since then
+failed, and the old kept feed stayed in use. The published mirror (9.99.1167)
+has no feed reader, so only vzell's installs were affected.
+
+Fix: `_BB_FEED_MAX_BYTES` (16 MiB) as both `maxBytes` and `maxDownload` of
+the feed's read, as the other JSON readers pass their own; a body past it
+(`aborted: 'size'` or a `tail`) is refused as "the file is bigger than 16 MB"
+instead of a misleading format error. Regression test in
+`tests/fixtures/bb-feed.spec.js` ("a file past 512 KiB is read whole",
+a ~600 KB feed); the spec file 47/47; mutation entry "feed: read at the
+default 512 KiB cut" in `scripts/mutations/bb-feed.json`, expected fail, got
+fail.

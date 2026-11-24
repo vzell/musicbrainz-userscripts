@@ -28328,6 +28328,15 @@
     const _BB_FEED_URL = 'https://raw.githubusercontent.com/vzell/brucebase-feed/main/bb-feed.json';
     /** @type {number} The one format this script reads (FORMAT.md); any other is not loaded. */
     const _BB_FEED_FORMAT = 1;
+    /**
+     * The most of the feed read, and downloaded. `_extFetch()`'s default cut
+     * (`_EXT_MAX_BYTES`, 512 KiB, a page's head for a card) is too small: feed
+     * 1.10's relation map made the file 530,953 bytes (run of 2026-11-24), the
+     * cut text was no JSON, and every read failed as "not a feed of format 1"
+     * (vzell's browser, 2026-11-24). A file past this is refused by name.
+     * @type {number}
+     */
+    const _BB_FEED_MAX_BYTES = 16 * 1024 * 1024;
     /** @type {string} GM key of the kept feed `{at, data, err, errAt}`: a cache, not a setting, not exported. */
     const _BB_FEED_KEY = 'mb_sa_bb_feed';
     /** @type {number} A kept feed older than this is read again (on a press or a Space). */
@@ -28501,9 +28510,12 @@
             let err = '';
             let data = null;
             try {
-                const res = await _extGet(_BB_FEED_URL, { fetchOpts: { accept: /\b(?:json|text\/plain)\b/i } });
+                const res = await _extGet(_BB_FEED_URL, { fetchOpts: {
+                    accept: /\b(?:json|text\/plain)\b/i, maxBytes: _BB_FEED_MAX_BYTES, maxDownload: _BB_FEED_MAX_BYTES,
+                } });
                 if (res.error) err = res.error === 'timeout' ? 'no answer in time' : 'no answer from raw.githubusercontent.com';
                 else if (res.status !== 200) err = `GitHub answered ${res.status}`;
+                else if (res.aborted === 'size' || res.tail) err = `the file is bigger than ${_BB_FEED_MAX_BYTES / 1024 / 1024} MB`;
                 else {
                     try { data = JSON.parse(res.body); } catch (_) { data = null; }
                     if (!_bbFeedValid(data)) err = `the file is not a feed of format ${_BB_FEED_FORMAT}`;

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase feed: the feed of 2026-11-24 (BruceParser 0.43.0, with its relation map) did not load: \"Brucebase feed: not loaded (the file is not a feed of format 1)\", and the script went on using an older run. The file had grown past 512 KB, where the script cut every answer it reads from another site; it now reads the feed whole, up to 16 MB, and a bigger file is refused by name."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-24",
     "sections": [

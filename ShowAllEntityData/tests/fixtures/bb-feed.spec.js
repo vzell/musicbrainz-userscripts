@@ -274,6 +274,23 @@ test.describe('the Brucebase feed: reading it', () => {
         expect(st2.date).toBe('2026-11-15');
     });
 
+    test('a file past 512 KiB is read whole (feed 1.10 is 530,953 bytes; the old cut made it no JSON)', async ({ page }) => {
+        // The real 2026-11-24 file with its relation map is 530,953 bytes;
+        // here REAL4 grows past the old cut (_EXT_MAX_BYTES, 524,288) by a
+        // map of the same shape, so the cut would fall inside it.
+        const relationTags = {};
+        for (let i = 0; i < 16000; i++) relationTags[`relation:person-${i}`] = [`person${i}`, `p.${i}`];
+        const big = JSON.stringify({ ...REAL4, run: { ...REAL4.run, date: '2026-11-24', feed: '1.10' }, relationTags });
+        expect(big.length).toBeGreaterThan(524288);
+        await answerFeed(page, { body: big });
+        await show1972(page, feedOn(REAL, 2 * DAY));
+        await expect.poll(async () => (await page.evaluate(() => window.__saTest.bbFeed())).date).toBe('2026-11-24');
+        const st = await page.evaluate(() => window.__saTest.bbFeed());
+        expect(st.err, 'taken, no error').toBe('');
+        const kept = await page.evaluate(() => window.__gmValues.mb_sa_bb_feed);
+        expect(Object.keys(kept.data.relationTags).length).toBe(Object.keys(relationTags).length);
+    });
+
     test('the setting off: no request, no mark, no ☰ row, no menu line', async ({ page }) => {
         await answerFeed(page, { body: JSON.stringify(REAL) });
         await show1972(page, { ...feedOn(REAL, 2 * DAY), sa_bb_feed: false });
