@@ -1,5 +1,23 @@
 [
     {
+        "name": "bb-name-mismatch: a private residence by its street is a mismatch again",
+        "why": "Danny, 2024-08-17: the street on the year page, \"<name> Residence\" on the event page, on purpose.",
+        "edits": [{ "find": "        if (_bbResidenceByStreet(h, t)) return '';", "replace": "" }],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js", "grep": "a private residence: its street", "expect": "fail"
+    },
+    {
+        "name": "bb-name-mismatch: a residence on both pages counts as by its street",
+        "why": "BruceParser's rule: the year page's venue is not a residence (Sting / Sumner stays reported).",
+        "edits": [{ "find": "        return / RESIDENCE$/.test(tVenue) && !/RESIDENCE$/.test(hVenue)", "replace": "        return / RESIDENCE$/.test(tVenue)" }],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js", "grep": "a private residence: its street", "expect": "fail"
+    },
+    {
+        "name": "bb-name-mismatch: a residence in another place counts as the same",
+        "why": "Date and place must agree; only the venue part differs.",
+        "edits": [{ "find": "            && h.rest.slice(hc + 1).trim() === t.rest.slice(tc + 1).trim();", "replace": "            && true;" }],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js", "grep": "a private residence: its street", "expect": "fail"
+    },
+    {
         "name": "bb-name-mismatch: the detector never matches",
         "why": "The finding reads the Event cell's check.",
         "edits": [

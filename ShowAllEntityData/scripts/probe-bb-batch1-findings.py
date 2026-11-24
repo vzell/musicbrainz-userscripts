@@ -77,8 +77,19 @@ def norm_name(name):
     return m.group(1), ','.join(parts).upper()
 
 
+def residence_by_street(hd, hr, td, tr):
+    """BruceParser's residence_by_street() (eefyp.sh, 0.28.1): one private
+    residence, by its street on the year page and "<name> Residence" on the
+    event page; the same date and place (every part after the first)."""
+    if not hd or hd != td or ',' not in hr or ',' not in tr:
+        return False
+    hv, hp = hr.split(',', 1)
+    tv, tp = tr.split(',', 1)
+    return tv.strip().endswith(' RESIDENCE') and not hv.strip().endswith('RESIDENCE') and hp.strip() == tp.strip()
+
+
 def name_check(heading, title):
-    """'' (equal), 'variant:<Word>' or 'mismatch'."""
+    """'' (equal), 'residence' (accepted), 'variant:<Word>' or 'mismatch'."""
     hd, hr = norm_name(heading)
     td, tr = norm_name(title)
     if hd == td and hr == tr:
@@ -87,6 +98,8 @@ def name_check(heading, title):
         for word in VARIANTS_BBP + VARIANTS_BP_ONLY:
             if tr == f'{hr} ({word.upper()})':
                 return f'variant:{word}'
+    if residence_by_street(hd, hr, td, tr):
+        return 'residence'
     return 'mismatch'
 
 
@@ -192,6 +205,8 @@ def main():
                 res = name_check(raw, title)
                 if res == 'mismatch':
                     flag('bb-name-mismatch', title=title)
+                elif res == 'residence':
+                    stats['name: a private residence by its street (accepted)'] += 1
                 elif res:
                     word = res.split(':')[1]
                     variant_words[word] += 1

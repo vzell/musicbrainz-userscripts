@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase year table: a private residence is no longer marked ❌ \"Brucebase event page named differently from the year page\" when the year page gives its street and the event page \"<name> Residence\" (1949-64: \"87 RANDOLPH STREET, FREEHOLD, NJ\" / \"Springsteen Residence, Freehold, NJ\"). The wiki writes them so on purpose, to keep a real person's address out of the page's address (Danny van der Linden, 2024). BruceParser's rule: the same date and place, so \"STING RESIDENCE\" / \"Sumner Residence\" (1991-02-09) is still marked, as in BruceParser's report. 22 rows less on the whole wiki (38 → 16)."
+        ]
+      }
+    ]
+  }
+]

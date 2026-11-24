@@ -1816,7 +1816,7 @@ tint and the tooltip card are the findings' own.
 
 | Finding             | Level | Known from      | Rule                                                                                         |
 |---------------------|-------|-----------------|----------------------------------------------------------------------------------------------|
-| `bb-name-mismatch`  | ❌    | the event page  | heading ≠ title after `_bbNormName()`, and no variant                                        |
+| `bb-name-mismatch`  | ❌    | the event page  | heading ≠ title after `_bbNormName()`, no variant, no private residence by its street        |
 | `bb-name-variant`   | ⚠️    | the event page  | title = heading + " (Early)" … (`_BB_NAME_VARIANTS`, nine words)                             |
 | `bb-anchor-date`    | ⚠️    | the row         | the anchor does not start with the heading date's DDMMYY                                     |
 | `bb-anchor-link`    | ❌    | the event page  | "Info & Setlist" names another anchor, or a year page that does not cover the date's year    |
@@ -1838,6 +1838,22 @@ tint and the tooltip card are the findings' own.
   strips. The mirror has the four extra ones once each (1969-05-28
   Pandemonium ×3, 2002-07-30 Convention Hall); with four words they would
   be errors. Confirmed by vzell, 2026-11-14 ("Keep the nine variant words").
+- **A private residence by its street** (`_bbResidenceByStreet()`, since
+  2026-11-24, branch `fix/bb-residence-name`): the year page gives the
+  street ("87 RANDOLPH STREET, FREEHOLD, NJ"), the event page "<name>
+  Residence" ("Springsteen Residence, Freehold, NJ"), on purpose (Danny,
+  2024-08-12/17, org/brucebase-chat.org: "Will always ignore these
+  difference, as they are intentionally"). BruceParser's
+  `residence_by_street()` (`eefyp.sh`, 0.28.1): the same date and place
+  (every comma part after the first), the event page's venue ends in
+  " Residence", the year page's does not, so 1991-02-09 "STING RESIDENCE"
+  / "Sumner Residence" stays a mismatch, as in BruceParser's report.
+  Probe and checker (Env: 2026-11-24T10:30+01:00 · NB-3641 · Python and
+  Playwright Chromium 151 over bb/2026-11-24 · no Tampermonkey):
+  `bb-name-mismatch` 38 → 16, all 16 in BruceParser's report (one more
+  there, 1966-07-28 Arthur Pryor Bandshell: two blanks after the date,
+  `bb-title-spaces` here); 22 accepted, all in 1949-64;
+  `check-bb-batch1-findings.js`: no difference over 5,018 entries.
 - **The letter rule is BruceParser's**: the anchor without its digits
   against `[a-z]` after the date in the address (`/gig:1970-05-02a-…`).
   An address without a letter under an anchor with one is flagged, which is

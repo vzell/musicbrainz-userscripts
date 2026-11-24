@@ -28212,7 +28212,9 @@
     // (Env: 2026-11-14T11:00+01:00 · petri · Python over bb/2026-11-13 · n/a),
     // 5,018 entries on 63 year pages, 5,016 event pages read:
     //   bb-name-mismatch 38 rows (22 of them 1949-64's "87 Randolph Street" /
-    //   "Springsteen Residence"), bb-name-variant 277, bb-anchor-date 1
+    //   "Springsteen Residence"; accepted since 2026-11-24 by
+    //   `_bbResidenceByStreet()`, 16 left, all in BruceParser's report),
+    //   bb-name-variant 277, bb-anchor-date 1
     //   (1972-05-00 Mediasound, anchor 000472b), bb-anchor-link 7,
     //   bb-anchor-postfix 338 (1973: 129), bb-title-spaces 5 (all in event
     //   page titles). Against BruceParser's reports of the same run: the
@@ -28265,12 +28267,41 @@
     }
 
     /**
+     * Whether a year heading and its event page's title name one private
+     * residence the two ways the wiki does on purpose: the street on the
+     * year page ("87 RANDOLPH STREET, FREEHOLD, NJ"), "<name> Residence" on
+     * the event page ("Springsteen Residence, Freehold, NJ"). Danny,
+     * 2024-08-17 (org/brucebase-chat.org): "except for those of private
+     * residence … Will always ignore these difference, as they are
+     * intentionally". BruceParser's `residence_by_street()` (`eefyp.sh`,
+     * since 0.28.1): the same date and place (every part after the first),
+     * the event page's venue ends in " Residence", the year page's does not.
+     * So "STING RESIDENCE" / "Sumner Residence" (1991-02-09) is not one.
+     * Probe `scripts/probe-bb-batch1-findings.py` on bb/2026-11-24: the 22
+     * entries of 1949-64 that only this script flagged (38 → 16).
+     *
+     * @param {{date: string, rest: string}} h The heading, `_bbNormName()`d.
+     * @param {{date: string, rest: string}} t The title, `_bbNormName()`d.
+     * @returns {boolean}
+     */
+    function _bbResidenceByStreet(h, t) {
+        const hc = h.rest.indexOf(',');
+        const tc = t.rest.indexOf(',');
+        if (!h.date || h.date !== t.date || hc < 0 || tc < 0) return false;
+        const hVenue = h.rest.slice(0, hc).trim();
+        const tVenue = t.rest.slice(0, tc).trim();
+        return / RESIDENCE$/.test(tVenue) && !/RESIDENCE$/.test(hVenue)
+            && h.rest.slice(hc + 1).trim() === t.rest.slice(tc + 1).trim();
+    }
+
+    /**
      * Compares a year heading with its event page's title.
      *
      * @param {string} heading The heading as written.
      * @param {string} title   The title as written.
-     * @returns {string} '' when they name the same, the word of
-     *   `_BB_NAME_VARIANTS` the title adds ("Early"), or 'mismatch'.
+     * @returns {string} '' when they name the same (a private residence by
+     *   its street and by its name included, `_bbResidenceByStreet()`), the
+     *   word of `_BB_NAME_VARIANTS` the title adds ("Early"), or 'mismatch'.
      */
     function _bbNameCheck(heading, title) {
         const h = _bbNormName(heading);
@@ -28280,6 +28311,7 @@
             const word = _BB_NAME_VARIANTS.find(w => t.rest === `${h.rest} (${w.toUpperCase()})`);
             if (word) return word;
         }
+        if (_bbResidenceByStreet(h, t)) return '';
         return 'mismatch';
     }
 
@@ -80413,7 +80445,7 @@
         {
             id: 'bb-name-mismatch', level: 'error', glyph: '≠', scope: 'cell',
             label: 'Brucebase event page named differently from the year page',
-            tip: 'The year page\'s heading and the title of the entry\'s own page name different things ("PRIVATE PROPERTY, HOWELL, NJ" on the year page, "Unknown Location, Howell, NJ" on the event page). Compared as written, in capitals, "Stone Pony (The)" read as "The Stone Pony"; two blanks in a row count as a difference. Known once ▶ Pages has read the entry\'s page. One of the two pages needs the edit.',
+            tip: 'The year page\'s heading and the title of the entry\'s own page name different things ("PRIVATE PROPERTY, HOWELL, NJ" on the year page, "Unknown Location, Howell, NJ" on the event page). Compared as written, in capitals, "Stone Pony (The)" read as "The Stone Pony"; two blanks in a row count as a difference. A private residence is no difference when the year page gives its street and the event page "<name> Residence" ("87 RANDOLPH STREET" / "Springsteen Residence"): the wiki does that on purpose. Known once ▶ Pages has read the entry\'s page. One of the two pages needs the edit.',
             enabled: () => !!_isBbHost && Lib.settings.sa_findings_bb_name_mismatch !== false,
             cols: name => name === 'Event',
             rowGate: row => !!row.querySelector('span.mb-bb-ev-data[data-mb-bb-checks]'),
