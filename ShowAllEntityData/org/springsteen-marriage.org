@@ -29,7 +29,11 @@ left out by decision), NOT (not done, with the reason).
 - *The 24 MusicBrainz event titles are done* (vzell, 2026-11-24): 22 edited, two kept on purpose (=57b91acb= "first
   direct arena", by the place's annotation; =84ab5c59= Charlie's Place, right). Checked by
   =scripts/check-mb-event-title-fixes.py=: bbp-parity.org, "State on MusicBrainz, 2026-11-24: done".
-- *For vzell:* the Danny draft has items 1–14 (venues and date letters added).
+- *The Brucebase chat is read* (Takeout of 2026-07-10, 1,770 messages): [[file:brucebase-chat.org][brucebase-chat.org]] checks Danny's
+  rulings against BruceParser and SAED. To act on: SAED marks private residences ❌ =bb-name-mismatch= (Danny: on
+  purpose) and 18 tour openers ❌ for the premiere count; =efc.sh='s storyteller exemption hides a backlog Danny named;
+  the Danny draft repeats three things he answered in 2024 (items 5, 9, 13). Fixes listed only (vzell: "List only").
+- *For vzell:* the Danny draft has items 1–14 (venues and date letters added); trim it by brucebase-chat.org first.
 - *The audit of the five flat reports, and 0.36.0–0.39.0* (vzell: "do 1 with 2 and 3", then "go ahead with your
   recommendations"). 0.36.0: =tests/check-probes.sh= after every run (warns only), a second run of the day moves the
   first to =bb/out/run-<date>-<HHMM>/=. 0.37.0: the images report pairs the =files= tag with the page's own files

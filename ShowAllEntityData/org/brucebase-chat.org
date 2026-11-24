@@ -1,0 +1,298 @@
+#+title: The Brucebase chat against BruceParser and ShowAllEntityData
+#+date: 2026-11-24
+#+TODO: TODO NEXT WAIT | DONE PART NOT
+
+Env: 2026-11-24T01:03:31+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+(code reading; the measurements by =scripts/probe-bb-chat-rulings.py= over the mirror =bb/2026-11-23=)
+
+vzell, 2026-11-24: "read the Google Takeout export of the BruceBase chat … and check Dannys answers to my questions
+plus his other comments against what I have coded so far in my BruceParser shell scripts and what we have
+reimplemented in our userscript so far", and check BruceParser's comments. Fixes are listed here, not made (vzell:
+"List only"). Part of Track A of [[file:springsteen-marriage.org][springsteen-marriage.org]]; the Danny draft is in [[file:bbp-parity.org][bbp-parity.org]].
+
+* PICKUP HERE (2026-11-24)
+
+- *Read:* the whole Google Chat space "Brucebase Wiki" (Takeout of 2026-07-10, =debug/google-space-AAAAeGPY3Qo/=,
+  1,770 messages from 2024-05-09 to 2026-07-10; nothing after 2026-07-10 is in it). Transcript:
+  =python3 scripts/dump-bb-chat.py= → =debug/brucebase-chat/chat.txt= (=debug/= is not in git: it names the members).
+- *Found:* five things in SAED, seven in BruceParser, seven in the Danny draft ("What to act on" below). The two
+  with the most weight: SAED's =bb-name-mismatch= ❌ marks the private residences Danny calls intentional, and the
+  Danny draft asks him again about things he answered in 2024 (venue names, the Sting/Sumner residence, the
+  pre-1981 storyteller pages).
+- *Next, vzell's call:* which of the fixes to make, each as its own item (SAED branch, BruceParser version), and the
+  Danny draft trimmed before it is sent. Batch 4b ([[file:springsteen-marriage.org][springsteen-marriage.org]], "Batch 4") takes the
+  rulings on letters, places and relation names below as its input.
+
+* Where the rulings come from
+
+Members, by role: Danny van der Linden (the wiki's owner; he also posts as the "Brucebase Wiki" account, the one he
+runs bulk tag edits with: "It's not my d_vdlinden account that does this, but the actual brucebase wiki account",
+2024-09-20), its co-editor (from 2024-05), the site's earlier maintainer (in the chat from 2025-04), a proofreader
+(2024-05 only), and vzell.
+Dates below are the chat's own (UTC). Quotes are verbatim, typos kept.
+
+Most of it is August to December 2024: vzell's first parser runs (the reports that became BruceParser) and Danny
+fixing the wiki from them, year by year. 2025 is wiki work among the editors; June–July 2026 is vzell's
+BruceBaseParser and Danny's answers on icons and tags.
+
+* What to act on
+
+** SAED (ShowAllEntityData)
+
+1. *Private residences are marked ❌ =bb-name-mismatch=.* Danny, 2024-08-12: "'Private' should also be ignored,
+   this difference is on purpose as well"; 2024-08-17: "except for those of private residence. If you can, just
+   filter them out. Will always ignore these difference, as they are intentionally." The year page writes the street
+   ("87 RANDOLPH STREET, FREEHOLD, NJ"), the event page "Springsteen Residence". =_bbNormName()= / =_bbNameCheck()=
+   have no exception; batch 1's probe counted 22 of its 38 rows as exactly these (2026-11-14). BruceParser has the
+   rule since 0.28.1 (=eefyp.sh= =residence_by_street()=, =residence_private()=). Fix: the same rule in
+   =_bbNameCheck()= (an accepted variant, not a finding), its count re-measured.
+2. *The premiere count on a tour's first show.* The co-editor, 2026-07-10: "i believe it was decided not to include
+   premiere tags on the first show of a tour … because it screwed up the stats"; Danny: "Did we, don't think so."
+   The mirror: of 851 gigs with bold songs on the Setlist tab, 35 lack =prem=, and 18 of those 35 are the first
+   show of their tour tag (1975-07-20b, 1976-09-26, 1978-05-23, 1980-10-03, 1984-06-29, 1988-02-25, 1988-09-02,
+   1992-06-15, 1999-04-09, 2002-08-07, 2004-10-01, 2005-04-25, 2006-04-30, 2007-10-02, 2009-04-01, 2012-03-18,
+   2014-01-26, 2017-10-03); 6 openers do carry it (1995-11-26, 2016-01-16, 2017-01-22, 2023-02-01, 2025-05-14,
+   2026-03-31). Batch 3 expects the count on every show with bold songs, so the 18 get ❌. A question for Danny first
+   (is "no premiere tags on an opener" the rule?); if yes, the opener is found from the feed's tour table and exempted.
+3. *The =guest= tag is not checked.* Danny, 2026-07-06: the tag belongs on a show as soon as anyone is listed as
+   "(Guest)", "or when Bruce guesting on the show of another artist". The cast family leaves =guest= out (vzell,
+   2026-11-19, when the rule was a guess). The rule is now the wiki's own: a candidate for the cast family, with a
+   probe first.
+4. *Date tags on redirect pages are not looked for.* Danny, 2024-09-20: "So onstage, offstage, and pages ending with
+   -2, -3 etc. they do not get tags for yyyy, mmmm, and dd". Neither SAED nor BruceParser reports such a tag. The
+   mirror has four: =offstage:2002-03-11-roseland-ballroom-new-york-city-ny=,
+   =offstage:2007-06-24-florentine-gardens-river-vale-nj=, =news:article-2019-04-27-paramount-theatre-asbury-park-nj-2=
+   (a "-2" of a news page) and =retail:video-anthology-1= (probably no redirect; to check). Small: better in
+   BruceParser's date report and the feed than in SAED.
+5. *News and memorabilia now have a rule.* Batch 3b left the content family's =news= and =memorabilia= NOT: "the
+   wiki does not tag them by a rule the page shows". Danny, 2026-06-30, on the year page's icons: "An Article-scan is
+   'News', a Ticket or Setlist scan are actually tagged likewise. … So anything else than Article (or News), Ticket,
+   and Setlist can be assumed Memorabilia", with the file names =yyyymmdd_Article_#=, =_News_#=, =_Ticket_#=,
+   =_Setlist_#= and =_Pass_#= (memorabilia: no icon of its own); ticket and setlist pictures come from
+   =files:ticket-yyyy= / =files:setlist-yyyy=, passes from =files:pass-yyyy=. It speaks of icons; whether the tags
+   follow it needs a probe (=_bbParseImageName()= reads the names already) before anything is reopened.
+
+** BruceParser
+
+1. *=efc.sh= exempts every storyteller story page from the date tags.* Its comment calls it the wiki's way ("the
+   wiki gives it a year tag only"); Danny, 2024-09-20, called it a backlog: "This only include storyteller-pages,
+   which will be corrected when the corresponding gig-pages get an overhaul." The mirror agrees with Danny: from the
+   1980s on nearly every storyteller page has its month and day (1980s 397 of 397, 1990s 260 of 260, 2000s 392 of 394,
+   2010s 140 of 141, 2020s 84 of 85), the 1970s only partly (103 of 201; 1976 and 1979 complete, 1978 59 of 82).
+   The exemption hides =story:story-2007-11-04-quicken-loans-arena-cleveland-oh= (tags "2007 storyteller") and the
+   unrefreshed 1970s. Fix: drop it, and report the pre-1981 rows in a section of their own (Danny, 2025-03-19: "All
+   errors on the report earlier than 1981 can be ignored. I will correct them when I get to the refresh").
+2. *=efc.sh:77= is stale:* "Currently checked are: media,news,recnote,story". Since 0.38.0 the no-parent check reads
+   all seven (media, news, recnote, story, gignote, gallery, eye; =efc.sh= "NO-PARENT report (since 0.38.0)").
+3. *=efc.sh:73='s list of pages without a parent* adds onstage, offstage and soundcheck to Danny's four (gig,
+   rehearsal, nogig, interview; 2024-09-01). Right (they are redirect pages), but the comment should say the three
+   are BruceParser's addition.
+4. *Quotes without a year or a speaker.* =efc.sh:37= "Aug 30, 6:14 PM", =:70= "Sep 1, 11:20 PM", =:1056/:1059= "Sun
+   6:29 PM"/"Sun 6:31 PM" are 2024-08-30 16:14, 2024-09-01 21:20 and 2024-11-03 17:29/17:31 UTC (the times are
+   Central European); the words match the chat. Unattributed quotes of Danny: =efc.sh:422–440= (the letter rules,
+   2024-09-20), =:670–701= (2024-09-20 and 2024-09-23). Add the date and "Danny".
+   =extract-setlists-from-detail-pages.sh:226= spells him "Danny van de Linden".
+5. *The URL report is still derived from titles.* Danny, 2024-11-12: "Sometimes it's just needed to shorten the
+   url, once again please just ignore this. Do not create an assumed url based on the title"; 2024-11-28: "Wrongly
+   shortened-error, should only look to the end of the url, not to the title." The CLEANEDUP report leaves out
+   bootleg, content and files as he asked (=checkURLandTitles.sh:837/842=), but its 2,744 rows (2026-11-23) are
+   still title-derived. SAED took it as NOT (2026-11-20). If it is kept for Danny: only addresses cut short at 60
+   characters against the show's own address, as he described (2024-08-30: "urls with less than 60 characters after
+   the .com/, while expecting more").
+6. *The letter rule folds only "ō"* (=efc.sh:490=, =re_diacritics="(ō)"=); SAED's =_bbTagPageLetter()= folds every
+   accent. One page today (=venue:jo-horu-osaka-japan=, "Ōsaka-Jō Hōru"), so latent. Danny on that page
+   (2024-09-20): "This one contains the city first in the title, so first character is 'J', not 'O' of Osaka, and
+   certainly not 'Å'". It carries both =j= and =o=, so neither tool flags it; batch 4b should know the rule.
+7. *The files tag (0.37.0) follows Danny's one rule* (2024-12-20: =[[gallery]]= with attachments on the page needs
+   =files=; =[[gallery]] … [[/gallery]]= shows other pages' pictures and needs none). He asked to leave retail out
+   while the report judged by the pictures shown; with the attachments rule, retail can stay. Nothing to fix; noted
+   because his "remove retail" is in the chat.
+
+** The Danny draft (bbp-parity.org, "Wiki fixes for Danny", items 1–14)
+
+1. *Item 5, first bullet (1991 "STING RESIDENCE" vs "Sumner Residence"):* a private residence; Danny ignores those
+   differences on purpose (2024-08-17). Drop it. The second bullet ("Rumson NJ Rumson Nj", a doubled place) stays.
+2. *Item 9 (133 pages without a parent):* the 104 storyteller stories (1972-01-21 to 1981-07-30) are the backlog
+   Danny named twice (2024-09-20: "i'll filter out the story-pages, as they will be addressed when the gig-pages get
+   a refresh"; 2025-03-19, before 1981). Say so, and list the 29 others.
+3. *Item 13 (105 venue names):* Danny parked this report twice (2024-08-21 "So yes, interesting file, but I will
+   park it"; 2024-08-27 "Have to park these, has no priority for me") and called most of its kinds intentional: a
+   venue page has the venue's original, simple name and the event title may add to it (2024-08-21); "As long as we
+   link to the right venue, most will be ok" (2024-08-19); the Unknown Location page holds the events with partial
+   information (2024-11-09); "Hulu Theater At Madison Square Garden" is "like a location on a campus" (2024-11-12);
+   the Telegraph Hill Studio / Springsteen Residence rows are a private residence. Keep only what reads as a typo:
+   "Metlife" (MetLife), "Moviestar Arena" (Movistar), "Bruce Springsteen Center For American Music West, Long
+   Branch" (a comma in the wrong place), the dropped accent of "Olímpico", "Sir Morgan' s Cove".
+4. *Item 2 (gallery:2002-07-11, tagged with five days):* Danny answered this page on 2024-11-03 with a rule of his
+   own: "Maybe by checking if a gallery-page does not exist for days 12, 16, 18, and 22, the gallery page for day 11
+   does not have to be reported". Either ask for =xdate= on it or apply his rule; BruceParser drops the page by name
+   today (=efc.sh=, "gallery:2002-07-11-expo-theater-fort-monmouth-nj … to be fixed on the wiki").
+5. *Rows before 1981 in items 5, 6, 9 and 13:* Danny's 2025-03-19 rule. Mark them "for your refresh" rather than
+   asking for them now. His refresh has reached into the 1970s (the storyteller tags above).
+6. *Item 7 (76 stage pages named otherwise):* hedged already ("Only if you care"). Danny on such mismatches
+   (2024-09-24, Kölnarena): "it's good to see if we have mismatches on supporting categories", but "Main pages gig
+   nogig etc we do not change the url anymore, unless it really necessary". Fits as written.
+7. *Items he asked for himself:* 8 (year vs list, 2024-08-19), 9 (no parent, 2024-08-30), 10 (no tags, 2024-09-20),
+   11 (first letters, 2024-08-17), 12 (the files tag, 2024-12-15). The draft could say so: these are the reports he
+   asked for.
+
+* The rulings, one by one
+
+Each: the chat (date, who), then BruceParser, SAED, and the verdict. "BP" is BruceParser.
+
+** Titles
+
+- *Year page and event page name the same show the same* (Danny, 2024-08-09: "we should correct whenever we see
+  it"). BP =eefyp.sh=; SAED =bb-name-mismatch= / =bb-name-variant=. Matches.
+- *"(The)", "(Le)", "(De)" belong to the part they follow* (Danny, 2024-08-12; examples 2024-08-17 "Opéra Berlioz,
+  Corum (Le)" → "le corum", 2024-08-21 "Chelsea Piers, Lighthouse (The)": "The 'The' belongs to Lighthouse"). BP
+  0.16.0 per comma part; SAED =_bbNormName()= per comma part. Matches.
+- *Early, Late, … after the event title are variants* (vzell's normalisation, accepted 2024-08-11). BP, SAED
+  =_BB_NAME_VARIANTS=. Matches.
+- *Private residences differ on purpose* (2024-08-12/13/17; 2024-08-17: "We do not want to show the actual address
+  of a real person in the url"). BP since 0.28.1. SAED: *differs* (SAED 1 above).
+- *Not everything goes into the title* (2024-08-12: "not all information needs to be stored in the title-section …
+  The more detailed information can be written in the gignote-page, and on the venue-page"). Background for the
+  venue check.
+- *Uncertain dates get a, b, c in the address, not in the title* (2024-08-15: "Added the a and b to the date,
+  however I do not want this to be reflected into the title. So in your parser you can ignore the a or b"), and a
+  matching letter tag (2024-08-15: "Also gonna add tags a b or c"). BP 0.42.0 (date letters per day); SAED
+  =_bbNormName()= drops the letter, batch 3's day-letter family checks the tag. Matches.
+- *Story and news pages are =category:(word-)yyyy-mm-dd-venue-city-state(-country)(-word)=*; their titles may add
+  "Part One", "- Episode 0" (2024-08-21, 2024-08-30 "Not gonna change", 2024-09-20). BP: the story/news subtypes,
+  =efc.sh:43–55= quotes it. SAED =bb-feed-name= judges by the show the breadcrumbs name, as Danny proposed
+  (2024-08-30: "compare the titles from page vs. parent page"). Matches.
+- *Every word capitalised, unless the name is written in lower case* (Danny, 2024-09-24: "I prefer each word in the
+  title being capitalized"; 2024-09-25: v1/v2 and "Bruce @ careerbuilder.com", "fiserv.forum", "iPayOne"). BP
+  =PROBLEM-lowercase-first-character-in-title-words= with its exceptions; SAED none. Fits. (The co-editor,
+  2024-09-24, on French titles: "the policy in the past … was to not capitalize"; Danny: "it's clearer if do all".)
+- *Danny wanted the dependent pages' titles compared with the show* (2024-08-12: "Another parser to compare the
+  titles for the categories gignote, recnote, gallery, media, news, story, eye, onstage, offstage compared tot gig
+  would be helpful"; offstage 2024-08-20, soundcheck 2024-09-11). BP dependent-title, =dependent-names.awk=,
+  =stage-names.awk=; SAED =bb-feed-name= (9.99.1667, stage pages 9.99.1684). Matches.
+- *Year page against its list page* (Danny, 2024-08-19: "Could you build a parser to verify the naming on the year
+  page against the naming on the year-list page?"). BP =year-list-compare.awk=; SAED =bb-list-title=,
+  =bb-list-anchor=. Matches.
+
+** Addresses (URLs)
+
+- *60 characters after the host, cut silently* (2024-08-30). BP and SAED (=_bbSiblingName()=, Phase 1). Matches.
+- *A city in the venue's name is not repeated in the address* (2024-09-13: "we do not add zurich or greensboro
+  into the url, but we do add it to the title"). BP =checkURLandTitles.sh=. Matches; SAED has no address check.
+- *Umlauts: "o", not "oe"* (2024-09-24: "The browser changes ö into oe … We changed it back into the actual o, u
+  and a"). BP's slug rule. Matches.
+- *Main pages' addresses are not changed any more* (2024-09-24) and *no address is to be derived from a title*
+  (2024-11-12, 2024-11-28). BP: *differs* (BruceParser 5). SAED NOT. Matches.
+
+** Tags
+
+- *The limit is the tags' length; overflow goes to an On stage page and to "-2", "-3" pages that redirect*
+  (2024-07-28, 2024-08-13, 2024-08-14, 2024-09-12). Danny: "This only is for gif pages. Interview does not have a
+  onstage page related". SAED Phase 1 (9.99.1625): the limit is 512 characters, and the mirror has On stage pages for
+  rehearsals (170), nogigs (2) and one interview, so "only gig pages" no longer holds. SAED reads all. Superseded by
+  the data.
+- *Redirect pages carry no date tags* (2024-09-20). *Not checked* (SAED 4).
+- *Every show page has its day, month, year and weekday tags* (2024-09-01: "Yes, that's correct"); several dates on
+  a supporting page are fine and get =xdate= (2024-09-23, 2024-11-03: "Pages with the xdate tag can be ignored");
+  a news page that belongs to no show keeps its own date tags (2024-11-03, the asteroid page: "That should be your
+  first check"). BP =efc.sh= (xdate, undated pages since 0.29.0); SAED batch 3's date family on show pages, the
+  feed's date kinds elsewhere (from BP). Matches, but the storyteller exemption *differs* (BruceParser 1).
+- *A weekday or day tag that does not fit the date* (Danny, 2024-09-20: "A report that would be really helpful as
+  well is if the tags for yyyy mmmm dd do not match the corresponding day tag"). BP's wrong-tag rows; SAED
+  =bb-tag-spurious= on the date family. Matches.
+- *First-letter tags* (Danny, 2024-08-17: "The title dictates the first letter to be tagged"; 2024-09-20: a
+  number gets "0-9", a leading quote is skipped, "'"/'"' are no tags, "The" is ignored ("The Sessions Band get an
+  'S' tag, not a 'T'"), "Where there is a & in the relation title, it's often just a page to combine Person with
+  band. They get tag &", a bootleg with a full date gets its year, the Osaka venue skips its leading city). BP
+  =efc.sh:422–537=; SAED =_bbTagPageLetter()= (batch 4: venue, song, relation). Matches; the mirror's 45 relation
+  pages with "&" all carry =&=. Two gaps: BP folds only "ō" (BruceParser 6); neither knows the city-first rule.
+- *Song tags: the full title, and initials for titles of three words or more* (2024-07-28: "Where the song title
+  consists of two words only, than there is no short tag"; "In most cases the short tag consists of all first
+  letters … In some cases we deviate from that due to doubles"). BBP guessed initials; SAED's songs family reads the
+  tags the wiki uses (=songTags= in the feed, BP 0.23.0). Matches the ruling better than BBP did.
+- *Dotted relation tags* (Danny, 2024-07-28: the dotted ones are the non-E Street ones; the co-editor, 2024-09-15:
+  "the dot tags are only relevant for a few people under certain situations … people who have been touring members
+  of hte E Street Band AND who have guested with the band NOT as members"; Danny, 2026-07-06: "When member of the E
+  Street Band use, 'stevenvanzandt', in all othercases use 'steven.vanzandt'. Only use 'littlesteven' in combination
+  with 'disciplesofsoul'"). SAED's cast family counts either form (=eStreetDotted= in the feed); it does not check
+  that the right one is used. Fits; a stricter rule would need the band context per show. For batch 4b's relation
+  names: a person's page may carry both forms.
+- *=guest=* (2026-07-06). *Not checked* (SAED 3).
+- *Premiere counts 1–8 and "9+"* (the co-editor, 2026-07-09: "tags are 1, 2, 3, 4, 5, 6, 7, 8, 9+"). SAED batch 3.
+  Matches; the tour opener is open (SAED 2).
+- *=help=* means missing information readers may supply, shown as a Help Us icon or =content:help_us_onstage=
+  (co-editor, 2026-07-02). SAED's icon family (9.99.1636). Matches.
+- *=info=* marks an informational page (2024-09-15, 2026-07-02). Nothing checks it; nothing to check.
+- *=solo=* on every show where any song is played by Bruce alone (2024-06-12/19; a song-specific tag
+  "foryou_solo" only as an idea). Not checkable from the page (the notes say it). Nothing to do.
+- *=tour_*= tags collect a tour's shows and songs for the tour statistics* (2024-06-11). SAED's tour family (feed
+  table). Matches. *A show is split into a/b/c pages by tour tag* (2024-09-23: "So splitting is based on the
+  tour-tag").
+- *=bootleg=, =audio=, =video=* (co-editor and Danny, 2026-07-09/10: =bootleg= is a circulating recording on the
+  recnote page; =audio= is playable audio on the Media tab, which Danny may drop; =video= only on recnote pages, for
+  a video bootleg; "I would not try to figure this out", "Do not try this"). SAED's content family leaves them out
+  (NOT, 2026-11-19). Matches.
+- *=files=* (2024-12-15/20, 2026-07-02: "Files-tag is to be able to list all pages that contain actual files"). BP
+  0.37.0; SAED's feed kind =files-no-images=. Matches (BruceParser 7).
+- *Tags are not entered in order* (2024-06-17: "That is done automatically"); *no tag is to be set by a script*
+  (2024-07-28: "All tags serve a specific purpose for automatically list pages. So do not mess with that"). Both
+  tools only read. Matches.
+
+** Parents and pages
+
+- *Which pages have a parent* (Danny, 2024-09-01: "gig: rehearsal: nogig: interview:, these do not have a
+  parent-page. The pages that are connect to any of these pages do have a / should have a parent"; 2024-08-30: "Can
+  you list pages that have no parent page set for all the know categories?"). BP 0.38.0 (breadcrumbs, seven
+  categories); SAED feed kind =no-parent=. Matches (BruceParser 2 and 3 are comments).
+- *A venue page's parent* (2024-11-09: a parent =venue:= page is "often a educational institute or some other
+  larger building or compound … It's already linked by parent"; 2024-12-20: "If that is set, to another venue,
+  there is no need to report on it"; 2024-08-27: "the url decides what is the first part of the title, and what is
+  additional (middle parts(s))"). BP 0.41.0 =venue_fits()= and SAED =_bbVenueCheck()= accept a middle part and a
+  room named first, but read no venue page's parent. Mostly covered; the rest is the Danny draft's item 13.
+- *Several venue pages for one venue are by design* (2024-06-17: "We create multiple pages for a venue, if another
+  name is commonly used"; 2024-08-17, the Mosque). Nothing reports duplicates. Matches.
+- *soundcheck: pages register soundcheck songs released by Nugs* (2024-09-11: "They are actually not obsolete").
+  BP 0.40.0 and SAED 9.99.1684 check their names. Matches.
+- *nogig vs interview* (2024-09-15: nogig "is mainly used if a show is cancelled, or Bruce is at an event, but does
+  not perform"; interview for "these events where Bruce is interviewed, or talks"). Background for the event types;
+  nothing checks the choice.
+
+** Setlists
+
+- *The year page may say who plays with Bruce, the Setlist tab does not* (2024-08-22: "That is correct,
+  intentional"); *report titles only* (2024-08-22, 2024-12-11: "Just report on the songs"); notes in brackets, "2x"
+  against "x2", "Pre-show" against "Pre-Set" are "not important" (2024-08-23, 2024-12-11). BP 0.28.0 (the shared
+  normaliser drops "(with …)"); SAED =bb-setlist-songs= (error) compares the songs, =bb-setlist-spelling= and
+  =bb-setlist-sections= are warnings. Fits; the warnings report what Danny called unimportant, which is vzell's call
+  (2024-12-12: "I think its not too bad to have this information handy").
+- *Medleys: the year page is right* (co-editor, 2024-08-24: "MONA - SHE'S THE ONE … in those cases, the year pages
+  are correct"; "should be PARADISE BY THE "C" everywhere"). BP 0.28.0, SAED's setlist card. Matches.
+- *"No set details known." is always written* unless the Setlist tab is hidden (2024-08-23). Both read it as a
+  note. Matches.
+
+** Icons on the year page
+
+- 2026-06-30 (Danny and the co-editor): News ← Article or News scans; Ticket ← Ticket; Setlist ← Setlist;
+  everything else (Pass, Banner, Billboard, Sign, Poster, …) Memorabilia; ticket, setlist and pass pictures come
+  from =files:ticket-yyyy=, =files:setlist-yyyy=, =files:pass-yyyy=; a setlist picture "Should in most case be on
+  both" tabs. SAED: the content family's ticket rule; see SAED 5.
+
+** Nothing for the code
+
+Style and editing rules from the chat, recorded so they are not asked again: US spelling, "outtake"; punctuation
+outside the quotes of a song title, inside elsewhere (2024-05-11); straight quotes in page code (2024-05-09); only
+Bruce's own comments in italics (2025-03-26); no links to bootleg sites after 1981 (2025-01-14); media pages embed
+Brucebase's YouTube playlists, not single videos (2024-09-15); the years 1966–1984 were not reworked in 2024 and the
+refresh went backwards from 1984 (2024-08-21, 2024-12-12, 2025-03-19). Danny's view of the reports (2024-11-28,
+2024-12-11): "sometimes there is so much reported as bogus/error that it's hard to see what is actually the meaning";
+"think you should only report on errors". And on userscripts (2026-07-01): he runs Tampermonkey but dislikes a
+button bar that is always there and takes room from the page ("especially when editing"); worth keeping in mind if
+SAED is ever offered to him.
+
+* Open questions for vzell
+
+1. SAED 1 (private residences): fix now as a small branch? Recommended: yes, it is a false ❌ on 22 rows.
+2. SAED 2 (tour openers): ask Danny first, or exempt the opener now? Recommended: ask; until then leave it.
+3. BruceParser 1, 2, 4, 6: one BruceParser version for the comments and the storyteller rule? Recommended: yes; the
+   storyteller change adds the 1970s rows to the date report, so with a "before 1981" section.
+4. The Danny draft: trim items 5, 9 and 13 as above before sending? Recommended: yes.
