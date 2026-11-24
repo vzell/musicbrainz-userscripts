@@ -852,8 +852,8 @@ Then (vzell: "also run bbp.sh afterwards") the first full run of 0.43.0: 2026-11
 same, relationTags 2,166; =bb/latest= → =2026-11-24=, 2026-11-21 slimmed (1,191 MB). The probe check moved one
 line: a new SpringsteenLyrics collection item (10302, an LP of 1973), 4,634 → 4,635 rows, the site's; its values
 saved as =tests/expected/sl-kf-jl-2026-11-24.tsv=. The feed published (feed repo =196581d=, only the run stamp).
-The run's tracked data in BruceParser (timings row, the report org stamps, the new baseline) is left *not
-committed*: Claude Code's permission check refused that commit; it waits for vzell.
+The run's tracked data in BruceParser (timings row, the report org stamps, the new baseline) is committed and
+pushed as BruceParser =d80cee3= (vzell: "commit and push the run's data").
 
 ** Built (WIP.1, =436fa049=, 2026-11-24; vzell: "ok, tackle it")
 
