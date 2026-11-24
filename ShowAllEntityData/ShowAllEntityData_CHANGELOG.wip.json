@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-25",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "MusicBrainz pages: switch between the tables and the original page, and back, as often as you like, without a reload. After a \"Show all …\" press, ☰ SAED → View → \"📄 Show the original page\" (or Ctrl+M, then P) shows the page as it was just before the press: MusicBrainz's own list with its pages, its tracklist, its sidebar. A \"▦ Back to the tables\" button bottom right (or Ctrl+M P again) brings the tables back as you left them: the same rows, the filter you typed, the sort, and where you had scrolled. The original page is a copy taken at the press, so it switches at once and costs no request; a note on it says so, since MusicBrainz's own buttons in it (rating stars, \"Load all tracks\", the credits toggle) may not respond. Esc never switches. A load from disk takes the copy too. Every render opens on the tables; the choice is not remembered. With majkinetor's scripts, the button stacks with his corner launchers, and while the original page shows his launchers, keys and player behave as on a page without our tables. Like Event Horizon's V (org/majkinetor.org, \"Switch between SAED's view and the original page (EH's V)\"; approved mockup https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf)."
+        ]
+      }
+    ]
+  }
+]

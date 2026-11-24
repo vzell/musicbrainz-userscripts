@@ -69,8 +69,8 @@
     "why": "EH's own view is the user's: the mark and the stop are for our table only.",
     "edits": [
       {
-        "find": "        const want = _mbuInterop.tableShown && Lib.settings.sa_eh_player_quiet !== false &&\n            !root.hasAttribute('data-mbu-dock');\n",
-        "replace": "        const want = _mbuInterop.tableShown && Lib.settings.sa_eh_player_quiet !== false;\n"
+        "find": "        const want = _mbuTableVisible() && Lib.settings.sa_eh_player_quiet !== false &&\n            !root.hasAttribute('data-mbu-dock');\n",
+        "replace": "        const want = _mbuTableVisible() && Lib.settings.sa_eh_player_quiet !== false;\n"
       }
     ],
     "spec": "tests/fixtures/eh-interop-markers.spec.js",
@@ -82,7 +82,7 @@
     "why": "Scope: only a table of ours asks for it (as the quiet and keys marks; vzell 2026-11-21 for the keys).",
     "edits": [
       {
-        "find": "        const want = _mbuInterop.tableShown && Lib.settings.sa_eh_player_quiet !== false &&\n",
+        "find": "        const want = _mbuTableVisible() && Lib.settings.sa_eh_player_quiet !== false &&\n",
         "replace": "        const want = Lib.settings.sa_eh_player_quiet !== false &&\n"
       }
     ],
@@ -121,8 +121,8 @@
     "why": "sa_eh_player_quiet off is the way back: EH's player is left as it is.",
     "edits": [
       {
-        "find": "        const want = _mbuInterop.tableShown && Lib.settings.sa_eh_player_quiet !== false &&\n",
-        "replace": "        const want = _mbuInterop.tableShown &&\n"
+        "find": "        const want = _mbuTableVisible() && Lib.settings.sa_eh_player_quiet !== false &&\n",
+        "replace": "        const want = _mbuTableVisible() &&\n"
       }
     ],
     "spec": "tests/fixtures/eh-interop-markers.spec.js",

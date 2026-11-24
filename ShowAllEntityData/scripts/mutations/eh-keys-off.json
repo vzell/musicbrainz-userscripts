@@ -95,8 +95,8 @@
     "why": "Without the <html> observer's call the marks do not follow Event Horizon's view coming and going.",
     "edits": [
       {
-        "find": "_mbuQuietSync(); _mbuKeysSync(); _mbuPlayerSync(); })",
-        "replace": "_mbuQuietSync(); _mbuPlayerSync(); })"
+        "find": "_mbuQuietSync(); _mbuKeysSync(); _mbuPlayerSync(); _origViewCornerSync(); })",
+        "replace": "_mbuQuietSync(); _mbuPlayerSync(); _origViewCornerSync(); })"
       }
     ],
     "spec": "tests/fixtures/eh-single-keys.spec.js",
@@ -160,8 +160,8 @@
     "why": "sa_block_eh_single_keys off must give Event Horizon all its keys back, the marks included.",
     "edits": [
       {
-        "find": "        const want = _mbuInterop.tableShown && Lib.settings.sa_block_eh_single_keys !== false &&",
-        "replace": "        const want = _mbuInterop.tableShown &&"
+        "find": "        const want = _mbuTableVisible() && Lib.settings.sa_block_eh_single_keys !== false &&",
+        "replace": "        const want = _mbuTableVisible() &&"
       }
     ],
     "spec": "tests/fixtures/eh-single-keys.spec.js",

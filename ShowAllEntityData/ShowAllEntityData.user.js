@@ -68445,7 +68445,7 @@
                         Lib.debug('shortcuts', `  ${key}: ${btn.textContent.trim()}`);
                     });
                 }
-                Lib.debug('shortcuts', 'Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=' + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + ', q=Unique Values Dropdown, a=CAA Toggle');
+                Lib.debug('shortcuts', 'Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, p=Original page, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=' + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + ', q=Unique Values Dropdown, a=CAA Toggle');
                 Lib.debug('shortcuts', 'Press any key or Escape to cancel');
             } else {
                 if (buttonKeys.length > 0) {
@@ -68455,7 +68455,7 @@
                         console.log(`[VZ-${SCRIPT_BASE_NAME}]   ${key}: ${btn.textContent.trim()}`);
                     });
                 }
-                console.log(`[VZ-${SCRIPT_BASE_NAME}] Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=` + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + `, q=Unique Values Dropdown, a=CAA Toggle`);
+                console.log(`[VZ-${SCRIPT_BASE_NAME}] Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, p=Original page, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=` + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + `, q=Unique Values Dropdown, a=CAA Toggle`);
             }
 
             // Auto-exit after 5 seconds
@@ -107503,7 +107503,7 @@
      */
     const _TOOLBAR_MENU_ROW_ORDER = {
         data: ['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn'],
-        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-mbu-quiet-btn', 'mb-shortcuts-help-btn'],
+        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-mbu-quiet-btn', 'mb-orig-view-btn', 'mb-shortcuts-help-btn'],
         help: ['mb-settings-btn', 'mb-app-help-btn', 'mb-saed-log-btn', 'mb-shortcuts-help-btn'],
         disc: ['mb-disc-complete-btn', 'mb-disc-official-btn', 'mb-disc-nonofficial-btn', 'mb-disc-merged-btn'],
     };
@@ -113479,7 +113479,8 @@ ${sections.join('\n')}
                     { keys: getShortcutDisplay('sa_shortcut_open_statistics', 'Ctrl+I'), desc: 'Open "Statistics" panel (use prefix mode then I when direct Ctrl+letter shortcuts are disabled)' },
                     { keys: getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B'), desc: 'Toggle barcode row highlighting (use prefix mode then B when direct Ctrl+letter shortcuts are disabled)' },
                     { keys: getShortcutDisplay('sa_shortcut_toggle_h2', 'Ctrl+2'), desc: 'Toggle collapse all h2 headers' },
-                    { keys: getShortcutDisplay('sa_shortcut_toggle_h3', 'Ctrl+3'), desc: 'Toggle collapse all h3 headers (types)' }
+                    { keys: getShortcutDisplay('sa_shortcut_toggle_h3', 'Ctrl+3'), desc: 'Toggle collapse all h3 headers (types)' },
+                    { keys: `${getPrefixDisplay()}, then P`, desc: 'Switch between the tables and the original page (a copy of the page from before the press)' }
                 ]
             },
             {
@@ -113775,6 +113776,8 @@ ${sections.join('\n')}
      * "External menu items"), MusicBrainz only:
      *   - `tableShown`: a table was rendered or loaded from disk on this page
      *     (`_mbuTableShown()`);
+     *   - `origShown`: the original page shows instead of it
+     *     (`_origViewShow()`; both read through `_mbuTableVisible()`);
      *   - `quietUserShown`: the ☰ row asked for the corner launchers back for
      *     this page view (`_mbuQuietSync()`);
      *   - `menu`: the launchers registered for Event Horizon's More (⋯) menu,
@@ -113788,7 +113791,7 @@ ${sections.join('\n')}
      * Declared before the init code that first uses it (no TDZ).
      */
     const _mbuInterop = {
-        tableShown: false, quietUserShown: false, menu: new Map(), observing: false, keysKeepOurs: false,
+        tableShown: false, origShown: false, quietUserShown: false, menu: new Map(), observing: false, keysKeepOurs: false,
         // Event Horizon's player (_mbuPlayerSync()): the observers while it is kept quiet, the channel.
         playerHtmlObs: null, playerRootObs: null, playerBus: null,
     };
@@ -113816,7 +113819,7 @@ ${sections.join('\n')}
     function _ehInteropObserve() {
         if (_mbuInterop.observing || _foreignHost) return;
         _mbuInterop.observing = true;
-        new MutationObserver(() => { _ehMenuSync(); _mbuQuietSync(); _mbuKeysSync(); _mbuPlayerSync(); })
+        new MutationObserver(() => { _ehMenuSync(); _mbuQuietSync(); _mbuKeysSync(); _mbuPlayerSync(); _origViewCornerSync(); })
             .observe(document.documentElement, { attributes: true, attributeFilter: ['data-mbu-dock', 'data-mbu-page', 'data-mbu-st', 'data-mbu-eh'] });
     }
 
@@ -113848,6 +113851,247 @@ ${sections.join('\n')}
         _mbuQuietSync();
         _mbuKeysSync();
         _mbuPlayerSync();
+    }
+
+    /**
+     * Whether a table of ours is what the user SEES on MusicBrainz's page: one
+     * was rendered (`tableShown`) and the original page is not shown instead
+     * (`origShown`, `_origViewShow()`). The quiet, keys and player marks ask
+     * this, so while the original page shows they are down as on an
+     * unrendered page, and they come back with the tables.
+     *
+     * @returns {boolean}
+     */
+    function _mbuTableVisible() {
+        return _mbuInterop.tableShown && !_mbuInterop.origShown;
+    }
+
+    /**
+     * The switch between our tables and the original page, MusicBrainz
+     * (vzell, 2026-11-24; org/majkinetor.org, "Switch between SAED's view and
+     * the original page (EH's V)"; approved mockup
+     * https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf). The script edits
+     * the page in place and Event Horizon's way, a second body, is not open to
+     * it, so the original is a COPY of `#page` taken at the first press of
+     * the page view, before anything changes:
+     *   - `copy`: that clone, without this script's controls, with the note
+     *     on top (`_origViewCapture()`); detached while the tables show;
+     *   - `label`, `at`: the pressed action and the time, for the note;
+     *   - `showing`: the copy shows and the live `#page` is hidden (never
+     *     removed: every listener, cache and rewired clone stays as it was);
+     *   - `scroll`: `window.scrollY` of each view, restored on a switch.
+     * Not remembered (vzell): every render opens on the tables. Declared
+     * before the init code that first uses it (no TDZ).
+     */
+    const _origView = { copy: null, label: '', at: '', showing: false, scroll: { table: 0, orig: 0 } };
+
+    /** `_saBody()` class while the original page shows: the CSS hides the live `#page`. */
+    const _ORIG_VIEW_CLASS = 'mb-orig-view';
+
+    /**
+     * This script's own controls inside `#page` before a press (the h1
+     * toolbar and its status lines, the Ctrl+M card): left out of the copy,
+     * which shows the page as MusicBrainz drew it (approved question 8: no
+     * second press from the copy).
+     */
+    const _ORIG_VIEW_STRIP_SEL = '#mb-show-all-controls-container, #mb-status-displays-container, #mb-ctrl-m-tooltip';
+
+    /**
+     * Takes the copy of the original page, once per page view: a deep clone
+     * of the live `#page` (content and sidebar) as it is NOW, so it must run
+     * before the first change of a press — at the top of
+     * `startFetchingProcess()` past its reload guard, at the start of a load
+     * from disk, and before a snapshot hydrate clears the native tables. A
+     * later call (a resume, a second disk load) keeps the first copy. A
+     * page without `#page` gets none, and then no switch. One `cloneNode()`
+     * of one native page: no request, nothing on the render or filter path.
+     *
+     * @param {string} label - The action pressed, for the note ("Show all release groups").
+     * @returns {void}
+     */
+    function _origViewCapture(label) {
+        if (_foreignHost || _origView.copy) return;
+        const live = document.getElementById('page');
+        if (!live) return;
+        const t0 = performance.now();
+        const copy = live.cloneNode(true);
+        copy.querySelectorAll(_ORIG_VIEW_STRIP_SEL).forEach(el => el.remove());
+        copy.setAttribute('data-mb-orig-copy', '');
+        _origView.copy = copy;
+        _origView.label = String(label || '').trim();
+        _origView.at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        _origViewNote(copy);
+        Lib.debug('meta', `Original page: copy of #page taken (${copy.getElementsByTagName('*').length} elements, ${(performance.now() - t0).toFixed(1)} ms) before "${_origView.label}".`);
+    }
+
+    /**
+     * The one-line note at the top of the copy (approved question 2: always
+     * shown): it is a copy from before the press, its links work, and
+     * MusicBrainz's own controls in it (rating stars, "Load all tracks", the
+     * credits toggle) may not respond, since their handlers stay with the live
+     * page.
+     *
+     * @param {HTMLElement} copy - The copy of `#page`.
+     * @returns {void}
+     */
+    function _origViewNote(copy) {
+        const p = document.createElement('p');
+        p.className = 'mb-orig-note';
+        const pill = document.createElement('span');
+        pill.className = 'mb-orig-pill';
+        pill.textContent = 'Copy';
+        const text = document.createElement('span');
+        const what = _origView.label ? `pressed “${_origView.label}”` : 'pressed the button';
+        text.textContent = `A copy of this page from before you ${what} (${_origView.at}). ` +
+            'Links work; MusicBrainz’s own buttons may not respond here. Reload for the live page.';
+        p.append(pill, text);
+        const content = copy.querySelector('#content') || copy;
+        content.prepend(p);
+    }
+
+    /**
+     * The CSS of the switch, added once: the live `#page` hidden while the
+     * copy shows, the note, and the "Back to the tables" corner button, in
+     * the "Liner notes" look.
+     *
+     * @returns {void}
+     */
+    function _origViewStyle() {
+        if (document.getElementById('mb-orig-view-css')) return;
+        const s = document.createElement('style');
+        s.id = 'mb-orig-view-css';
+        s.textContent = [
+            `body.${_ORIG_VIEW_CLASS} #page:not([data-mb-orig-copy]) { display: none !important; }`,
+            '.mb-orig-note { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin: 0 0 10px;',
+            '    padding: 6px 10px; background: #fbf8f1; color: #2b2622; border: 1px solid #d9cfbd;',
+            '    border-left: 3px solid #9a6a00; border-radius: 3px; font: 13px/1.45 Georgia, "Times New Roman", serif; }',
+            '.mb-orig-pill { font: 600 10px/1 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: .08em;',
+            '    text-transform: uppercase; color: #9a6a00; border: 1px solid currentColor; border-radius: 999px; padding: 3px 7px; }',
+            '#mb-orig-back-btn { position: fixed; right: calc(14px + env(safe-area-inset-right, 0px));',
+            '    bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 2147482980; display: flex;',
+            '    flex-direction: column; align-items: flex-start; gap: 2px; padding: 7px 12px; cursor: pointer;',
+            '    background: #fbf8f1; color: #2f5f9e; border: 1px solid #2f5f9e; border-radius: 3px;',
+            '    box-shadow: 0 10px 24px -8px rgba(60,40,20,.35); font: 600 11px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;',
+            '    letter-spacing: .06em; text-transform: uppercase; }',
+            '#mb-orig-back-btn[hidden] { display: none !important; }',
+            '#mb-orig-back-btn:hover { background: #f3ede1; }',
+            '#mb-orig-back-btn:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }',
+            '#mb-orig-back-btn small { font: 10px/1.2 ui-monospace, Menlo, Consolas, monospace; color: #7a6d5c;',
+            '    text-transform: none; letter-spacing: 0; }',
+        ].join('\n');
+        (document.head || document.documentElement).appendChild(s);
+    }
+
+    /**
+     * Shows the original page (`want` true) or our tables again. The live
+     * `#page` is hidden by `_ORIG_VIEW_CLASS` on `_saBody()` and the copy
+     * goes right AFTER it, so `getElementById('page')`, `#content` and
+     * `#sidebar` still find the live nodes first; going back removes the
+     * copy. Each view's scroll is kept; open menus close, windows and cards
+     * stay (approved question 6). The #938 marks follow (`_mbuTableVisible()`)
+     * and so does the corner button. Esc never comes here.
+     *
+     * @param {boolean} want - True for the original page.
+     * @returns {void}
+     */
+    function _origViewShow(want) {
+        if (_foreignHost || !_origView.copy || !isLoaded || want === _origView.showing) return;
+        const live = document.getElementById('page');
+        if (!live) return;
+        _origViewStyle();
+        _origView.scroll[_origView.showing ? 'orig' : 'table'] = window.scrollY;
+        _closeToolbarMenus();
+        const body = _saBody();
+        if (want) {
+            live.after(_origView.copy);
+            body.classList.add(_ORIG_VIEW_CLASS);
+        } else {
+            _origView.copy.remove();
+            body.classList.remove(_ORIG_VIEW_CLASS);
+        }
+        _origView.showing = want;
+        _mbuInterop.origShown = want;
+        _origViewCornerSync();
+        _mbuQuietSync();
+        _mbuKeysSync();
+        _mbuPlayerSync();
+        window.scrollTo(0, _origView.scroll[want ? 'orig' : 'table']);
+        Lib.debug('meta', want ? 'Original page shown (the copy).' : 'Back to the tables.');
+    }
+
+    /**
+     * Ctrl+M P, the ☰ row and the corner button: the other view.
+     *
+     * @returns {void}
+     */
+    function _origViewToggle() {
+        _origViewShow(!_origView.showing);
+    }
+
+    /**
+     * The "Back to the tables" button while the original page shows
+     * (approved question 3): bottom right, in `_saBody()` (so it hides with
+     * MusicBrainz's page under Event Horizon's view, and is hidden then too,
+     * since EH's restack would count it). It carries majkinetor's corner
+     * marks (`data-mb-corner="br"`, order 50: above his launchers, which keep
+     * their places; `data-mb-corner-dock="no"`: never folded into String
+     * Theory's dock), so his `mbRestackCorner()` stacks it with his
+     * launchers; without his scripts our CSS puts it 14 px from the corner, as
+     * his restack would. His restack has no public entry point, so a change
+     * here nudges it through the one listener every copy of it shares, the
+     * visual viewport's `resize` (installed when `<html data-mb-corner-vv>`
+     * is there).
+     *
+     * @returns {void}
+     */
+    function _origViewCornerSync() {
+        const root = document.documentElement;
+        const want = _origView.showing && !root.hasAttribute('data-mbu-dock');
+        let btn = document.getElementById('mb-orig-back-btn');
+        if (!btn) {
+            if (!want) return;
+            btn = document.createElement('button');
+            btn.id = 'mb-orig-back-btn';
+            btn.type = 'button';
+            btn.setAttribute('data-mb-corner', 'br');
+            btn.setAttribute('data-mb-corner-order', '50');
+            btn.setAttribute('data-mb-corner-dock', 'no');
+            btn.setAttribute('data-mb-corner-label', SCRIPT_BASE_NAME);
+            const main = document.createElement('span');
+            main.textContent = '▦ Back to the tables';
+            const key = document.createElement('small');
+            key.textContent = `${getPrefixDisplay()} P`;
+            btn.append(main, key);
+            _setTip(btn, `Back to ${SCRIPT_BASE_NAME}'s tables, as you left them (${getPrefixDisplay()}, then P)`);
+            btn.addEventListener('click', () => _origViewShow(false));
+            _saBody().appendChild(btn);
+        }
+        if (btn.hidden === !want) return;
+        btn.hidden = !want;
+        if (root.hasAttribute('data-mb-corner-vv') && window.visualViewport) {
+            window.visualViewport.dispatchEvent(new Event('resize'));
+        }
+    }
+
+    /**
+     * Adds "Show the original page" to the SAED menu's View group (approved
+     * question 1), from both render tails, when a copy was taken. Its key
+     * hint is the prefix's P (`ctrlMFunctionMap`). Idempotent.
+     *
+     * @returns {void}
+     */
+    function addOrigViewButton() {
+        if (_foreignHost || !_origView.copy) return;
+        if (!document.getElementById('mb-show-all-controls-container') || document.getElementById('mb-orig-view-btn')) return;
+        const btn = document.createElement('button');
+        btn.id = 'mb-orig-view-btn';
+        btn.type = 'button';
+        btn.innerHTML = '<span>📄 Show the original page</span>';
+        _setTip(btn, 'The page as it was before you pressed the button, instead of the tables; the tables stay as you left them');
+        btn.style.cssText = uiActionBtnBaseCSS();
+        btn.onclick = () => _origViewShow(true);
+        _ensureViewMenu().adopt(btn, `${getPrefixDisplay()} P`);
+        ensureSettingsButtonIsLast();
     }
 
     /** Event Horizon's player channel (EH `PLY_BUS`, 2026.11.23.095945): a separate player window and tab handover. */
@@ -113883,7 +114127,7 @@ ${sections.join('\n')}
     function _mbuPlayerSync() {
         if (_foreignHost) return;
         const root = document.documentElement;
-        const want = _mbuInterop.tableShown && Lib.settings.sa_eh_player_quiet !== false &&
+        const want = _mbuTableVisible() && Lib.settings.sa_eh_player_quiet !== false &&
             !root.hasAttribute('data-mbu-dock');
         if (want) {
             if (!root.hasAttribute('data-mbu-player-off')) root.setAttribute('data-mbu-player-off', 'saed');
@@ -113997,7 +114241,7 @@ ${sections.join('\n')}
     function _mbuKeysSync() {
         if (_foreignHost) return;
         const root = document.documentElement;
-        const want = _mbuInterop.tableShown && Lib.settings.sa_block_eh_single_keys !== false &&
+        const want = _mbuTableVisible() && Lib.settings.sa_block_eh_single_keys !== false &&
             !root.hasAttribute('data-mbu-dock') && _ehKeysKeepHonoured();
         if (want) {
             if (root.hasAttribute('data-mbu-keys-off')) return;
@@ -114034,7 +114278,7 @@ ${sections.join('\n')}
     function _mbuQuietSync() {
         if (_foreignHost) return;
         const root = document.documentElement;
-        const want = _mbuInterop.tableShown && Lib.settings.sa_mbu_quiet_corner !== false &&
+        const want = _mbuTableVisible() && Lib.settings.sa_mbu_quiet_corner !== false &&
             !_mbuInterop.quietUserShown && !root.hasAttribute('data-mbu-dock');
         if (want && !root.hasAttribute('data-mbu-quiet')) root.setAttribute('data-mbu-quiet', 'saed');
         else if (!want && root.getAttribute('data-mbu-quiet') === 'saed') root.removeAttribute('data-mbu-quiet');
@@ -127497,7 +127741,9 @@ a { color: #1565c0; }`;
                 // freshly-fabricated table, not just the first native one it
                 // happens to find. See _clearNativeTableSectionsForSnapshot's
                 // JSDoc for the full "multiple h3 based subtables still
-                // showing" bug this fixes.
+                // showing" bug this fixes. The original page is copied first
+                // (`_origViewCapture()`).
+                _origViewCapture('Show single-table');
                 _clearNativeTableSectionsForSnapshot();
                 // Start watching for late third-party injections (jesus2099's
                 // "mb. FUNKEY ILLUSTRATED RECORDS" cover-art icons and bigbox,
@@ -142331,6 +142577,10 @@ a { color: #1565c0; }`;
             return;
         }
 
+        // The original page, copied before this press changes anything
+        // (`_origViewCapture()`: once per page view, so a resume keeps it).
+        _origViewCapture(buttonConfig && buttonConfig.label);
+
         // brucebase.wikidot.com: a press reads the BruceParser feed when the
         // kept one is a day old (`_bbFeedKick()`); the render stamps from
         // the kept one, and a newer one is stamped when it comes in.
@@ -145524,6 +145774,8 @@ a { color: #1565c0; }`;
             addGmStoreButton();
             // The #938 quiet corner mark (data-mbu-quiet) may go up now.
             _mbuTableShown();
+            // 📄 Show the original page, when a copy was taken at the press
+            addOrigViewButton();
 
             // Initialize keyboard shortcuts
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -176106,6 +176358,8 @@ a { color: #1565c0; }`;
             addGmStoreButton();
             // The #938 quiet corner mark (data-mbu-quiet) may go up now.
             _mbuTableShown();
+            // 📄 Show the original page, when a copy was taken at the press
+            addOrigViewButton();
 
             // Initialize keyboard shortcuts (if not already initialized)
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -176400,6 +176654,10 @@ a { color: #1565c0; }`;
         }
 
         Lib.debug('cache', `Loading data from file: ${file.name}. Prefilter active: ${!!filterQueryRaw}${filterQueryRaw ? `, exclude: ${isExclude}` : ''}`);
+
+        // The original page, copied before the load changes anything
+        // (`_origViewCapture()`; a page already rendered keeps its first copy).
+        _origViewCapture('Load from disk');
 
         const reader = new FileReader();
 
@@ -196783,6 +197041,7 @@ a { color: #1565c0; }`;
         // in-page help dialog this key used to open is gone, 2026-10-22). A key
         // press is a user gesture, so window.open() is not blocked.
         'h': { fn: openAppHelp, description: 'Open App Help on GitHub' },
+        'p': { fn: () => _origViewToggle(), description: 'Switch between the tables and the original page' },
         'g': {
             fn: () => {
                 const fi = document.getElementById('mb-global-filter-input');

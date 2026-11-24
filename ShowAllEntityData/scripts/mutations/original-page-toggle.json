@@ -1,0 +1,171 @@
+[
+  {
+    "name": "no copy is taken at a press",
+    "why": "Without the copy there is no original page to switch to, and no ☰ row.",
+    "edits": [
+      {
+        "find": "        _origViewCapture(buttonConfig && buttonConfig.label);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "a copy from before the press",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy keeps our toolbar",
+    "why": "The copy shows the page as MusicBrainz drew it; the h1 toolbar (approved question 8) is left out.",
+    "edits": [
+      {
+        "find": "        copy.querySelectorAll(_ORIG_VIEW_STRIP_SEL).forEach(el => el.remove());\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "a copy from before the press",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy has no note",
+    "why": "The note says it is a copy and that MusicBrainz's own buttons may not respond (approved question 2).",
+    "edits": [
+      {
+        "find": "        _origViewNote(copy);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "a copy from before the press",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy goes before the live page",
+    "why": "getElementById('page'), #content and #sidebar must keep finding the LIVE nodes first while the copy shows.",
+    "edits": [
+      {
+        "find": "            live.after(_origView.copy);\n",
+        "replace": "            live.before(_origView.copy);\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "a copy from before the press",
+    "expect": "fail"
+  },
+  {
+    "name": "the live page is replaced instead of hidden",
+    "why": "Hidden, never removed: the same rendered table, its listeners and caches must come back.",
+    "edits": [
+      {
+        "find": "            live.after(_origView.copy);\n",
+        "replace": "            live.replaceWith(_origView.copy);\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "a copy from before the press",
+    "expect": "fail"
+  },
+  {
+    "name": "the corner button may fold into String Theory's dock",
+    "why": "data-mb-corner-dock=\"no\" keeps it a launcher of its own, stacked with majkinetor's (approved question 3).",
+    "edits": [
+      {
+        "find": "            btn.setAttribute('data-mb-corner-dock', 'no');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "a copy from before the press",
+    "expect": "fail"
+  },
+  {
+    "name": "the scroll position is not restored",
+    "why": "Each view keeps its own scroll position.",
+    "edits": [
+      {
+        "find": "        window.scrollTo(0, _origView.scroll[want ? 'orig' : 'table']);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "scroll position survive",
+    "expect": "fail"
+  },
+  {
+    "name": "no prefix key P",
+    "why": "Ctrl+M P is the key of the switch (approved question 1).",
+    "edits": [
+      {
+        "find": "        'p': { fn: () => _origViewToggle(), description: 'Switch between the tables and the original page' },\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "Esc never switches",
+    "expect": "fail"
+  },
+  {
+    "name": "the #938 marks stay up on the original page",
+    "why": "While the original page shows, the quiet, keys and player marks are down as on an unrendered page.",
+    "edits": [
+      {
+        "find": "        return _mbuInterop.tableShown && !_mbuInterop.origShown;\n",
+        "replace": "        return _mbuInterop.tableShown;\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "marks go down",
+    "expect": "fail"
+  },
+  {
+    "name": "the corner button stays over Event Horizon's view",
+    "why": "It belongs to MusicBrainz's page; EH's restack would count it there.",
+    "edits": [
+      {
+        "find": "        const want = _origView.showing && !root.hasAttribute('data-mbu-dock');\n",
+        "replace": "        const want = _origView.showing;\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "marks go down",
+    "expect": "fail"
+  },
+  {
+    "name": "the <html> observer does not resync the corner button",
+    "why": "Event Horizon switches by attribute (data-mbu-dock); only the observer sees it.",
+    "edits": [
+      {
+        "find": "_mbuKeysSync(); _mbuPlayerSync(); _origViewCornerSync(); })",
+        "replace": "_mbuKeysSync(); _mbuPlayerSync(); })"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "marks go down",
+    "expect": "fail"
+  },
+  {
+    "name": "a load from disk takes no copy",
+    "why": "A load changes the page as a press does; the copy must come first.",
+    "edits": [
+      {
+        "find": "        _origViewCapture('Load from disk');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "a load takes the copy",
+    "expect": "fail"
+  },
+  {
+    "name": "a snapshot tab takes no copy",
+    "why": "No fixture spec opens a #mb-sa-snapshot= tab (the hydrate needs a GM-stored snapshot from another tab); vzell's browser check covers it. Recorded so the gap is named, not hidden.",
+    "edits": [
+      {
+        "find": "                _origViewCapture('Show single-table');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle.spec.js",
+    "grep": "a copy from before the press",
+    "expect": "pass"
+  }
+]
