@@ -841,12 +841,11 @@ awk takes 5 s). With the map, the own-name check flags 16 of 1,318 person and ba
 =the-max-weinberg-7=, =tony-pallagrosi= (tagged =tonypalligrosi=). The stage names pass (=duckdunn=,
 =popsstaples=, =obiebenson=, =kathigoldmark=).
 
-BruceParser (=~/git/scripts/BruceParser=, *not committed*: the commit and push to that repo were refused by
-Claude Code's permission check, so they wait for vzell): =relation-tags.awk= (new), =feed.sh= 1.10 (=relationTags=
-in the feed, its shape check and summary), =docs/feed-repo/FORMAT.md=, =brucebase/tag-tables.json= (the 1992-93
-band's alias also with a hyphen), CHANGELOG 0.43.0; =tests/check-probes.sh 2026-11-23= equal to the baseline.
-=./feed.sh -r 2026-11-23= rebuilt =bb/2026-11-23/bb-feed.json= with it (relationTags 2,166, 15 overrides); its
-=run= still says 0.42.0 / =04cc153+= until the commit. Not published.
+BruceParser 0.43.0 (=675cda3=, vzell: "yes commit and push"): =relation-tags.awk= (new), =feed.sh= 1.10
+(=relationTags= in the feed, its shape check and summary), =docs/feed-repo/FORMAT.md=, =brucebase/tag-tables.json=
+(the 1992-93 band's alias also with a hyphen); =tests/check-probes.sh 2026-11-23= equal to the baseline.
+=./feed.sh -r 2026-11-23= rebuilt =bb/2026-11-23/bb-feed.json= (relationTags 2,166, 15 overrides; the kinds'
+counts unchanged), published: feed repo =1332fa8=, its FORMAT.md =b83b288=. No =bbp.sh= run.
 
 * Closing the matrix (2026-11-19): coexistence, then the HOME row
 
