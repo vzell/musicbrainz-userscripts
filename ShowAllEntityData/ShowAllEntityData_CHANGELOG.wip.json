@@ -1,0 +1,27 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-11-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase feed: the feed of 2026-11-24 (BruceParser 0.43.0, with its relation map) did not load: \"Brucebase feed: not loaded (the file is not a feed of format 1)\", and the script went on using an older run. The file had grown past 512 KB, where the script cut every answer it reads from another site; it now reads the feed whole, up to 16 MB, and a bigger file is refused by name."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-11-24",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Brucebase tag checks on venue, person/band and release pages: three more checks, each off by default (⚙️ Settings → ⚠️ Findings). \"Also check the place tags of a Brucebase show and of a venue page\" (the place setting, renamed) now checks a venue page too: the city, US state or Canadian province, country and region of its own title, and the venue's own tag as its shows carry it (73 of 2,168 venue pages; BruceBaseParser's rule flagged 369). \"Also check a Brucebase person's or band's own name tag\": a person's or band's page should carry its own name as a tag, in the forms the cast check accepts, or the name the wiki itself uses for it from the Brucebase feed's new relation map, so a stage name such as \"duckdunn\" for Donald Dunn passes (17 of 1,292). \"Also check a Brucebase release's date and first-letter tags\": a release with a \"Commercially Released\" line should carry the year, month and day of one of the dates it names, a date tag that is none of them is marked ⚠️ (Life, Death And Dennis Hopper: tagged 2024, released 2025), and it should carry its title's first letter. Missing tags show in their row of the Tags card (Place, People, Date, Letter) and in the window, as the other checks do.",
+          "Brucebase: the four release tab pages whose names the wiki cut at 60 characters (\"…-hall-of-fame-credit\") are no longer checked as releases."
+        ]
+      }
+    ]
+  }
+]

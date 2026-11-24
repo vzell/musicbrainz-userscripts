@@ -4997,3 +4997,13 @@ Env: 2026-11-23T17:14:53+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 | =npm run test:full=, =79b100d3=             |  3472 |      12 | *22 m 38 s* | =run-test-full.py=, 17:14:53–17:37:31 CET |
 
 3472 passed. The branch adds 3 tests (=mb-shared-gate.spec.js=, "the lock hold").
+
+* 2026-11-24 — =npm run test:full= on =NB-3641=, feat/bb-page-tag-families (batch 4b: a venue's place, a person's name, a release's dates and letter)
+
+Env: 2026-11-24T01:55:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =436fa049=             |  3512 |      14 | *24 m 29 s* | =run-test-full.py=, 01:55:49–02:20:18 CET |
+
+3512 passed. The branch adds 11 tests (=bb-findings-page-tags.spec.js=, "batch 4b").

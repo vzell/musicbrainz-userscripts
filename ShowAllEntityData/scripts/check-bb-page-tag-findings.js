@@ -20,9 +20,14 @@
  *      with the shipped facts, the page's tags and the probe's tags of its
  *      "-N" siblings, against the probe's shipped rule.
  *
+ * With --feed FEED.json (batch 4b, 2026-11-24): the three families of batch
+ * 4b on (`sa_bb_tag_family_place`, `…_relation`, `…_release`) and FEED kept,
+ * against the probe's `ship4b`; FEED must be the one the probe read (the
+ * mirror's bb-feed.json, with `relationTags`, feed 1.10).
+ *
  * Read-only, no network. Exit code 1 when anything differs.
  *
- * usage: node scripts/check-bb-page-tag-findings.js ROWS.json [--mirror DIR]
+ * usage: node scripts/check-bb-page-tag-findings.js ROWS.json [--mirror DIR] [--feed FEED.json]
  */
 
 const fs = require('fs');
@@ -33,7 +38,9 @@ const { loadUserscriptPage } = require('../tests/support/loadPage');
 
 const args = process.argv.slice(2);
 const mi = args.indexOf('--mirror');
-const ROWS = args.find((a, i) => !a.startsWith('--') && (mi < 0 || i !== mi + 1));
+const fi = args.indexOf('--feed');
+const ROWS = args.find((a, i) => !a.startsWith('--') && (mi < 0 || i !== mi + 1) && (fi < 0 || i !== fi + 1));
+const FEED = fi >= 0 ? JSON.parse(fs.readFileSync(args[fi + 1], 'utf8')) : null;
 const MIRROR = fs.realpathSync(mi >= 0 ? args[mi + 1] : path.join(os.homedir(), 'git/scripts/BruceParser/bb/latest'));
 
 /**
@@ -81,6 +88,10 @@ function key(pairs) {
     await loadUserscriptPage(page, {
         url: 'https://brucebase.wikidot.com/stats:songs',
         fixtureFile: path.join(__dirname, '..', 'tests', 'fixtures', 'bb-songs.html'), testMode: true,
+        settingsOverride: FEED ? {
+            sa_bb_feed: true, sa_bb_tag_family_place: true, sa_bb_tag_family_relation: true, sa_bb_tag_family_release: true,
+            mb_sa_bb_feed: { at: Date.now() - 1000, data: FEED, err: '', errAt: 0 },
+        } : undefined,
     });
     await page.waitForFunction(() => window.__saTest && window.__saTest.bbTagCheck);
 
@@ -107,22 +118,23 @@ function key(pairs) {
         }), part);
         got.forEach((g, i) => {
             const r = rows[at + i];
+            const ship = FEED ? r.ship4b : r.ship;
             const bad = [];
-            if (r.ship.skip) {
+            if (ship.skip) {
                 skipped++;
-                if (g.facts !== null) bad.push(`facts for a page the probe skips (${r.ship.skip})`);
+                if (g.facts !== null) bad.push(`facts for a page the probe skips (${ship.skip})`);
             } else if (!g.facts) {
                 bad.push('no facts for a page the probe checks');
             } else {
                 const f = g.facts;
                 const mine = { letter: f.letter, construction: f.construction, lyricsheet: f.lyricsheet,
-                    bands: f.bands, members: f.members, titleTags: f.titleTags };
+                    bands: f.bands, members: f.members, titleTags: f.titleTags, dates: f.dates, releaseLetter: f.releaseLetter };
                 if (JSON.stringify(mine) !== JSON.stringify(r.facts)) bad.push(`facts ${JSON.stringify(mine)} / probe ${JSON.stringify(r.facts)}`);
                 if (!g.recFacts) bad.push('the preview record has no bbTagFacts');
             }
             if (g.own.join(' ') !== r.tags.join(' ')) bad.push(`own tags differ (${g.own.length} / probe ${r.tags.length})`);
-            if (key(g.missing) !== probeKey(r.ship.missing)) bad.push(`missing [${key(g.missing)}] / probe [${probeKey(r.ship.missing)}]`);
-            if (key(g.spurious) !== probeKey(r.ship.spurious)) bad.push(`spurious [${key(g.spurious)}] / probe [${probeKey(r.ship.spurious)}]`);
+            if (key(g.missing) !== probeKey(ship.missing)) bad.push(`missing [${key(g.missing)}] / probe [${probeKey(ship.missing)}]`);
+            if (key(g.spurious) !== probeKey(ship.spurious)) bad.push(`spurious [${key(g.spurious)}] / probe [${probeKey(ship.spurious)}]`);
             if (g.noWhy.length) bad.push(`no reason given for ${g.noWhy.join(', ')}`);
             if (g.missing.length || g.spurious.length) flagged++;
             if (bad.length) {
@@ -133,7 +145,7 @@ function key(pairs) {
         });
     }
     await browser.close();
-    console.log(`${rows.length} pages (${skipped} skipped), the shipped tag check against the probe: ${diffs} differ`
+    console.log(`${rows.length} pages (${skipped} skipped), the shipped tag check${FEED ? ' (batch 4b on)' : ''} against the probe: ${diffs} differ`
         + (diffs ? ` ${JSON.stringify(byKind)}` : '') + `; ${flagged} pages flagged`);
     process.exit(diffs ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(2); });

@@ -1,0 +1,197 @@
+[
+    {
+        "name": "cut tab page: a release tab page cut at 60 characters is checked",
+        "why": "The four cut names (retail:…-credit) are tab pages.",
+        "edits": [
+            {
+                "find": "        return name.length === 60 && !!m && _BB_TAGCHK_RETAIL_TABS.some(t => t.startsWith(m[1]));\n",
+                "replace": "        return false;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the three families on",
+        "expect": "fail"
+    },
+    {
+        "name": "release line: the asterisk of \"Commercially Released*:\" is not read",
+        "why": "Born To Run writes the line with an asterisk.",
+        "edits": [
+            {
+                "find": "        const m = /Commercially Released\\*?:([^\\n]*)/i.exec(root ? root.textContent : '');\n",
+                "replace": "        const m = /Commercially Released:([^\\n]*)/i.exec(root ? root.textContent : '');\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the release line",
+        "expect": "fail"
+    },
+    {
+        "name": "release dates: only the first date counts",
+        "why": "One listed date in full is enough (the wiki tags the later of two on some releases).",
+        "edits": [
+            {
+                "find": "            const d = facts.dates.find(x => x.every(p => !p || _bbTagPresent(p, all))) || facts.dates[0];\n",
+                "replace": "            const d = facts.dates[0];\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the release rule",
+        "expect": "fail"
+    },
+    {
+        "name": "release dates: a date tag of no listed date is never not expected",
+        "why": "Life, Death And Dennis Hopper is tagged 2024, released 2025.",
+        "edits": [
+            {
+                "find": "            if (!facts.dates.some(d => d.some(p => p && _bbTagPresent(p, one)))) {\n",
+                "replace": "            if (false) {\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the release rule",
+        "expect": "fail"
+    },
+    {
+        "name": "release letter: no first letter for a release",
+        "why": "A Good Life lacks \"a\".",
+        "edits": [
+            {
+                "find": "            dates, releaseLetter: dates ? _bbTagPageLetter('song', title) : '',\n",
+                "replace": "            dates, releaseLetter: '',\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the three families on",
+        "expect": "fail"
+    },
+    {
+        "name": "switch: the release family always on",
+        "why": "Off by default.",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_bb_tag_family_release === true;\n",
+                "replace": "        return true;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the families off",
+        "expect": "fail"
+    },
+    {
+        "name": "switch: the relation family always on",
+        "why": "Off by default.",
+        "edits": [
+            {
+                "find": "        return Lib.settings.sa_bb_tag_family_relation === true;\n",
+                "replace": "        return true;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the families off",
+        "expect": "fail"
+    },
+    {
+        "name": "switch: a venue page checked with the place family off",
+        "why": "The place switch covers venue pages too.",
+        "edits": [
+            {
+                "find": "        if (!_bbTagPlaceOn() || facts.kind !== 'venue') return null;\n",
+                "replace": "        if (facts.kind !== 'venue') return null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the families off",
+        "expect": "fail"
+    },
+    {
+        "name": "venue place: the title's places not read",
+        "why": "Bow Tie Cinemas lacks \"redbank\" and \"usa\".",
+        "edits": [
+            {
+                "find": "        const out = _bbTagPlacePartsExpected(facts.title, tables);\n",
+                "replace": "        const out = [];\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the three families on",
+        "expect": "fail"
+    },
+    {
+        "name": "venue place: the venue map not read on a venue page",
+        "why": "The Stone Pony's shows carry stonepony.",
+        "edits": [
+            {
+                "find": "        const vt = venues ? venues[facts.name] : null;\n",
+                "replace": "        const vt = null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "the three families on",
+        "expect": "fail"
+    },
+    {
+        "name": "relation name: the feed's relation map not read",
+        "why": "Donald Dunn is tagged duckdunn, a stage name only the map knows.",
+        "edits": [
+            {
+                "find": "        const mapped = Array.isArray(map[facts.name]) ? map[facts.name] : [];\n",
+                "replace": "        const mapped = [];\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "a person's name",
+        "expect": "fail"
+    },
+    {
+        "name": "relation name: checked without the map",
+        "why": "Without relationTags the name is not checked (a stage name would be called missing).",
+        "edits": [
+            {
+                "find": "        if (!tables || !map) return null;\n",
+                "replace": "        if (!tables) return null;\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "a person's name",
+        "expect": "fail"
+    },
+    {
+        "name": "Tags card: the name family has no row",
+        "why": "A missing name tag goes in the People row.",
+        "edits": [
+            {
+                "find": "        name: 'person',\n",
+                "replace": ""
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "People row",
+        "expect": "fail"
+    },
+    {
+        "name": "Tags card: no note for a venue whose place waits for the feed",
+        "why": "The card says why the place is not checked.",
+        "edits": [
+            {
+                "find": "            const what = [_bbTagPlaceOn() && facts.kind === 'venue' && !tables ? 'place tags are' : '',\n",
+                "replace": "            const what = ['',\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "no feed",
+        "expect": "fail"
+    },
+    {
+        "name": "Tags card: \"as expected\" leaves the place out",
+        "why": "The words say what was checked.",
+        "edits": [
+            {
+                "find": "            venue: `kind, first-letter${tables && _bbTagPlaceOn() ? ', place' : ''} and construction`,\n",
+                "replace": "            venue: 'kind, first-letter and construction',\n"
+            }
+        ],
+        "spec": "tests/fixtures/bb-findings-page-tags.spec.js",
+        "grep": "checked the place too",
+        "expect": "fail"
+    }
+]

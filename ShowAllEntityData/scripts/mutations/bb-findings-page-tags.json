@@ -43,7 +43,7 @@
         "why": "retail:born-to-run-credits: no check (vzell, 2026-11-18).",
         "edits": [
             {
-                "find": "        if (kind === 'retail' && _BB_TAGCHK_RETAIL_TAB.test(name)) return null;\n",
+                "find": "        if (kind === 'retail' && _bbTagRetailTab(name)) return null;\n",
                 "replace": ""
             }
         ],

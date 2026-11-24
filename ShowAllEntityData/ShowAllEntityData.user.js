@@ -3300,18 +3300,19 @@
         },
 
         sa_bb_tag_family_place: {
-            label: 'Also check a Brucebase show\'s place tags',
+            label: 'Also check the place tags of a Brucebase show and of a venue page',
             type: 'checkbox',
             default: false,
             description: 'With the two settings above: a show should carry tags for the city, the US state or ' +
                          'Canadian province ("newjersey(nj)") and the country its title names ("usa" after a ' +
                          'state), and "europe" or "oceania" for a country there, and its venue\'s tag (the venue ' +
-                         'page\'s, from the Brucebase feed\'s venue map). A few names the wiki tags its ' +
+                         'page\'s, from the Brucebase feed\'s venue map). A venue page the same for its own title, ' +
+                         'and its own tag as its shows carry it. A few names the wiki tags its ' +
                          'own way ("West Germany" as "germany") and the regions come from the Brucebase feed ' +
                          '(setting "Read the Brucebase feed"), which BruceParser keeps; without the feed the ' +
                          'place is not checked and the Tags card says so. A place tag is never called not ' +
                          'expected. Off by default while the families are tuned (org/springsteen-marriage.org, ' +
-                         'batch 3b).'
+                         'batches 3b and 4b).'
         },
 
         sa_bb_tag_family_content: {
@@ -3355,6 +3356,31 @@
                          'tag the wiki uses on at least 9 of 10 of their shows are checked, and only linked songs. ' +
                          'Without the feed the songs are not checked. A song tag is never called not expected. Off by ' +
                          'default while the families are tuned (org/springsteen-marriage.org, batch 3b).'
+        },
+
+        sa_bb_tag_family_relation: {
+            label: 'Also check a Brucebase person\'s or band\'s own name tag',
+            type: 'checkbox',
+            default: false,
+            description: 'With the two settings above: a person\'s page (with a Bands tab, titled "Surname, Name") ' +
+                         'or a band\'s page (with a Members tab) should carry its own name as a tag, found as the ' +
+                         'wiki writes names ("garrytallent", "garry.tallent", without "The", a nickname, "Jr."). The ' +
+                         'name the wiki itself uses for the page counts too, a stage name such as "duckdunn" for ' +
+                         'Donald Dunn: the Brucebase feed\'s relation map (the page\'s tags its shows carry), without ' +
+                         'which the name is not checked. The Bands and Members tabs\' entries are not checked: the ' +
+                         'wiki lists them from the tags. Off by default while the families are tuned ' +
+                         '(org/springsteen-marriage.org, batch 4b).'
+        },
+
+        sa_bb_tag_family_release: {
+            label: 'Also check a Brucebase release\'s date and first-letter tags',
+            type: 'checkbox',
+            default: false,
+            description: 'With the two settings above: a release page with a "Commercially Released" line should ' +
+                         'carry the year, month and day of one of the dates it names (any one; else the first is ' +
+                         'named), and a date tag that is none of those dates is not expected; it should also carry ' +
+                         'its title\'s first letter ("0-9" for a digit). Read from the page itself, no request. Off ' +
+                         'by default while the families are tuned (org/springsteen-marriage.org, batch 4b).'
         },
 
         sa_findings_tint_bb_tags: {
@@ -28302,6 +28328,15 @@
     const _BB_FEED_URL = 'https://raw.githubusercontent.com/vzell/brucebase-feed/main/bb-feed.json';
     /** @type {number} The one format this script reads (FORMAT.md); any other is not loaded. */
     const _BB_FEED_FORMAT = 1;
+    /**
+     * The most of the feed read, and downloaded. `_extFetch()`'s default cut
+     * (`_EXT_MAX_BYTES`, 512 KiB, a page's head for a card) is too small: feed
+     * 1.10's relation map made the file 530,953 bytes (run of 2026-11-24), the
+     * cut text was no JSON, and every read failed as "not a feed of format 1"
+     * (vzell's browser, 2026-11-24). A file past this is refused by name.
+     * @type {number}
+     */
+    const _BB_FEED_MAX_BYTES = 16 * 1024 * 1024;
     /** @type {string} GM key of the kept feed `{at, data, err, errAt}`: a cache, not a setting, not exported. */
     const _BB_FEED_KEY = 'mb_sa_bb_feed';
     /** @type {number} A kept feed older than this is read again (on a press or a Space). */
@@ -28475,9 +28510,12 @@
             let err = '';
             let data = null;
             try {
-                const res = await _extGet(_BB_FEED_URL, { fetchOpts: { accept: /\b(?:json|text\/plain)\b/i } });
+                const res = await _extGet(_BB_FEED_URL, { fetchOpts: {
+                    accept: /\b(?:json|text\/plain)\b/i, maxBytes: _BB_FEED_MAX_BYTES, maxDownload: _BB_FEED_MAX_BYTES,
+                } });
                 if (res.error) err = res.error === 'timeout' ? 'no answer in time' : 'no answer from raw.githubusercontent.com';
                 else if (res.status !== 200) err = `GitHub answered ${res.status}`;
+                else if (res.aborted === 'size' || res.tail) err = `the file is bigger than ${_BB_FEED_MAX_BYTES / 1024 / 1024} MB`;
                 else {
                     try { data = JSON.parse(res.body); } catch (_) { data = null; }
                     if (!_bbFeedValid(data)) err = `the file is not a feed of format ${_BB_FEED_FORMAT}`;
@@ -28525,8 +28563,9 @@
      * The feed's maps this script reads now: `_BB_FEED_MAPS` (and
      * `mbWorks`, feed 1.8, on a page of works: `_bbFeedMbwPage()`), and
      * `tagTables` (feed 1.4) while a tag family that needs it is on
-     * (`sa_bb_tag_family_tour`, `…_place`, `…_cast`, `…_songs`; batch 3b), and `songTags` (feed 1.5) with
-     * the songs family on, `venueTags` with the place family on. With every such family off a
+     * (`sa_bb_tag_family_tour`, `…_place`, `…_cast`, `…_songs`; batch 3b; `…_relation`, batch 4b), and
+     * `songTags` (feed 1.5) with the songs family on, `venueTags` with the place family on,
+     * `relationTags` (feed 1.10) with the relation family on. With every such family off a
      * kept 1.3 file is not read again for it.
      *
      * @returns {string[]}
@@ -28534,7 +28573,8 @@
     function _bbFeedMapsWanted() {
         const base = _bbFeedMbwPage() ? _BB_FEED_MAPS.concat('mbWorks') : _BB_FEED_MAPS;
         if (!_bbTagTableFamiliesOn()) return base;
-        return base.concat('tagTables', _bbTagSongsOn() ? ['songTags'] : [], _bbTagPlaceOn() ? ['venueTags'] : []);
+        return base.concat('tagTables', _bbTagSongsOn() ? ['songTags'] : [], _bbTagPlaceOn() ? ['venueTags'] : [],
+            _bbTagRelationOn() ? ['relationTags'] : []);
     }
 
     /**
@@ -36188,9 +36228,13 @@
      * 38: ... and where in their section they are (`place`: a row and its
      *    column, a lyrics line), one per word and place, a live release's
      *    under "Live releases" (the window's list of spots).
+     * 39: a venue, song, relation or release page's `bbTagFacts` carries its
+     *    name, a release's dates and first letter (`dates`,
+     *    `releaseLetter`; batch 4b), and a release's tab page cut at 60
+     *    characters gets none.
      * @type {number}
      */
-    const _DP_PARSER_VERSION = 38;
+    const _DP_PARSER_VERSION = 39;
 
     /**
      * IndexedDB database of parsed detail pages. Deliberately NOT a store in
@@ -39095,6 +39139,24 @@
     const _BB_TAGCHK_PAGE_KINDS = /^(?:venue|song|relation|retail)$/;
     /** A release's tab page ("retail:born-to-run-credits"): no check. */
     const _BB_TAGCHK_RETAIL_TAB = /-(?:overview|credits|addinfo|release|recgig)$/;
+    /** The words a release's tab page's name ends in. */
+    const _BB_TAGCHK_RETAIL_TABS = ['overview', 'credits', 'addinfo', 'release', 'recgig'];
+
+    /**
+     * Whether a release page is one of a release's tab pages: its name ends
+     * in a tab's word, or, cut at Wikidot's 60 characters, in the start of
+     * one of at least three letters
+     * ("retail:the-concert-for-the-rock-and-roll-hall-of-fame-credit"; four
+     * such pages, batch 4b, 2026-11-24).
+     *
+     * @param {string} name - The page's name.
+     * @returns {boolean}
+     */
+    function _bbTagRetailTab(name) {
+        if (_BB_TAGCHK_RETAIL_TAB.test(name)) return true;
+        const m = /-([a-z]{3,})$/.exec(name);
+        return name.length === 60 && !!m && _BB_TAGCHK_RETAIL_TABS.some(t => t.startsWith(m[1]));
+    }
     /** The tag each page kind names itself by (a relation: by its tabs). */
     const _BB_TAGCHK_PAGE_TYPE = { venue: 'venue', song: 'song', retail: 'retail' };
     /** Letters NFD does not split (BruceBaseParser's `NON_DECOMPOSABLE_LETTERS`). */
@@ -39364,14 +39426,15 @@
      * @param {Document} doc
      * @param {string}   kind - venue, song, relation, retail.
      * @param {string}   name - The page's name ("venue:stone-pony-asbury-park-nj").
-     * @returns {?{page: true, kind: string, title: string, letter: string, construction: boolean,
-     *   lyricsheet: boolean, bands: boolean, members: boolean, titleTags: Array<string>}}
+     * @returns {?{page: true, kind: string, name: string, title: string, letter: string, construction: boolean,
+     *   lyricsheet: boolean, bands: boolean, members: boolean, titleTags: Array<string>,
+     *   dates: ?Array<Array<string>>, releaseLetter: string}}
      */
     function _bbTagPageFacts(doc, kind, name) {
         const own = Array.from(doc.querySelectorAll('div.page-tags a'), a => a.textContent.trim().toLowerCase());
         if (own.includes('redirect')) return null;
         if (/-[1-9]$/.test(name) && !doc.querySelector('.yui-navset')) return null;
-        if (kind === 'retail' && _BB_TAGCHK_RETAIL_TAB.test(name)) return null;
+        if (kind === 'retail' && _bbTagRetailTab(name)) return null;
         const titleEl = doc.getElementById('page-title');
         const title = titleEl ? titleEl.textContent.trim() : '';
         const labels = Array.from(doc.querySelectorAll('.yui-nav em'), em => em.textContent.trim());
@@ -39384,11 +39447,35 @@
             const tab = gi >= 0 ? doc.getElementById(`wiki-tab-0-${gi}`) : null;
             lyricsheet = !!tab && Array.from(tab.querySelectorAll('img')).some(img => /lyricsheet/i.test(img.getAttribute('src') || ''));
         }
+        const dates = kind === 'retail' ? _bbTagReleaseDates(doc) : null;
         return {
-            page: true, kind, title, letter: _bbTagPageLetter(kind, title), construction, lyricsheet,
+            page: true, kind, name, title, letter: _bbTagPageLetter(kind, title), construction, lyricsheet,
             bands: labels.includes('Bands'), members: labels.includes('Members'),
             titleTags: kind === 'song' ? _bbTagSongTitleTags(title, name) : [],
+            // Batch 4b: a release's dates and its first letter (only with a
+            // "Commercially Released" line; the letter by the rule of a song's).
+            dates, releaseLetter: dates ? _bbTagPageLetter('song', title) : '',
         };
+    }
+
+    /**
+     * The dates a release page's "Commercially Released:" line names (batch
+     * 4b; vzell, 2026-11-24): the first such line of the page's text ("…
+     * Released*:" with the wiki's asterisk too, and "Tracks commercially
+     * released:"), every "Month D, YYYY", "Month, YYYY" or "YYYY" in it, as
+     * [month, day, year] with '' for a part it does not give and the day
+     * zero-padded. Null without such a line. Probe (bb/2026-11-23, 209
+     * release pages): one date 170, two 23, three 1, none 1, no line 14.
+     *
+     * @param {Document} doc
+     * @returns {?Array<Array<string>>}
+     */
+    function _bbTagReleaseDates(doc) {
+        const root = doc.getElementById('page-content') || doc.body;
+        const m = /Commercially Released\*?:([^\n]*)/i.exec(root ? root.textContent : '');
+        if (!m) return null;
+        const re = new RegExp(`(?:\\b(${_BB_TAGCHK_MONTHS.join('|')})\\b\\.?\\s*(\\d{1,2})?\\s*,?\\s*)?\\b(\\d{4})\\b`, 'gi');
+        return Array.from(m[1].matchAll(re), d => [(d[1] || '').toLowerCase(), d[2] ? d[2].padStart(2, '0') : '', d[3]]);
     }
 
     /**
@@ -39443,7 +39530,140 @@
             if (tag === 'person' && facts.members && !facts.bands) return { family: 'type', why: 'The page has a Members tab and no Bands tab: a band.' };
             if (tag === 'band' && facts.bands && !facts.members) return { family: 'type', why: 'The page has a Bands tab and no Members tab: a person.' };
         }
+        // Batch 4b: a date tag of a release that none of its dates has.
+        if (facts.kind === 'retail' && _bbTagReleaseOn() && Array.isArray(facts.dates) && facts.dates.length
+                && (_BB_TAGCHK_MONTHS.includes(tag) || /^\d{4}$/.test(tag) || (/^\d{1,2}$/.test(tag) && +tag >= 1 && +tag <= 31))) {
+            const one = new Set([tag]);
+            if (!facts.dates.some(d => d.some(p => p && _bbTagPresent(p, one)))) {
+                return { family: 'date', why: `No date of the page's "Commercially Released" line (${_bbTagReleaseDatesText(facts.dates)}) has it.` };
+            }
+        }
         return null;
+    }
+
+    /**
+     * Whether a person's or band's own name tag is checked
+     * (`sa_bb_tag_family_relation`; batch 4b, off by default).
+     *
+     * @returns {boolean}
+     */
+    function _bbTagRelationOn() {
+        return Lib.settings.sa_bb_tag_family_relation === true;
+    }
+
+    /**
+     * Whether a release's date and first-letter tags are checked
+     * (`sa_bb_tag_family_release`; batch 4b, off by default).
+     *
+     * @returns {boolean}
+     */
+    function _bbTagReleaseOn() {
+        return Lib.settings.sa_bb_tag_family_release === true;
+    }
+
+    /**
+     * A release's dates in words: "October 17, 1995 / 2011".
+     *
+     * @param {Array<Array<string>>} dates - `_bbTagReleaseDates()`.
+     * @returns {string}
+     */
+    function _bbTagReleaseDatesText(dates) {
+        return dates.map(([mo, d, y]) => (mo ? `${mo[0].toUpperCase()}${mo.slice(1)} ${d ? `${+d}, ` : ''}` : '') + y).join(' / ');
+    }
+
+    /**
+     * A venue page's place tags (batch 4b; vzell, 2026-11-24): the place
+     * family's rule (`_bbTagPlacePartsExpected()`) on the venue's own title,
+     * and the venue's own tag as its shows carry it (the feed's
+     * `venueTags`). Probe (`scripts/probe-bb-page-tags.py`, bb/2026-11-23):
+     * 73 of 2,168 venue pages; BruceBaseParser's rule flags 369, mostly its
+     * guesses (the venue's name as a slug, Australian states as cities). Null
+     * when the place family is off, the page is no venue or the feed has no
+     * tables.
+     *
+     * @param {Object} facts - `_bbTagPageFacts()`.
+     * @returns {?Array<{tag: string, family: string, why: string, alts: Array<string>}>}
+     */
+    function _bbTagPagePlaceExpected(facts) {
+        if (!_bbTagPlaceOn() || facts.kind !== 'venue') return null;
+        const tables = _bbFeedTables();
+        if (!tables) return null;
+        const out = _bbTagPlacePartsExpected(facts.title, tables);
+        const venues = _bbFeedMap('venueTags');
+        const vt = venues ? venues[facts.name] : null;
+        if (Array.isArray(vt) && vt.length) {
+            out.push({ tag: vt[0], family: 'place', why: `The venue's shows carry "${vt[0]}" for it (the Brucebase feed's venue map).`, alts: vt.slice(1) });
+        }
+        return out;
+    }
+
+    /**
+     * A person's or band's own name tag (batch 4b; vzell, 2026-11-24, "Own
+     * name + feed map"): a page with a Bands tab titled "Surname, Name" (a
+     * person) or with a Members tab (a band; its title without ", The" or
+     * "(The)", none with "&") carries its name in one of the forms the cast
+     * family accepts (`_bbTagCastItems()`), or one of the page's tags the
+     * feed's `relationTags` (feed 1.10, BruceParser's relation-tags.awk)
+     * names: the tags its shows carry for it, so a stage name passes
+     * ("duckdunn" for Donald Dunn). The Bands and Members tabs are ListPages
+     * boxes over the tags, so their entries are not checked. Probe
+     * (bb/2026-11-23): 17 of 1,292 pages. Null when the family is off, the
+     * page is not such a page, or the feed lacks its tables or the map.
+     *
+     * @param {Object} facts - `_bbTagPageFacts()`.
+     * @returns {?Array<{tag: string, family: string, why: string, alts: Array<string>}>}
+     */
+    function _bbTagPageNameExpected(facts) {
+        if (!_bbTagRelationOn() || facts.kind !== 'relation') return null;
+        let name;
+        if (facts.bands) {
+            const p = facts.title.split(',').map(s => s.trim()).filter(Boolean);
+            if (p.length !== 2) return null;
+            name = `${p[1]} ${p[0]}`;
+        } else if (facts.members) {
+            name = facts.title.trim().replace(/,\s*The$/i, '').replace(/\s*\(The\)$/, '').trim();
+            if (name.includes('&')) return null;
+        } else return null;
+        const tables = _bbFeedTables();
+        const map = _bbFeedMap('relationTags');
+        if (!tables || !map) return null;
+        const mapped = Array.isArray(map[facts.name]) ? map[facts.name] : [];
+        return _bbTagCastItems(name, tables).filter(it => it.alts.length).map(it => ({
+            tag: it.alts[0], family: 'name', alts: it.alts.slice(1).concat(mapped),
+            why: `The page's own name "${it.label}" as a tag (also counted: ${it.alts.slice(1).concat(mapped).join(', ') || 'none'}).`,
+        }));
+    }
+
+    /**
+     * A release's date and first-letter tags (batch 4b; vzell, 2026-11-24):
+     * with a "Commercially Released" line, the year, month and day of one of
+     * its dates (`_bbTagReleaseDates()`; a date whose parts are all tagged is
+     * enough, else the first is named: the wiki tags the later of two dates
+     * on some releases), and the title's first letter. Probe (bb/2026-11-23,
+     * 209 releases): dates missing on 6, not expected on 6
+     * (`_bbTagPageSpurious()`); the letter on 38, 30 of them other
+     * artists' records Bruce is on. Null when the family is off or the page
+     * is no release.
+     *
+     * @param {Object} facts - `_bbTagPageFacts()`.
+     * @param {Set<string>} all - The page's tags with those of its "-N" pages.
+     * @returns {?Array<{tag: string, family: string, why: string}>}
+     */
+    function _bbTagPageReleaseExpected(facts, all) {
+        if (!_bbTagReleaseOn() || facts.kind !== 'retail' || !facts.dates) return null;
+        const out = [];
+        if (facts.dates.length) {
+            const d = facts.dates.find(x => x.every(p => !p || _bbTagPresent(p, all))) || facts.dates[0];
+            const why = `Released ${_bbTagReleaseDatesText([d])}${facts.dates.length > 1 ? ` (the line names ${_bbTagReleaseDatesText(facts.dates)}; one date in full is enough)` : ''}.`;
+            for (const p of [d[2], d[0], d[1]]) {
+                if (p) out.push({ tag: p, family: 'date', why });
+            }
+        }
+        if (facts.releaseLetter) {
+            out.push({ tag: facts.releaseLetter, family: 'letter',
+                why: `"${facts.title}" starts with ${facts.releaseLetter === '0-9' ? 'a digit: the wiki lists it under "0-9"' : `"${facts.releaseLetter.toUpperCase()}"`}.` });
+        }
+        return out;
     }
 
     /**
@@ -39627,8 +39847,21 @@
      */
     function _bbTagPlaceTitleExpected(facts, tables) {
         const m = /^\d{4}-\d{2}-\d{2}\s+([\s\S]+)$/.exec(facts.title || '');
-        if (!m) return [];
-        const p = m[1].split(',').map(s => s.trim()).filter(Boolean);
+        return m ? _bbTagPlacePartsExpected(m[1], tables) : [];
+    }
+
+    /**
+     * The tags the places of "Venue, [detail,] City, ST|Country" call for: a
+     * show's title after its date (`_bbTagPlaceTitleExpected()`), a venue
+     * page's title (`_bbTagPagePlaceExpected()`, batch 4b); [] without venue,
+     * city and last part.
+     *
+     * @param {string} text - The place part.
+     * @param {Object} tables - `_bbFeedTables()`.
+     * @returns {Array<{tag: string, family: string, why: string, alts: Array<string>}>}
+     */
+    function _bbTagPlacePartsExpected(text, tables) {
+        const p = String(text || '').split(',').map(s => s.trim()).filter(Boolean);
         if (p.length < 3) return [];
         p[p.length - 1] = p[p.length - 1].replace(/\s*\([^)]*\)\s*$/, '').trim();
         const last = p[p.length - 1];
@@ -39884,7 +40117,7 @@
      * @returns {boolean}
      */
     function _bbTagTableFamiliesOn() {
-        return _bbTagTourOn() || _bbTagPlaceOn() || _bbTagCastOn() || _bbTagSongsOn();
+        return _bbTagTourOn() || _bbTagPlaceOn() || _bbTagCastOn() || _bbTagSongsOn() || _bbTagRelationOn();
     }
 
     /**
@@ -39895,7 +40128,17 @@
      * @returns {string}
      */
     function _bbTagFamiliesWait(facts) {
-        if (!facts || facts.page) return '';
+        if (!facts) return '';
+        if (facts.page) {
+            // Batch 4b: a venue's place, a person's or band's name.
+            const tables = !!_bbFeedTables();
+            const what = [_bbTagPlaceOn() && facts.kind === 'venue' && !tables ? 'place tags are' : '',
+                _bbTagRelationOn() && facts.kind === 'relation' && (facts.bands || facts.members)
+                    && (!tables || !_bbFeedMap('relationTags')) ? 'name tag is' : ''].filter(Boolean);
+            if (!what.length) return '';
+            return _bbFeedOn() ? `The ${what[0]} checked once the Brucebase feed with its tables and maps is read.`
+                : `The ${what[0]} not checked: the Brucebase feed is off.`;
+        }
         const tables = !!_bbFeedTables();
         const what = tables ? [] : [_bbTagTourOn() && _bbTagTourApplies(facts) ? 'tour' : '', _bbTagPlaceOn() ? 'place' : '',
             _bbTagCastOn() && facts.cast ? 'cast' : ''].filter(Boolean);
@@ -39982,8 +40225,14 @@
         const all = new Set(own);
         for (const t of more || []) all.add(t);
         if (facts.page) {
-            // A venue, song, relation or release page (parity batch 4).
-            for (const e of _bbTagPageExpected(facts)) {
+            // A venue, song, relation or release page (parity batch 4), and
+            // batch 4b's families (off by default).
+            const listed = new Set();
+            const expected = _bbTagPageExpected(facts).concat(_bbTagPagePlaceExpected(facts) || [],
+                _bbTagPageNameExpected(facts) || [], _bbTagPageReleaseExpected(facts, all) || [])
+                // one tag named once ("Singapore, Singapore": city and country)
+                .filter(e => !listed.has(`${e.family}/${e.tag}`) && listed.add(`${e.family}/${e.tag}`));
+            for (const e of expected) {
                 if (!_bbTagPresent(e.tag, all) && !(e.alts || []).some(a => all.has(a))) res.missing.push(e);
             }
             const seen = new Set();
@@ -40353,6 +40602,9 @@
         date: 'date', letter: 'letter', type: 'category', prem: 'material', icon: 'material', tour: 'tour', place: 'place', content: 'material', cast: 'person', song: 'song',
         // Parity batch 4: where the same tag sits when the page has it.
         construction: 'other', lyricsheet: 'other', title: 'other',
+        // Batch 4b: a person's or band's own name (a release's dates and
+        // letter, a venue's place use date, letter and place above).
+        name: 'person',
     };
 
     /**
@@ -40428,11 +40680,12 @@
                 tables && _bbTagSongsOn() && _bbFeedMap('songTags') && Array.isArray(facts.songs) && facts.songs.length ? 'song' : ''].filter(Boolean);
             return `✓ date, letter, kind, premiere, icon${more.map(x => `, ${x}`).join('')} tags as expected`.replace(/, ([a-z]+) tags as expected$/, ' and $1 tags as expected');
         }
+        const tables = !!_bbFeedTables();
         const what = {
-            venue: 'kind, first-letter and construction',
+            venue: `kind, first-letter${tables && _bbTagPlaceOn() ? ', place' : ''} and construction`,
             song: 'kind, first-letter, title, lyric-sheet and construction',
-            relation: 'person/band, first-letter and construction',
-            retail: 'kind and construction',
+            relation: `person/band, first-letter${_bbTagPageNameExpected(facts) ? ', name' : ''} and construction`,
+            retail: _bbTagReleaseOn() && facts.dates ? 'kind, date, first-letter and construction' : 'kind and construction',
         }[facts.kind];
         return `✓ ${what} tags as expected`;
     }

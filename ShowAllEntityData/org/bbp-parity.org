@@ -750,6 +750,164 @@ Unverified: all of it on the live site (the pages are the mirror's of 2026-11-15
 Not checked here whether each page shows its button: =retail:tracks-ii= shows none in the fixture run, so its row
 uses the window.
 
+* Batch 4b: the families batch 4 left out (=feat/bb-page-tag-families=, 2026-11-24)
+
+Env: 2026-11-24T01:12:39+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+(Python over the mirror =bb/2026-11-23= and its =bb-feed.json=; =scripts/probe-bb-page-tags.py=, its "CANDIDATE"
+lines; =scripts/analyse-bb-batch4b.py=, =scripts/analyse-bb-batch4b-letters.py=; output under =debug/bb-batch4b/=)
+
+vzell, 2026-11-24: "tackle the last unfinished parity row", all three families (a release's dates and letter, a
+venue's place tags, a relation's name and band tags). Each candidate follows what the wiki does and the chat's
+rulings ([[file:brucebase-chat.org][brucebase-chat.org]]), not BruceBaseParser's guesses. Nothing built yet: the rules wait for vzell.
+
+| Family                    | Pages checked | BruceBaseParser's rule flags | Candidate flags |
+|---------------------------+---------------+------------------------------+-----------------|
+| venue place               |         2,168 |                          369 |              73 |
+| relation names            |         2,924 |      312 (+1,554 "spurious") |              27 |
+| release dates             |           212 |                 26 / 37 (63) |               9 |
+| release letter            |           212 |                           52 |       3 + 6 (*) |
+
+(*) Bruce's own releases only, a missing letter 3 and a wrong letter 6; with every release, 34 + 6.
+
+*Venue place.* BruceBaseParser's 369 are mostly its guesses: the venue's name as a slug (263 pages; the wiki writes
+=1071theboss=, =alamedacountycoliseumarena=), Australian states read as the city (28), "netherlands" for the
+wiki's =thenetherlands= (13), regions batch 3b left out (=unitedkingdom=, =scandinavia=, =northamerica=, =asia=).
+Candidate: batch 3b's place rule on the venue's own title (city, US or Canadian state, country, the regions
+=europe= and =oceania=, the feed's =placeTags=), the venue's own tag from the feed's =venueTags= (what its shows
+carry), never "not expected". 73 left: city 38 (=redbank= 5, written "red" "bank"; "Bruce Springsteen Center For
+American Music West, Long Branch", a comma in the wrong place), country 25 (=usa= 18, =canada= 4), region 11
+(=oceania= 9), state 8 (typos such as =claifornia(ca)=, =disctrictofcolumbia(dc)=).
+
+*Relation names.* Both tabs BruceBaseParser reads are ListPages boxes built from the tags (a band's Members tab
+lists the pages that carry the band's tag; a person's Bands tab likewise), so an entry there IS a shared tag, and
+its 721 name expectations from the tabs (501 on Members, 220 on Bands) measure how a title is written, not a
+missing tag. Its 1,543 =person= "spurious" rows are its own error (batch 4). Candidate: only the page's own name
+tag (a person "Surname, Name", a band from its title), in SAED's cast forms (=_bbTagCastItems()=: without "The",
+Jr., a nickname; dotted; the feed's aliases). 1,292 checked, 27 flagged: about 10 typos (=danakroyd=,
+=darylmcdaniels=, =richieteeter=, =rosefriedman=, =princeroersnelson=, =name= for Karen Dreyfus), about 10 stage
+names or middle names the wiki tags instead (=duckdunn= for Donald Dunn, =popsstaples=, =obiebenson=,
+=fredlonzo=, =alexanderbarr=, =kathigoldmark=, =marc7=), the rest titles of an odd shape ("Fields, Elysian" for a
+band, "Pagano, Frank (Timepiece)", the en dash of "1992–93" in the feed's alias against the title's hyphen).
+=relation:david-mansfield= has no tags at all.
+
+*Release dates.* BruceBaseParser misses "Commercially Released*:" (with the asterisk, e.g. Born To Run) and dates
+without a day ("September, 2010"). Candidate: every date of the line ("Month D, YYYY", "Month, YYYY", "YYYY");
+one listed date with all its parts tagged is enough (the wiki tags the later of two dates on some releases, and a
+later date's year on few: "the first date in full plus every later year" flags 18); a month, day or year tag of no
+listed date is "not expected". 9 flagged, all real-looking: =american-babylon-25= and =-vinyl= (the line has the
+1995 original's date, the tags the reissue's), =life-death-and-dennis-hopper= (2025 against 2024),
+=the-atlas-underground-fire= (day 05 against 15), =black-and-white-night= (=03=), =the-essential= (2008, 2015
+against 2003, 2011), =rock-and-roll-hall-of-fame=, =the-last-temptation-of-elvis=, and one tab page (below).
+
+*Release letter.* BruceParser checks none (batch 4, decision 4). 163 of 212 release pages carry one letter tag:
+Bruce's own releases with a release line 60 of 64 (missing: the two PBS Exclusive EPs, =the-christmas-tracks-ep=,
+one tab page), other artists' releases (=r_other=, =collaboration=, =compilation=, =variousartists=) 101 of 131,
+sub-pages (no release line) 3 of 17. A wrong letter on 6: =black-and-white-night= "A Black And White Night" =b=,
+=disciple= "Stevie Van Zandt: Disciple" =d=, =history-books= =s=, =live-at-the-night-best-of-so-far= =b=,
+=rock-and-roll-hall-of-fame-concerts-25= "The 25th …" =r=, =rock-and-roll-hall-of-fame-in-concert= =t=. The
+plain first letter fits better than one without "The"/"A" (158 against 134 of 211).
+
+*Found on the way (shipped code):* four release tab pages have names cut at 60 characters
+(=retail:the-concert-for-the-rock-and-roll-hall-of-fame-addinf=, =-credit=, =-overvi=, =-releas=), so
+=_BB_TAGCHK_RETAIL_TAB= (=/-(?:overview|credits|addinfo|release|recgig)$/=) takes them for releases. No finding
+today (they carry =retail=, and no release letter or date is checked); batch 4b must skip them.
+
+** Decisions (vzell, 2026-11-24)
+
+1. *Venue place:* batch 3b's place rule on the venue's title, the venue's tag from =venueTags=, never "not
+   expected"; under the shows' switch =sa_bb_tag_family_place= (73 flagged).
+2. *Relation names:* "Own name + feed map": the page's own name tag in SAED's cast forms, or a tag of BruceParser's
+   new feed map =relationTags= (so the wiki's stage names pass); the Bands/Members entries are not checked.
+3. *Release dates:* "Any one date" (9 flagged; 8 once the cut tab page is skipped).
+4. *Release letter:* "Every release" with a "Commercially Released" line: missing 34, a wrong letter 6.
+
+Switches (Claude's choice, one per family as batch 3b; open to vzell at the browser check): venue place shares
+=sa_bb_tag_family_place=; new =sa_bb_tag_family_relation= and =sa_bb_tag_family_release=, =default: false=.
+
+** The relation map: BruceParser 0.43.0 (=relation-tags.awk=, feed 1.10, =relationTags=)
+
+Env: 2026-11-24T01:40+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · n/a
+
+A first map, "the shows' best tag", fails: band members share every show, so another member's or the band's tag
+wins. The map as built: a relation page's own tags that at least half of the shows listing it on their On Stage
+tab carry and that name no other relation page (the other titles' plain name forms). Without the last rule 9 real
+rows go (=curtis-king= without its own tag, =danakroyd= behind =usaforafrica=, =richieteeter=, =rosefriedman=).
+=scripts/probe-bb-relation-tags.py= (the rule in Python; default 1 show, recall 0.5) and BruceParser's
+=relation-tags.awk= agree on all 2,166 mapped pages (=scripts/compare-bb-relation-tags.py=, 0 differences; the
+awk takes 5 s). With the map, the own-name check flags 16 of 1,318 person and band pages: =al-barr=, =curtis-king=,
+=dan-aykroyd=, =darryl-mcdaniels=, =freddie-lonzo=, =jersey-artists-for-mankind-choir=, =karen-dreyfus= (tagged
+=name=), =marc-stuart=, =new-york-string-section=, =prince-rogers-nelson=, =ritchie-teeter=, =ross-friedman=,
+=the-1992-93-world-tour-band= (gone once the alias has the hyphen, below), =the-horns-of-love=,
+=the-max-weinberg-7=, =tony-pallagrosi= (tagged =tonypalligrosi=). The stage names pass (=duckdunn=,
+=popsstaples=, =obiebenson=, =kathigoldmark=).
+
+BruceParser 0.43.0 (=675cda3=, vzell: "yes commit and push"): =relation-tags.awk= (new), =feed.sh= 1.10
+(=relationTags= in the feed, its shape check and summary), =docs/feed-repo/FORMAT.md=, =brucebase/tag-tables.json=
+(the 1992-93 band's alias also with a hyphen); =tests/check-probes.sh 2026-11-23= equal to the baseline.
+=./feed.sh -r 2026-11-23= rebuilt =bb/2026-11-23/bb-feed.json= (relationTags 2,166, 15 overrides; the kinds'
+counts unchanged), published: feed repo =1332fa8=, its FORMAT.md =b83b288=. No =bbp.sh= run.
+
+Then (vzell: "also run bbp.sh afterwards") the first full run of 0.43.0: 2026-11-24 02:20 CET on NB-3641, 41 min
+(2,472 s), no failed step; 6 wiki pages changed (3 content, 2 relation, 1 system), every feed kind's count the
+same, relationTags 2,166; =bb/latest= → =2026-11-24=, 2026-11-21 slimmed (1,191 MB). The probe check moved one
+line: a new SpringsteenLyrics collection item (10302, an LP of 1973), 4,634 → 4,635 rows, the site's; its values
+saved as =tests/expected/sl-kf-jl-2026-11-24.tsv=. The feed published (feed repo =196581d=, only the run stamp).
+The run's tracked data in BruceParser (timings row, the report org stamps, the new baseline) is committed and
+pushed as BruceParser =d80cee3= (vzell: "commit and push the run's data").
+
+** Built (WIP.1, =436fa049=, 2026-11-24; vzell: "ok, tackle it")
+
+Env: 2026-11-24T01:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) ·
+probe: Python over =bb/2026-11-23= and its feed 1.10, n/a; checker and spec: Playwright Chromium, no Tampermonkey
+(GM stubs)
+
+- *Code:* =_bbTagPagePlaceExpected()= (with =_bbTagPlacePartsExpected()= split out of the show's place rule),
+  =_bbTagPageNameExpected()=, =_bbTagPageReleaseExpected()=, the release's not-expected date in
+  =_bbTagPageSpurious()=, =_bbTagReleaseDates()=, =_bbTagRetailTab()= (the four cut tab pages), facts =name=,
+  =dates=, =releaseLetter=; the wait note and "as expected" for pages; the family =name= in the People row;
+  =relationTags= wanted with the relation family on. Settings: the place switch reworded,
+  =sa_bb_tag_family_relation=, =sa_bb_tag_family_release= (=default: false=). =_DP_PARSER_VERSION= 39.
+- *The probe's =ship4b=* (the shipped rule with the three on): venue place 73, relation name 17 (the 16 of the
+  map's record and =david-mansfield=, which has no tags at all), release dates missing 6 and not expected 6,
+  release letter 38; 130 pages more than batch 4's 41. Release pages checked 209 (the four cut tab pages are
+  tab pages now: 859 counted only).
+- *The checker* (=scripts/check-bb-page-tag-findings.js=): without =--feed= 6,986 pages, 0 differ, 41 flagged
+  (batch 4 unchanged); =--feed bb/2026-11-23/bb-feed.json= (the three switches on, the feed kept): 0 differ, 171
+  flagged.
+- *Tests:* =bb-findings-page-tags.spec.js= 26/26 (11 new, on 9 more mirror pages and
+  =tests/fixtures/bb-feed-batch4b.json=); mutations =scripts/mutations/bb-findings-page-tags-4b.json= 15/15 as
+  expected; four older finds my edits had moved, rewritten and re-run (as recorded). Lint within the baseline.
+  =test:full= at =436fa049= on NB-3641: 3,512/3,512, 01:55:49–02:20:18 CET (=tests/MEASUREMENTS.org=). Not
+  measured: the render ratio against main (the three families are off by default and read nothing but the page
+  and the kept feed).
+
+** The browser check of batch 4b, for vzell (pages of the mirror of 2026-11-23; unverified on the live wiki)
+
+Install the script from =feat/bb-page-tag-families=. In ⚙️ Settings → ⚠️ Findings turn on the three: "Also check
+the place tags of a Brucebase show and of a venue page", "Also check a Brucebase person's or band's own name tag",
+"Also check a Brucebase release's date and first-letter tags"; "Read the Brucebase feed" on (feed 1.10, published).
+Every stored preview is read once more (parser version 39).
+
+| Page                                                                                  | Step                                         | Expected                                                                                                       |
+|---------------------------------------------------------------------------------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------|
+| https://brucebase.wikidot.com/venue:bow-tie-cinemas-red-bank-nj                       | Show the venue                               | Place row: "redbank missing", "usa missing"; ❌ 2 missing; "The title names the city "Red Bank"."             |
+| https://brucebase.wikidot.com/venue:aami-park-melbourne-australia                     | Show the venue                               | "✓ kind, first-letter, place and construction tags as expected" (an Australian title)                         |
+| https://brucebase.wikidot.com/venue:center-for-american-music-west-long-branch-nj     | Show the venue                               | "longbranch missing": the title reads "… Music West, Long Branch, NJ" (a comma in the wrong place)            |
+| https://brucebase.wikidot.com/relation:dan-aykroyd                                    | Show the person                              | People row: "danaykroyd missing" (tagged "danakroyd")                                                         |
+| https://brucebase.wikidot.com/relation:donald-dunn                                    | Show the person                              | "✓ person/band, first-letter, name and construction tags as expected" (the stage name "duckdunn")            |
+| https://brucebase.wikidot.com/relation:tony-pallagrosi                                | Show the person                              | "tonypallagrosi missing" (tagged "tonypalligrosi")                                                            |
+| https://brucebase.wikidot.com/stats:relations                                         | the A tab: Ctrl+hover "Aykroyd, Dan", Space  | the window's Tags: "danaykroyd missing"                                                                        |
+| https://brucebase.wikidot.com/retail:life-death-and-dennis-hopper                     | Show the release                             | Date row: "2025 missing"; "2024" marked ⚠️, "No date of the page's "Commercially Released" line (April 4, 2025) has it." |
+| https://brucebase.wikidot.com/retail:american-babylon-25                              | Show the release                             | "17", "1995" and "a" missing; "2021" and "29" ⚠️ (the line has the 1995 original's date)                     |
+| https://brucebase.wikidot.com/retail:a-good-life                                      | Show the release                             | Letter row: "a missing"; no date mark (the first of its two dates is tagged)                                   |
+| https://brucebase.wikidot.com/retail:born-to-run                                      | Show the release                             | "✓ kind, date, first-letter and construction tags as expected" (the line "Commercially Released*:")           |
+| https://brucebase.wikidot.com/retail:the-concert-for-the-rock-and-roll-hall-of-fame-credit | open it                                 | no pill, no ✓ line: a tab page (its name cut at 60 characters)                                                 |
+| the venue, person and release pages above                                             | the three settings off, reload, Show         | batch 4's marks only (the Bow Tie venue: "✓ kind, first-letter and construction tags as expected")            |
+| https://brucebase.wikidot.com/venue:bow-tie-cinemas-red-bank-nj                       | "Read the Brucebase feed" off, reload, Show  | no place mark; the note "The place tags are not checked: the Brucebase feed is off."                          |
+
+Unverified: all of it on the live site (Claude made no request to the wiki). Whether =retail:the-concert-…-credit=
+shows a button is not known; the row says "open it".
+
 * Closing the matrix (2026-11-19): coexistence, then the HOME row
 
 Env: 2026-11-19T00:46:09+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright
