@@ -4,9 +4,20 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1862 versions; the month pages hold all of them.
+This page shows the newest 100 of 1863 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1692 — 2026-11-24
+
+**✨ Improve**
+
+- This script's items in Event Horizon's menus ("Open in ShowAllEntityData", "SAED: Show all Tracks for Release", …) now carry a small table icon, so an item you move from ⋯ into Event Horizon's main row no longer shows as words only. It reads on light and dark themes, and costs no request.
+
+**📝 Docs**
+
+- Help: a paragraph on String Theory's idle mode (a random theme and an animated effect over the page after five minutes without input, our tables included): what it costs and where in String Theory's settings to switch it off or give it a longer time.
+
 
 ## 9.99.1691 — 2026-11-24
 
@@ -850,13 +861,6 @@ This page shows the newest 100 of 1862 versions; the month pages hold all of the
 **🚀 Feature**
 
 - A Discogs user's contributions page (/contributions?user=&lt;name&gt;) and submissions page (/user/&lt;name&gt;/submissions) each get a button. It shows the same list as the matching button on the user's page, read from Discogs' API. Contributions come in the order the page shows them (by label, for example), whether or not the URL names it. On the submissions page, the page's own search box has no counterpart in the API: with a search in the URL, every submission is still read, and the button's hover text and a note above the tables say so. The submissions page's locked scrolling is unlocked, as on a list's submissions page.
-
-
-## 9.99.1592 — 2026-11-10
-
-**🚀 Feature**
-
-- A Discogs release's image revision page (…/images/history?rev=N, "Previous State of Images") gets a button: "Show every image revision". Until now the script did not run on that page at all, so it had no button and no link previews. The button shows one sub-table per revision of the release's images, newest first. Each heading names the revision, when it was made, by whom and its note; the page's own revision says "this page". Each image has a Change column comparing it with the revision before (+ added, moved, → primary, → secondary), and an image the revision removed gets its own greyed row, "− removed". The Image column has the image card and the viewer, as on the Images page. The button reads the release's edit history (one request a page), then one request a revision, with your Discogs session. The page's own links now have link previews too, as on the other older Discogs pages.
 
 
 ---
