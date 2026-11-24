@@ -6835,3 +6835,21 @@ Until then, what is the way to still clear the cached entry and get the ERROR fi
    hover (the honest precondition), not a bare longer timeout. If 0/20, record "not reproduced" in bbp-parity.org and
    keep watching.
 
+* "shine through" correction
+
+A correction to the "shine through" sections in @org/majkinetor.org:
+
+What I meant and want is the following: majkinetor's scripts have the ability to replace the original MB page with an
+enhanced version when using them, but also to switch back to the original MB page at any time.
+
+Is that possible with our userscript also ?
+
+1.)
+
+After pressing the "Show all.." action buttons on MB pages and rendering the table views, to switch back to the original
+page any time (back and forth)
+
+2.)
+
+Same for the non-MB pages, most of them when rendering their table views still display the "original" page below the
+table. I want only the table view and an option to display the original page again (back and forth)
