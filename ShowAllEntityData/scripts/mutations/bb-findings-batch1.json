@@ -1,5 +1,29 @@
 [
     {
+        "name": "bb-name-mismatch: a private residence named two ways is a mismatch again",
+        "why": "Danny, 2024-08-17: the street on the year page, \"<name> Residence\" on the event page, on purpose.",
+        "edits": [{ "find": "        if (_bbPrivateResidence(h, t)) return '';", "replace": "" }],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js", "grep": "a private residence: its street", "expect": "fail"
+    },
+    {
+        "name": "bb-name-mismatch: a residence's other name on the year page is a mismatch again (BruceParser before 0.43.2)",
+        "why": "vzell, 2026-11-24: \"Yes\" to 1991's STING RESIDENCE / Sumner Residence.",
+        "edits": [{ "find": "        return / RESIDENCE$/.test(t.rest.slice(0, tc).trim())", "replace": "        return / RESIDENCE$/.test(t.rest.slice(0, tc).trim()) && !/RESIDENCE$/.test(h.rest.slice(0, hc).trim())" }],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js", "grep": "a private residence: its street", "expect": "fail"
+    },
+    {
+        "name": "bb-name-mismatch: any venue on the event page counts as a residence",
+        "why": "Only \"<name> Residence\" on the event page: the two sides swapped, \"Residence Garage\" stay mismatches.",
+        "edits": [{ "find": "        return / RESIDENCE$/.test(t.rest.slice(0, tc).trim())", "replace": "        return true" }],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js", "grep": "a private residence: its street", "expect": "fail"
+    },
+    {
+        "name": "bb-name-mismatch: a residence in another place counts as the same",
+        "why": "Date and place must agree; only the venue part differs.",
+        "edits": [{ "find": "            && h.rest.slice(hc + 1).trim() === t.rest.slice(tc + 1).trim();", "replace": "            && true;" }],
+        "spec": "tests/fixtures/bb-findings-batch1.spec.js", "grep": "a private residence: its street", "expect": "fail"
+    },
+    {
         "name": "bb-name-mismatch: the detector never matches",
         "why": "The finding reads the Event cell's check.",
         "edits": [

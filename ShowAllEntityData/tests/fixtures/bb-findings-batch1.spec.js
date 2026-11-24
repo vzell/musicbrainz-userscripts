@@ -532,6 +532,40 @@ test.describe('Brucebase year table: the name and anchor findings (bbp-parity ba
         expect(out.listingClean).toEqual([]);
     });
 
+    test('a private residence: its street or another name on the year page, "<name> Residence" on the event page is no mismatch (Danny, 2024-08-17)', async ({ page }) => {
+        await loadYear(page);
+        const out = await page.evaluate(() => {
+            const c = window.__saTest.bbEventChecks;
+            const row = (heading, anchor, href) => ({ heading, anchor, href: `https://brucebase.wikidot.com/${href}` });
+            const rand = row('1949-09-23 - 87 RANDOLPH STREET, FREEHOLD, NJ', '230949', 'nogig:1949-09-23-private-residence-freehold-nj');
+            const page = title => ({ title, infoHref: '/1949-64#230949' });
+            return {
+                // Two of the 22 real pairs of bb/2026-11-24 (1949-64).
+                randolph: c(rand, page('1949-09-23 Springsteen Residence, Freehold, NJ')),
+                institute: c(row('1954-10-00 - 39½ INSTITUTE STREET, FREEHOLD, NJ', '001054', 'nogig:1954-10-00-private-residence-freehold-nj'),
+                    { title: '1954-10-00 Springsteen Residence, Freehold, NJ', infoHref: '/1949-64#001054' }),
+                // Another name on the year page (vzell, 2026-11-24: "Yes";
+                // BruceParser 0.43.2 the same).
+                sting: c(row('1991-02-09 - STING RESIDENCE, MALIBU, CA', '090291', 'nogig:1991-02-09-private-residence-malibu-ca'),
+                    { title: '1991-02-09 Sumner Residence, Malibu, CA', infoHref: '/1991#090291' }),
+                otherPlace: c(rand, page('1949-09-23 Springsteen Residence, Colts Neck, NJ')),
+                otherDate: c(rand, page('1949-09-24 Springsteen Residence, Freehold, NJ')),
+                swapped: c(row('1949-09-23 - SPRINGSTEEN RESIDENCE, FREEHOLD, NJ', '230949', 'nogig:1949-09-23-private-residence-freehold-nj'),
+                    page('1949-09-23 87 Randolph Street, Freehold, NJ')),
+                notLast: c(rand, page('1949-09-23 Springsteen Residence Garage, Freehold, NJ')),
+                noPlace: c(row('1949-09-23 - 87 RANDOLPH STREET', '230949', 'nogig:1949-09-23-private-residence-freehold-nj'), page('1949-09-23 Springsteen Residence')),
+            };
+        });
+        expect(out.randolph).toEqual([]);
+        expect(out.institute).toEqual([]);
+        expect(out.sting).toEqual([]);
+        expect(out.otherPlace).toEqual(['name-mismatch']);
+        expect(out.otherDate).toEqual(['name-mismatch']);
+        expect(out.swapped).toEqual(['name-mismatch']);
+        expect(out.notLast).toEqual(['name-mismatch']);
+        expect(out.noPlace).toEqual(['name-mismatch']);
+    });
+
     test('the event page\'s reader: the title as written and the "Info & Setlist" link', async ({ page }) => {
         await loadYear(page);
         const read = await page.evaluate(({ html, spaced }) => {

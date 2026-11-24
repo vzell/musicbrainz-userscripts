@@ -5023,3 +5023,21 @@ returns to the event" hit the 90 s test timeout, with no assertion failing. In t
 where alone they take about 1 s (=popup-ext.spec.js= 11.6 m). Run again on the same tree, it passed 3/3 alone and
 in its whole file, 149/149, so it is counted as a timeout under load, not a defect of the merge. Its trace was lost:
 the rerun cleared =test-results/=.
+
+* 2026-11-24 — =npm run test:full= on =NB-3641=, fix/bb-residence-name (a private residence named two ways)
+
+Env: 2026-11-24T11:00:21+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                              | Tests | Workers | Wall clock  | Basis                                     |
+|--------------------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =8be314d9=                        |  3521 |      14 | *24 m 42 s* | =run-test-full.py=, 11:00:21–11:25:03 CET |
+| =bb-place.spec.js=, the failed test, =--repeat-each 5= |     5 |       5 | 7 s         | =run-test-full.py --script test=, 11:25   |
+| =bb-place.spec.js=, whole file                         |    12 |       1 | 31 s        | =run-test-full.py --script test=, 11:25   |
+
+3520 passed, 1 failed: =bb-place.spec.js= "the card is the event's; the window's tags read the event as a gig". The
+card showed another row's link ("Pollak Theatre, Monmouth University, …", loading) instead of the hovered
+/onstage: link's. Likely cause, not proven from the trace: the hover goes to the link's position at the time, and the
+table moved under load (auto-resize after Performances opens), so the pointer met another link. The test's page is a
+relation page, which the change (=_bbNameCheck()=, year pages) never reaches. Run again on the same tree, it
+passed 5/5 alone and 12/12 in its file. Counted as a timing failure under load; trace kept in the session
+scratchpad only. Two different such failures in two full runs today (this morning's: =popup-mb.spec.js=).
