@@ -38,6 +38,7 @@ will never need is folded into collapsible sections.
 - [Statistics](#statistics)
 - [The browser cache](#the-browser-cache)
 - [Script storage](#script-storage)
+- [The activity log](#the-activity-log)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Settings](#settings)
 - [Supported pages](#supported-pages)
@@ -1788,6 +1789,40 @@ never copied or written to the export, and they can only be deleted.
 Like the browser cache window, this window moves by its title bar and resizes
 from its lower-right corner. Open it from the SAED menu (View → **🗄️ Script
 storage**, right below 💾 Browser cache) or from the Tampermonkey menu.
+
+## The activity log
+
+**🧾 Activity log** shows what the script did on this page, one line per
+step: what it loaded, what it drew, what failed and why. It is the same text
+the browser's console shows, inside the page, so you can send it with a bug
+report without opening the console. Open it from the SAED menu (Help →
+**🧾 Activity log**, below ❓ Help) or from the Tampermonkey menu. When the
+script has logged a warning or an error, the menu row shows how many (an amber
+"2 ⚠", a red "1 ✖").
+
+Each line has its time, its level (INFO, WARN, ERR, DBG), the console's icon
+and channel (📥 fetch, 🎨 render, 🖥️ ui, …) and the message. Then:
+
+- type in the filter box to keep only the lines with that text; the text is
+  marked in each line. <kbd>Esc</kbd> empties the box;
+- click a **Level** or **Channel** chip to see only those lines, and click it
+  again to see all. The chips appear once there is a choice;
+- tick **Record detail** to record every step in detail, for this page only.
+  Leave it on while you reproduce a problem. To keep it on, turn on *Enable
+  debug logging* in ⚙️ Settings → 🛠️ Generic;
+- **⧉ Copy as Markdown** copies every line, ready to paste into a forum post
+  or a GitHub issue. It starts with the script and library versions, the page
+  type and the page's address (without its query string), and the time zone
+  of the times;
+- **Clear** empties the log. It asks first, inside the window.
+
+The log keeps the last 20,000 lines of the page; the copy says how many
+earlier lines were not kept. Nothing leaves the page unless you copy it, and
+the log starts empty on the next page. The window moves by its title bar,
+resizes from its lower-right corner, and **⛶** (or a double-click on the
+title bar) makes it full screen. On a phone it is full screen. <kbd>Esc</kbd>
+empties the filter first, then cancels a pending question, then closes the
+window.
 
 ---
 
