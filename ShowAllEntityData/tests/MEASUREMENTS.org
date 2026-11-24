@@ -5041,3 +5041,14 @@ table moved under load (auto-resize after Performances opens), so the pointer me
 relation page, which the change (=_bbNameCheck()=, year pages) never reaches. Run again on the same tree, it
 passed 5/5 alone and 12/12 in its file. Counted as a timing failure under load; trace kept in the session
 scratchpad only. Two different such failures in two full runs today (this morning's: =popup-mb.spec.js=).
+
+* 2026-11-24 — =npm run test:full= on =NB-3641=, =main= after merging fix/bb-residence-name (9.99.1693)
+
+Env: 2026-11-24T14:12:10+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                       | Tests | Workers | Wall clock | Basis                                     |
+|---------------------------------+-------+---------+------------+-------------------------------------------|
+| =npm run test:full=, =3591a927= |  3522 |      14 | *25 m 2 s* | =run-test-full.py=, 14:12:10–14:37:12 CET |
+
+3522 passed, none failed. The merge gate of 9.99.1693 (the branch on top of 9.99.1692's =feat/small-adoptions=);
+neither of the day's two timing failures (=popup-mb.spec.js=, =bb-place.spec.js=) came back.

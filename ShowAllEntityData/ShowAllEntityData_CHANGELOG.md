@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1863 versions; the month pages hold all of them.
+This page shows the newest 100 of 1864 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1693 — 2026-11-24
+
+**🐛 Fix**
+
+- Brucebase year table: a private residence is no longer marked ❌ "Brucebase event page named differently from the year page" when the event page calls it "&lt;name&gt; Residence" and the year page gives its street or another name (1949-64: "87 RANDOLPH STREET, FREEHOLD, NJ" / "Springsteen Residence, Freehold, NJ"; 1991-02-09: "STING RESIDENCE" / "Sumner Residence"). The wiki writes them so on purpose, to keep a real person's address out of the page's address (Danny van der Linden, 2024). Date and place must still agree. BruceParser 0.43.2 has the same rule. 23 rows less on the whole wiki (38 → 15).
+
 
 ## 9.99.1692 — 2026-11-24
 
@@ -854,13 +861,6 @@ This page shows the newest 100 of 1863 versions; the month pages hold all of the
 **🚀 Feature**
 
 - A Discogs seller's shop (/seller/&lt;name&gt;/profile) gets a button: "Show everything for sale". It reads every listing from the shop's own pages, 250 a page, with the page's filters (format, price range, the shop search) and its sort. Discogs' item text is split into Artist, Title and Format, and also kept whole in the Item column, which links the listing. The other columns: the release's image (with the image card and viewer), each label, Cat\#, the community's rating and Have and Want, the media and sleeve condition, the seller's comments, where it ships from, the price as listed, the shipping, and the price in your currency. An empty shop has no button.
-
-
-## 9.99.1593 — 2026-11-10
-
-**🚀 Feature**
-
-- A Discogs user's contributions page (/contributions?user=&lt;name&gt;) and submissions page (/user/&lt;name&gt;/submissions) each get a button. It shows the same list as the matching button on the user's page, read from Discogs' API. Contributions come in the order the page shows them (by label, for example), whether or not the URL names it. On the submissions page, the page's own search box has no counterpart in the API: with a search in the URL, every submission is still read, and the button's hover text and a note above the tables say so. The submissions page's locked scrolling is unlocked, as on a list's submissions page.
 
 
 ---

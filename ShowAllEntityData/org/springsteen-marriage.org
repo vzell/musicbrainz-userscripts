@@ -716,6 +716,10 @@ Whether to ask Eddy, Danny and Stefano before the launch is vzell's call; Claude
 
 ** TODO First steps (own repo, e.g. =~/git/volkerzell.de=, own CLAUDE.md)
 
+0. *Ionos access.* The open TODO of [[file:ionos.org][ionos.org]]. vzell already has the SSH key and alias (2026-11-24):
+   =Host vzell= in =~/.ssh/config=, key =~/.ssh/vzell.ed25519=, so the =ionos-vz= alias and its new key are not
+   needed. Still to do: the DB credentials in =~/.config/volkerzell/db.env= (chmod 600, outside every repo). Then one read-only
+   check (=php -v=, the MariaDB version, cron or not, the space) settles "Constraints to settle before building" above.
 1. *Mockup first.* An interactive LAF mockup of the homepage:
    - the show page with its Sources strip and credits;
    - On this day;
@@ -735,6 +739,50 @@ Whether to ask Eddy, Danny and Stefano before the launch is vzell's call; Claude
 Verification: run =publish.sh= locally against =bb/latest=. Check that its row counts equal the report counts in
 =run-history.md=. Load the SQL into a local MariaDB and serve the PHP with =php -S=, then upload to the live site once
 vzell has approved it.
+
+*** Repos and layout (proposed 2026-11-24, not yet approved)
+
+Three repos, one job each:
+
+| Repo                      | Role                | New in it                                                                                    |
+|---------------------------+---------------------+----------------------------------------------------------------------------------------------|
+| =BruceParser=             | produces the data   | =publish.sh=; =docs/DATASET.md= fixes the export's format (as =FORMAT.md= does for the feed) |
+| =~/git/volkerzell.de=     | the site and its DB | everything below                                                                             |
+| =musicbrainz-userscripts= | the userscripts     | nothing; the site links to the mirror's install URLs                                         |
+
+The new repo:
+
+#+begin_example
+volkerzell.de/
+  CLAUDE.md            Ionos limits, credits, Impressum, deploy only with vzell's OK
+  site/public/         web root: pages, CSS, small plain JS (sortable tables), no framework, no CDN
+  site/private/        behind HTTP auth: run dashboard, review queues, debug snapshots
+  site/lib/            PHP: DB access (PDO), templates in the "Liner notes" look
+  db/schema.sql        shows/songs/venues/people/links/findings + snapshot/snapshot_row
+  db/migrations/       numbered, never edited once deployed
+  import/              loads one publish.sh dataset into MariaDB (run over SSH)
+  scripts/             deploy.sh (rsync over SSH), sync-archive.py, pull-archive.py
+  tests/               php -S + a local MariaDB of Ionos's version, Playwright for the pages
+  docs/                CHANGELOG, decisions
+#+end_example
+
+Rules carried over from this repo into its CLAUDE.md:
+- a mockup before any visible page;
+- probe the real data first;
+- a branch per feature, and a merge only on vzell's word;
+- Env stamps on dated notes;
+- vzell's table formatting;
+- credits right where the data appears.
+
+*** Open question: the new userscript (vzell, 2026-11-24)
+
+vzell named "a new userscript" next to the site; its purpose is not decided yet. It has to fit the ground rule
+"SAED never calls the site" (Context above):
+- *Only vzell's own private area* (mark a finding as a known exception for the review queue, upload a snapshot): this
+  is no conflict. It would be a small separate script that only vzell installs, with its own =@connect volkerzell.de=
+  and a token.
+- *Gives public users something from the site*: this breaks the rule (users' IPs reach the server). Decide it on
+  purpose first, with Datenschutz in mind.
 
 
 * vzell's notes

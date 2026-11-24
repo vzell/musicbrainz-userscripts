@@ -4514,7 +4514,11 @@ entry, with these columns:
   year page (❌), it only adds "(Early)", "(Late)" and the like (⚠️), its
   "Info & Setlist" link leads to another entry (❌), or its title has two
   blanks. Names are compared as the wiki writes them, in capitals, with
-  "Stone Pony (The)" read as "The Stone Pony". The cell's hover text says
+  "Stone Pony (The)" read as "The Stone Pony". A private residence named
+  two ways is no difference: the wiki gives the street or another name on
+  the year page and "<name> Residence" on the event page on purpose ("87
+  RANDOLPH STREET" / "Springsteen Residence", "STING RESIDENCE" / "Sumner
+  Residence"), as long as the date and the place agree. The cell's hover text says
   what differs, above "As written on the site". ▶ Pages also reads each
   entry's venue page (one more request per venue, kept 30 days): a ⚠️ on
   the **Venue** cell says the entry's page names the venue differently

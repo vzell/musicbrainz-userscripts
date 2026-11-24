@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1693",
+    "date": "2026-11-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Brucebase year table: a private residence is no longer marked ❌ \"Brucebase event page named differently from the year page\" when the event page calls it \"<name> Residence\" and the year page gives its street or another name (1949-64: \"87 RANDOLPH STREET, FREEHOLD, NJ\" / \"Springsteen Residence, Freehold, NJ\"; 1991-02-09: \"STING RESIDENCE\" / \"Sumner Residence\"). The wiki writes them so on purpose, to keep a real person's address out of the page's address (Danny van der Linden, 2024). Date and place must still agree. BruceParser 0.43.2 has the same rule. 23 rows less on the whole wiki (38 → 15)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1692",
     "date": "2026-11-24",
     "sections": [
