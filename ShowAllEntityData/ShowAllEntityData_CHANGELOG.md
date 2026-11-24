@@ -4,9 +4,17 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1859 versions; the month pages hold all of them.
+This page shows the newest 100 of 1860 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1689 — 2026-11-24
+
+**🚀 Feature**
+
+- New 🧾 Activity log, in the SAED menu (Help, below ❓ Help) and in the Tampermonkey menu: what the script did on this page, one line per step, inside the page, so you can send it with a bug report without opening the browser's console. Each line shows its time, level, the console's icon and channel, and the message. A filter box keeps the lines with your text and marks it; Level and Channel chips show one kind at a time; Record detail records every step for this page only; ⧉ Copy as Markdown copies everything, ready for a forum post or a GitHub issue, naming the script and library versions, the page type and the page's address; Clear asks first. The window moves, resizes and goes full screen, and is full screen on a phone. When a warning or an error was logged, the menu row shows how many (an amber "2 ⚠", a red "1 ✖").
+- The window itself is VZ\_MBLibrary 4.7.0/4.7.1's (Lib.logWindow, based on majkinetor's mbuLog from his Musicbrainz Toolset, with his permission). ShowAllEntityData puts it in MusicBrainz's own body, so a window opened while Event Horizon's view is on comes back after V, and gives it the page type for the copy. A debug line while debug logging is off is still not recorded at all, so nothing gets slower.
+
 
 ## 9.99.1688 — 2026-11-23
 
@@ -848,13 +856,6 @@ This page shows the newest 100 of 1859 versions; the month pages hold all of the
 **🐛 Fix**
 
 - A release's Images page and its image editor on discogs.com ("Show every image"): a hover on an image in the Image column now shows that image big with its type, uploader, date, size and file size, and a click opens the image viewer, where Shift+→ / Shift+← step through the rows in the order shown. Until now these tables had no hover card at all: the card looked for the row's release in a Title column, and these tables have none. The card asks Discogs for nothing (the row is the image); it is switched off with the setting for the Discogs Image column's hover card. A table saved to disk earlier gets the card too.
-
-
-## 9.99.1589 — 2026-11-10
-
-**🚀 Feature**
-
-- Links to an image revision of a Discogs release (…/images/history?rev=N, the "Images" links of image changes in a release's edit history, in the history's preview window and in the table of the edit history page) have their own preview window. Before, they showed the release itself. The window lists every revision that changed the release's images, newest first, with who changed them, when and the note, and highlights the revision the link points to. That revision shows its images and what changed since the revision before: + added, moved, → primary / → secondary, and removed images greyed out. A click on an image opens the image viewer. Every other revision shows its images when you press its "▸ Show images"; "Load the N other revisions" reads all of them, one request each (Stop ends it). To list every revision, the window reads every page of the release's edit history. A revision's images come from Discogs' image editor, so they are read with your Discogs session, as the Image history window already does; signed out, the revisions are still listed, each saying why its images are missing. Like the other Discogs history windows, it reads only when you press Space, never on a hover.
 
 
 ---

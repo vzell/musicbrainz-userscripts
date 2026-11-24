@@ -17,8 +17,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 * PICKUP HERE (2026-11-24)
 
 - *Now (2026-11-24):* "In-page log window": VZ_MBLibrary 4.7.0 and 4.7.1 on =main= (vzell's live checks OK);
-  SAED's side on =feat/saed-log-window= (WIP.1), waiting for vzell's browser check before the merge. Next of
-  the item: past sessions (new TODO).
+  SAED's side *shipped* in 9.99.1689 (=feat/saed-log-window=, merged 2026-11-24, vzell's browser check OK).
+  Next of the item: past sessions (new TODO).
 - *Now (2026-11-23):* refreshed to =5d4d464= (=chore/refresh-majkinetor-5d4d464=), and on top of it
   =feat/eh-player-quiet= (9.99.1680, merged 2026-11-23): our fallback for "Event Horizon's player plays on under our page" is built and
   tested (fixtures and mutations), *vzell's browser check OK* (2026-11-23); the post ([[#post-938-player][On the
@@ -95,7 +95,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Query mode for the global filter (EH's language)               | DONE  | 9.99.1668–69  | Adoptions     |
 | Columns: reorder, named sets, EH's resize rule                 | TODO  | —             | Adoptions     |
 | Stale-while-revalidate: popup engine done, =rel-ws2= left      | PART  | 9.99.1643     | Adoptions     |
-| In-page log window (=mbuLog=)                                  | DONE  | WIP.1         | Adoptions     |
+| In-page log window (=mbuLog=)                                  | DONE  | 9.99.1689     | Adoptions     |
 | In-page log: past sessions (mbuLog's history)                  | TODO  | —             | Adoptions     |
 | Hide the native page until the render ("shine through")        | TODO  | —             | Adoptions     |
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
@@ -770,7 +770,7 @@ CLOSED: [2026-11-20 Fri]
 - *Done (2026-11-24)*, in two steps because a library change reaches a real browser only from =main=:
   VZ_MBLibrary 4.7.0 (the buffer, the window, =Lib.logWindow=, =configureLog()=, Tampermonkey's "🧾 Activity log")
   and 4.7.1 (the filter text marked, the console's icons; vzell's live check of 4.7.0), both on =main= and checked
-  live by vzell; SAED's side on =feat/saed-log-window= (WIP.1): the ☰ SAED → Help row with the ⚠/✖ counts, the
+  live by vzell; SAED's side in 9.99.1689 (checked live too): the ☰ SAED → Help row with the ⚠/✖ counts, the
   window in =_saBody()=, the page type in the copy. Mockup: https://claude.ai/artifact/4gzcR5shSasSuRWYvJ2wMT.
   Decisions (vzell, the mockup's six questions): info/warn/error always, debug only while debug logging is on;
   "Record detail" for this page only; no key (Ctrl+M L is taken); counts on the row only; extra data as a short
