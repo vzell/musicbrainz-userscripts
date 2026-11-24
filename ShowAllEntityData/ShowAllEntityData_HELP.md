@@ -4389,14 +4389,16 @@ entry, with these columns:
   feed*), so they change without a new script version; without the feed
   the tour is not checked. Rehearsals, recordings, interviews and dates
   with "00" are not checked.
-  With *Also check a Brucebase show's place tags* on (off by default), a
-  show should carry tags for the city, the US state or Canadian province
-  ("newjersey(nj)") and the country of its title ("usa" or "canada" after a
+  With *Also check the place tags of a Brucebase show and of a venue page*
+  on (off by default), a show should carry tags for the city, the US state
+  or Canadian province ("newjersey(nj)") and the country of its title
+  ("usa" or "canada" after a
   state or province), "europe" or "oceania" for a country there, and its
   venue's tag (the venue page its "Venue" link names). A few names the wiki
   tags its own way ("West Germany" is "germany"), the regions and the
   venues' tags come from the Brucebase feed too; a place tag is never marked
-  as not expected.
+  as not expected. A venue page is checked the same way for its own title,
+  and should carry its own tag as its shows carry it.
   With *Also check a Brucebase show's content tags* on (off by default), a
   show whose News/Memorabilia tab shows a setlist should carry "setlist"
   (and "handwritten" or "printed" when the picture's name says so), one
@@ -4675,6 +4677,17 @@ site) show those tags too:
   tags are looked for, these pages leave out the BruceParser feed's
   first-letter mark after the byline: the check reads the page as it is
   now.
+  Two more checks, each off by default: with *Also check a Brucebase
+  person's or band's own name tag*, a person's page (with a Bands tab,
+  titled "Surname, Name") or a band's (with a Members tab) should carry its
+  own name as a tag, counted the ways the wiki writes names; the name the
+  wiki itself uses for the page counts too, a stage name such as
+  "duckdunn" for Donald Dunn, from the Brucebase feed (without it the name
+  is not checked). With *Also check a Brucebase release's date and
+  first-letter tags*, a release with a "Commercially Released" line should
+  carry the year, month and day of one of the dates it names (one in full
+  is enough), a date tag that is none of those dates is marked ⚠️, and it
+  should carry its title's first letter.
 - **A title with two blanks** (or a blank before a comma) gets a ⚠️ after
   the show page's byline and after the window's title; its hover text
   shows the title with ␣ where the blanks are.

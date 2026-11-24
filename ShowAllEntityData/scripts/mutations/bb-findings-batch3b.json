@@ -160,7 +160,7 @@
         "why": "_bbFeedMapsWanted() adds tagTables while the family is on.",
         "edits": [
             {
-                "find": "        return base.concat('tagTables', _bbTagSongsOn() ? ['songTags'] : [], _bbTagPlaceOn() ? ['venueTags'] : []);",
+                "find": "        return base.concat('tagTables', _bbTagSongsOn() ? ['songTags'] : [], _bbTagPlaceOn() ? ['venueTags'] : [],\n            _bbTagRelationOn() ? ['relationTags'] : []);",
                 "replace": "        return base;"
             }
         ],
@@ -368,8 +368,8 @@
         "why": "Only the feed reread and the repaint read _bbTagTableFamiliesOn(); no place spec has a late feed, the tour spec covers both paths. Known overlap, recorded.",
         "edits": [
             {
-                "find": "        return _bbTagTourOn() || _bbTagPlaceOn() || _bbTagCastOn() || _bbTagSongsOn();",
-                "replace": "        return _bbTagTourOn() || _bbTagCastOn() || _bbTagSongsOn();"
+                "find": "        return _bbTagTourOn() || _bbTagPlaceOn() || _bbTagCastOn() || _bbTagSongsOn() || _bbTagRelationOn();",
+                "replace": "        return _bbTagTourOn() || _bbTagCastOn() || _bbTagSongsOn() || _bbTagRelationOn();"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",
@@ -797,8 +797,8 @@
         "why": "The show's venue page's tag (the feed's venueTags).",
         "edits": [
             {
-                "find": "        if (Array.isArray(vt) && vt.length) {\n            out.push({ tag: vt[0], family: 'place',",
-                "replace": "        if (Array.isArray(vt) && vt.length && !vt) {\n            out.push({ tag: vt[0], family: 'place',"
+                "find": "        if (Array.isArray(vt) && vt.length) {\n            out.push({ tag: vt[0], family: 'place', why: `The show's venue page",
+                "replace": "        if (Array.isArray(vt) && vt.length && !vt) {\n            out.push({ tag: vt[0], family: 'place', why: `The show's venue page"
             }
         ],
         "spec": "tests/fixtures/bb-findings-batch3b.spec.js",

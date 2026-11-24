@@ -366,3 +366,183 @@ test.describe('Brucebase page tag checks: the preview window (bbp-parity batch 4
         expect((await windowOf(off, BAYONNE)).feed).toEqual(['first-letter']);
     });
 });
+
+// Batch 4b (org/bbp-parity.org, "Batch 4b"; vzell, 2026-11-24): the three
+// families batch 4 left out, each off by default. A venue's place tags
+// (`sa_bb_tag_family_place`, batch 3b's rule on the venue's own title and
+// the feed's venueTags), a person's or band's own name tag
+// (`sa_bb_tag_family_relation`: SAED's cast forms or the feed's
+// relationTags, feed 1.10), a release's date and first-letter tags
+// (`sa_bb_tag_family_release`: one date of its "Commercially Released" line
+// in full, a date tag of none of them not expected). Fixtures from the
+// mirror of 2026-11-23 (scripts/build-bb-findings-page-tags-fixtures.py
+// --4b), with tests/fixtures/bb-feed-batch4b.json; the probe's `ship4b` and
+// scripts/check-bb-page-tag-findings.js --feed cover the whole mirror.
+
+const FEED_4B = JSON.parse(fs.readFileSync(path.join(__dirname, 'bb-feed-batch4b.json'), 'utf8'));
+const BOWTIE = 'venue:bow-tie-cinemas-red-bank-nj';
+const HOPPER = 'retail:life-death-and-dennis-hopper';
+/** Every batch 4b fixture with the three families on: [missing tag/family], [not-expected tag/family]. */
+const WANT_4B = {
+    [BOWTIE]: [['redbank/place', 'usa/place'], []],
+    'venue:aami-park-melbourne-australia': [[], []],
+    [PONY]: [[], []],
+    'relation:dan-aykroyd': [['danaykroyd/name'], []],
+    'relation:donald-dunn': [[], []],
+    'relation:the-max-weinberg-7': [['maxweinberg7/name'], []],
+    [HOPPER]: [['2025/date'], ['2024/date']],
+    'retail:born-to-run': [[], []],
+    'retail:a-good-life': [['a/letter'], []],
+};
+const CUT_TAB = 'retail:the-concert-for-the-rock-and-roll-hall-of-fame-credit';
+/** The three families' switches. */
+const FAMS_4B = { sa_bb_tag_family_place: true, sa_bb_tag_family_relation: true, sa_bb_tag_family_release: true };
+
+/**
+ * Settings: the feed on with `data` kept a second ago (its run dated
+ * yesterday), and the families `fams` on.
+ *
+ * @param {Object} [data] - The feed (default tests/fixtures/bb-feed-batch4b.json).
+ * @param {Object<string, boolean>} [fams]
+ * @returns {Object<string, *>}
+ */
+function kept4b(data = FEED_4B, fams = FAMS_4B) {
+    const date = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    return { sa_bb_feed: true, mb_sa_bb_feed: { at: Date.now() - 1000, data: { ...data, run: { ...data.run, date } }, err: '', errAt: 0 }, ...fams };
+}
+
+/**
+ * Every batch 4b fixture's findings in the loaded page, as `tag/family` lists.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<Object<string, ?Array>>} name -> [missing, not expected, every finding says why]; null: no check.
+ */
+const run4b = page => page.evaluate(list => Object.fromEntries(list.map(([name, html]) => {
+    const url = 'https://brucebase.wikidot.com/' + name;
+    const facts = window.__saTest.bbTagFacts(html, url);
+    if (!facts) return [name, null];
+    const own = window.__saTest.dpParse('brucebase.wikidot.com', html, url).tags.map(t => t.text.toLowerCase());
+    const r = window.__saTest.bbTagCheck(facts, own, []);
+    return [name, [r.missing.map(x => `${x.tag}/${x.family}`).sort(), r.spurious.map(x => `${x.tag}/${x.family}`).sort(),
+        r.missing.concat(r.spurious).every(x => !!x.why)]];
+})), Object.keys(WANT_4B).concat(CUT_TAB).map(n => [n, fs.readFileSync(fileOf(n), 'utf8')]));
+
+test.describe('Brucebase page tag checks: batch 4b, a venue\'s place, a person\'s name, a release\'s dates and letter', () => {
+    test('the three families on: every fixture\'s findings (the probe\'s ship4b); a tab page cut at 60 characters gets no check', async ({ page }) => {
+        await loadFixture(page, PONY, kept4b());
+        const want = Object.fromEntries(Object.entries(WANT_4B).map(([n, [m, s]]) => [n, [m.slice().sort(), s.slice().sort(), true]]));
+        want[CUT_TAB] = null;
+        expect(await run4b(page)).toEqual(want);
+        // The venue's own tag comes from the feed's venue map.
+        const pony = await page.evaluate(([html, url]) => {
+            const facts = window.__saTest.bbTagFacts(html, url);
+            return window.__saTest.bbTagCheck(facts, ['venue', 's', 'asburypark', 'newjersey(nj)', 'usa'], []).missing.map(x => `${x.tag}/${x.family}`);
+        }, [fs.readFileSync(fileOf(PONY), 'utf8'), BB + PONY]);
+        expect(pony).toEqual(['stonepony/place']);
+    });
+
+    test('the families off (the default): none of their findings, the feed kept or not', async ({ page }) => {
+        await loadFixture(page, PONY, kept4b(FEED_4B, {}));
+        const want = Object.fromEntries(Object.keys(WANT_4B).map(n => [n, [[], [], true]]));
+        want[CUT_TAB] = null;
+        expect(await run4b(page)).toEqual(want);
+    });
+
+    test('the release rule: any one listed date in full, else the first named; a number padded or not; date tags of no listed date', async ({ page }) => {
+        await loadFixture(page, PONY, kept4b());
+        const run = (facts, own) => page.evaluate(([f, o]) => {
+            const r = window.__saTest.bbTagCheck(f, o, []);
+            return { missing: r.missing.map(x => `${x.tag}/${x.family}`), spurious: r.spurious.map(x => `${x.tag}/${x.family}`) };
+        }, [facts, own]);
+        const rel = { page: true, kind: 'retail', name: 'retail:x', title: 'Example', letter: '', construction: false, lyricsheet: false,
+            bands: false, members: false, titleTags: [], dates: [['august', '15', '2006'], ['october', '13', '2009']], releaseLetter: 'e' };
+        // The second date in full is enough; the first's year is no wrong tag.
+        expect(await run(rel, ['retail', 'e', '2006', 'october', '13', '2009'])).toEqual({ missing: [], spurious: [] });
+        // Neither in full: the first date's missing parts, a day unpadded counts.
+        expect(await run(rel, ['retail', 'e', '2006', 'august'])).toEqual({ missing: ['15/date'], spurious: [] });
+        expect(await run(rel, ['retail', 'e', '2006', 'august', '15'])).toEqual({ missing: [], spurious: [] });
+        // A date tag of no listed date is not expected; the letter is missing.
+        expect(await run(rel, ['retail', '2006', 'august', '15', '2024', 'may'])).toEqual({ missing: ['e/letter'], spurious: ['2024/date', 'may/date'] });
+        // A date without a day ("September, 2010") wants no day; no line: no date and no letter check.
+        expect(await run({ ...rel, dates: [['september', '', '2010']] }, ['retail', 'e', 'september', '2010'])).toEqual({ missing: [], spurious: [] });
+        expect(await run({ ...rel, dates: null, releaseLetter: '' }, ['retail', '1999'])).toEqual({ missing: [], spurious: [] });
+    });
+
+    test('the release line: an asterisk, "Tracks commercially released", a month without a day, a year alone', async ({ page }) => {
+        await loadFixture(page, PONY);
+        const dates = line => page.evaluate((l) => {
+            const html = `<html><body><div id="page-title">Example</div><div id="page-content"><div class="code"><pre><code>${l}\nLabel: x</code></pre></div></div>` +
+                '<div class="page-tags"><span><a href="/system:page-tags/tag/retail#pages">retail</a></span></div></body></html>';
+            return window.__saTest.bbTagFacts(html, 'https://brucebase.wikidot.com/retail:example').dates;
+        }, line);
+        expect(await dates('Commercially Released*: August 25, 1975')).toEqual([['august', '25', '1975']]);
+        expect(await dates('Tracks commercially released: November 9, 1998 / 18 Tracks commercially released: April 12, 1999'))
+            .toEqual([['november', '09', '1998'], ['april', '12', '1999']]);
+        expect(await dates('Commercially Released: 1988 (Video) / September, 2010 (Audio)')).toEqual([['', '', '1988'], ['september', '', '2010']]);
+        expect(await dates('Released: August 25, 1975'), 'no such line').toBeNull();
+    });
+
+    test('a person\'s name: the cast forms, a stage name only through the feed\'s relation map; without the map no check and a note', async ({ page }) => {
+        await loadFixture(page, PONY, kept4b());
+        const name = (facts, own) => page.evaluate(([f, o]) => window.__saTest.bbTagCheck(f, o, []).missing.map(x => `${x.tag}/${x.family}`), [facts, own]);
+        const dunn = { page: true, kind: 'relation', name: 'relation:donald-dunn', title: 'Dunn, Donald', letter: 'd', construction: false,
+            lyricsheet: false, bands: true, members: false, titleTags: [], dates: null, releaseLetter: '' };
+        expect(await name(dunn, ['person', 'd', 'duckdunn'])).toEqual([]);
+        expect(await name({ ...dunn, name: 'relation:someone-else' }, ['person', 'd', 'duckdunn'])).toEqual(['donalddunn/name']);
+        expect(await name({ ...dunn, name: 'relation:someone-else' }, ['person', 'd', 'donald.dunn'])).toEqual([]);
+        // A band's title without ", The"; a band with "&" and a page with neither tab: no name check.
+        const band = { ...dunn, name: 'relation:x', title: 'Max Weinberg 7, The', letter: 'm', bands: false, members: true };
+        expect(await name(band, ['band', 'm', 'maxweinberg7'])).toEqual([]);
+        expect(await name({ ...band, title: 'Bob Seger & The Silver Bullet Band', letter: '&' }, ['band', '&'])).toEqual([]);
+        expect(await name({ ...dunn, bands: false }, ['d'])).toEqual([]);
+        const noMap = await page.context().newPage();
+        noMap.on('pageerror', e => pageErrors.push(String(e)));
+        await loadFixture(noMap, PONY, kept4b({ ...FEED_4B, relationTags: undefined }));
+        expect(await noMap.evaluate(f => window.__saTest.bbTagCheck(f, ['person', 'd'], []).missing.map(x => x.family), dunn)).toEqual([]);
+    });
+
+    test('the Tags card: a venue\'s missing place tags in the Place row, the words; as expected says "place"', async ({ page }) => {
+        await showPage(page, BOWTIE, kept4b());
+        const c = card(page);
+        await expect(c.locator('.mb-sb-chip-row', { hasText: 'Place' }).locator('.mb-sb-chip.mb-cbx-miss')).toHaveText(['redbank missing', 'usa missing']);
+        await expect(c.locator('.mb-cbx-pill-e')).toHaveText('❌ 2 missing');
+        await expect(c.locator('.mb-cbx-finds .mb-cbx-find-e').first()).toContainText('The title names the city "Red Bank".');
+    });
+
+    test('the Tags card: a venue as expected says it checked the place too', async ({ page }) => {
+        await showPage(page, 'venue:aami-park-melbourne-australia', kept4b());
+        await expect(card(page).locator('.mb-cbx-pill-ok')).toHaveText('✓ kind, first-letter, place and construction tags as expected');
+    });
+
+    test('the Tags card: a venue with the place family on and no feed: the place is not checked, the card says why', async ({ page }) => {
+        await showPage(page, BOWTIE, FAMS_4B);
+        const c = card(page);
+        await expect(c.locator('.mb-cbx-wait')).toContainText('The place tags are not checked: the Brucebase feed is off.');
+        await expect(c.locator('.mb-cbx-miss')).toHaveCount(0);
+    });
+
+    test('the Tags card: a release\'s wrong year not expected, the right one missing, in the Date row', async ({ page }) => {
+        await showPage(page, HOPPER, kept4b());
+        const c = card(page);
+        await expect(c.locator('.mb-sb-chip-row', { hasText: 'Date' }).locator('.mb-sb-chip.mb-cbx-miss')).toHaveText(['2025 missing']);
+        await expect(c.locator('.mb-sb-chip.mb-cbx-spur')).toHaveText(['2024']);
+        await expect(c.locator('.mb-cbx-finds .mb-cbx-find-w')).toContainText('No date of the page\'s "Commercially Released" line (April 4, 2025) has it.');
+    });
+
+    test('the Tags card: a person\'s own name missing in the People row; a stage name passes', async ({ page }) => {
+        await showPage(page, 'relation:dan-aykroyd', kept4b());
+        const c = card(page);
+        await expect(c.locator('.mb-sb-chip-row', { hasText: 'People' }).locator('.mb-sb-chip.mb-cbx-miss')).toHaveText(['danaykroyd missing']);
+        const dunn = await page.context().newPage();
+        dunn.on('pageerror', e => pageErrors.push(String(e)));
+        await showPage(dunn, 'relation:donald-dunn', kept4b());
+        await expect(card(dunn).locator('.mb-cbx-pill-ok')).toHaveText('✓ person/band, first-letter, name and construction tags as expected');
+    });
+
+    test('the window: a release with the family on marks the same tags', async ({ page }) => {
+        await loadFixture(page, PONY, kept4b());
+        const w = await windowOf(page, HOPPER);
+        expect(w.miss).toEqual(['2025 missing']);
+        expect(w.spur).toEqual(['2024']);
+    });
+});

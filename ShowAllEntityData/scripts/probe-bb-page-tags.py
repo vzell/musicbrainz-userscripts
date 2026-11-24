@@ -51,6 +51,17 @@ _SPEC.loader.exec_module(b3)
 KINDS = ('venue', 'song', 'relation', 'retail')
 COUNTED = ('playlist',)
 RETAIL_TAB_RE = re.compile(r'-(?:overview|credits|addinfo|release|recgig)$')
+RETAIL_TABS = ('overview', 'credits', 'addinfo', 'release', 'recgig')
+
+
+def retail_tab(name):
+    """A release's tab page: its name ends in a tab's word, or (Wikidot's 60
+    characters) in the start of one, of at least three letters
+    ("retail:the-concert-for-the-rock-and-roll-hall-of-fame-credit"; batch 4b)."""
+    if RETAIL_TAB_RE.search(name):
+        return True
+    m = re.search(r'-([a-z]{3,})$', name)
+    return len(name) == 60 and bool(m) and any(t.startswith(m.group(1)) for t in RETAIL_TABS)
 MONTHS = b3.MONTHS
 TYPE_TAG = {'venue': 'venue', 'song': 'song', 'retail': 'retail'}
 FAMILIES = {
@@ -337,7 +348,7 @@ def ship_skip(kind, name, markup, own):
         return 'redirect'
     if re.search(r'-[1-9]$', name) and 'class="yui-navset' not in markup:
         return 'continuation'
-    if kind == 'retail' and RETAIL_TAB_RE.search(name):
+    if kind == 'retail' and retail_tab(name):
         return 'retail tab'
     return ''
 
@@ -506,9 +517,14 @@ def cast_items(name, tables):
     return [(p.strip(), list(dict.fromkeys(one(p.strip()) + [combined]))) for p in (m.group(1), m.group(2))]
 
 
-def cand_relation(title, labels, have, feed):
-    """Relation own-name candidate: {tag: why} missing; None when not checked."""
+def cand_relation(page, title, labels, have, feed):
+    """Relation own-name candidate: {tag: why} missing; None when not checked.
+
+    Each name's forms, and the page's tags in the feed's relationTags
+    (feed 1.10: the wiki's own name for it, a stage name), count.
+    """
     tables = feed.get('tagTables') or {}
+    mapped = (feed.get('relationTags') or {}).get(page) or []
     if 'Bands' in labels:
         p = relation_person(title)
         if not p:
@@ -522,7 +538,7 @@ def cand_relation(title, labels, have, feed):
         return None
     miss = {}
     for label, alts in cast_items(name, tables):
-        if alts and not any(a in have for a in alts):
+        if alts and not any(a in have for a in alts + mapped):
             miss[alts[0]] = f'its own name "{label}"'
     return miss
 
@@ -547,17 +563,14 @@ def cand_retail(markup, title, own, have):
     dates = cand_retail_dates(markup)
     miss, spur = {}, {}
     if dates:
-        mon, day, year = dates[0]
-        for t in (year, mon, day):
-            if t and not b3.present(t, have):
-                miss[t] = 'the first release date'
-        for _m, _d, y in dates[1:]:
-            if y not in have:
-                miss[y] = 'a later release date'
         # one listed date with all its parts is enough (the wiki tags the
-        # later date on some releases, and a later date's year on few)
-        if any(all(not p or b3.present(p, have) for p in d) for d in dates):
-            miss = {}
+        # later date on some releases, and a later date's year on few); else
+        # the first date's parts are named
+        if not any(all(not p or b3.present(p, have) for p in d) for d in dates):
+            mon, day, year = dates[0]
+            for t in (year, mon, day):
+                if t and not b3.present(t, have):
+                    miss[t] = 'the first release date'
         parts = {p for d in dates for p in d if p}
         for t in own:
             if (t in MONTHS or re.fullmatch(r'\d{4}', t) or (re.fullmatch(r'\d{1,2}', t) and 1 <= int(t) <= 31)) \
@@ -593,12 +606,35 @@ def analyse_cand(kind, name, markup, doc, title, own, more, skip, feed):
         miss, n = cand_place(name, title, have, feed)
         return {'place': {'missing': miss, 'parts': n}}
     if kind == 'relation':
-        return {'name': {'missing': cand_relation(title, tab_labels(doc), have, feed)}}
+        return {'name': {'missing': cand_relation(name, title, tab_labels(doc), have, feed)}}
     if kind == 'retail':
         miss, spur, letters, dates = cand_retail(markup, title, own, have)
         return {'date': {'missing': miss, 'spurious': spur, 'dates': dates},
                 'letter': {v: (c, bool(c) and c in have) for v, c in letters.items()}}
     return None
+
+
+def ship4b(kind, ship, cand):
+    """The shipped rule with batch 4b's three families on (vzell, 2026-11-24):
+    {missing, spurious, skip}. Venue place, a relation's own name, a
+    release's dates, and a release's first letter where the page has a
+    "Commercially Released" line (the plain first letter; only missing)."""
+    miss = {f: list(v) for f, v in ship['missing'].items()}
+    spur = {f: list(v) for f, v in ship['spurious'].items()}
+    if cand:
+        if kind == 'venue' and cand['place']['missing']:
+            miss['place'] = sorted(cand['place']['missing'])
+        if kind == 'relation' and cand['name']['missing']:
+            miss['name'] = sorted(cand['name']['missing'])
+        if kind == 'retail':
+            if cand['date']['missing']:
+                miss['date'] = sorted(cand['date']['missing'])
+            if cand['date']['spurious']:
+                spur['date'] = sorted(cand['date']['spurious'])
+            letter, has = cand['letter']['plain']
+            if cand['date']['dates'] is not None and letter and not has:
+                miss['letter'] = [letter]
+    return {'missing': miss, 'spurious': spur, 'skip': ship['skip']}
 
 
 def analyse(mirror, name, feed=None):
@@ -618,6 +654,11 @@ def analyse(mirror, name, feed=None):
     sm, ss = judge(kind, exp, own, place_s, more, True)
     bpl = bp_letter(kind, title, name)
     shm, shs, skip = ship_judge(kind, name, doc, markup, title, own, more)
+    cand = analyse_cand(kind, name, markup, doc, title, own, more, skip, feed)
+    rdates = cand_retail_dates(markup) if kind == 'retail' and not skip else None
+    rletter = ''
+    if rdates is not None:
+        rletter = cand_retail(markup, title, own, set(own))[2]['plain']
     return {
         'name': name, 'kind': kind, 'title': title, 'tags': own, 'pages': [p for p, _ in pages],
         'more': more,
@@ -634,11 +675,15 @@ def analyse(mirror, name, feed=None):
             'lyricsheet': lyricsheet(doc, b3.tab_map(doc)) if kind == 'song' else False,
             'bands': 'Bands' in tab_labels(doc), 'members': 'Members' in tab_labels(doc),
             'titleTags': ship_title_tags(title, name) if kind == 'song' else [],
+            # batch 4b: a release's "Commercially Released" dates and its first letter
+            'dates': [list(d) for d in rdates] if rdates is not None else None,
+            'releaseLetter': rletter,
         },
         'bpLetter': bpl,
         'bpMissing': bool(own) and bpl is not None and bpl not in own_set,
         'noTags': not own,
-        'cand': analyse_cand(kind, name, markup, doc, title, own, more, skip, feed),
+        'cand': cand,
+        'ship4b': ship4b(kind, {'missing': shm, 'spurious': shs, 'skip': skip}, cand),
     }
 
 
@@ -719,7 +764,7 @@ def main(argv):
     rows = []
     for kind in KINDS:
         names = page_names(mirror, kind)
-        tabs = [n for n in names if kind == 'retail' and RETAIL_TAB_RE.search(n)]
+        tabs = [n for n in names if kind == 'retail' and retail_tab(n)]
         main_names = [n for n in names if n not in set(tabs)]
         if args.limit:
             main_names = main_names[:args.limit]

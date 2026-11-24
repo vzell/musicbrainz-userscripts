@@ -2297,9 +2297,10 @@ registry row, no table column (these pages are no row of any list).
     out, also without a last "(…)", "&" as "and", each also with "song"
     after it and with the page's number on a "-N" page). Missing only.
     BruceBaseParser's plain slug misses on 44 songs, this on 14.
-  - Left out (vzell: noisy, like batch 3b): a release's dates (the wiki
-    often tags one of several), a venue's place tags (369 pages), a
-    relation's name and band tags (310 pages).
+  - Left out by batch 4 (vzell: noisy, like batch 3b): a release's dates
+    (the wiki often tags one of several), a venue's place tags (369
+    pages), a relation's name and band tags (310 pages). Batch 4b takes
+    them up, each family off by default (below).
 - **The feed's first-letter mark** is left out on the head and in the
   window of a page the check judges (`_bbFeedLetterChecked()`, the
   `letterChecked` of `_bbFeedLiveFilter()`'s `live`), while missing tags
@@ -2328,6 +2329,61 @@ registry row, no table column (these pages are no row of any list).
   `scripts/mutations/bb-findings-page-tags.json`. `retail:tracks-ii` has
   no "Show the release" button (its page has no table to show): its mark
   is tested in the window.
+
+#### Batch 4b: a venue's place, a person's or band's name, a release's dates and letter (2026-11-24)
+
+org/bbp-parity.org, "Batch 4b" (vzell's four answers of 2026-11-24). Each
+rule follows what the wiki does (measured over the whole mirror) and the
+chat's rulings (org/brucebase-chat.org), not BruceBaseParser's guesses.
+All three are off by default, as batch 3b's families.
+
+- **A venue's place** (`sa_bb_tag_family_place`, the shows' switch,
+  reworded): `_bbTagPagePlaceExpected()`, batch 3b's place rule on the
+  venue's own title (`_bbTagPlacePartsExpected()`, split out of
+  `_bbTagPlaceTitleExpected()`: city, US/Canadian state, country, the
+  feed's expected regions and `placeTags`) and the venue's own tag from
+  the feed's `venueTags` (what its shows carry). Never "not expected".
+  Needs the feed's tables; without them the Tags card says why
+  (`_bbTagFamiliesWait()` now speaks for pages too).
+- **A person's or band's own name** (`sa_bb_tag_family_relation`):
+  `_bbTagPageNameExpected()`. A page with a Bands tab titled "Surname,
+  Name", or with a Members tab (title without ", The"/"(The)", none with
+  "&"), carries its name in a cast form (`_bbTagCastItems()`) or one of
+  the tags the feed's `relationTags` (feed 1.10, BruceParser 0.43.0
+  `relation-tags.awk`) names for it: the page's own tags its shows carry
+  that name no other relation page, so a stage name passes (`duckdunn`
+  for Donald Dunn). Family `name`, the People row. The Bands and Members
+  tabs are ListPages boxes over the tags, so their entries are not
+  checked (BruceBaseParser's 721 expectations there measured spelling).
+  Without the tables or the map: no check, a note.
+- **A release's dates and letter** (`sa_bb_tag_family_release`):
+  `_bbTagReleaseDates()` reads the first "Commercially Released(*):" line
+  of the page's text (the asterisk, "Tracks commercially released:"),
+  every "Month D, YYYY", "Month, YYYY" or "YYYY" (`facts.dates`, [month,
+  day, year], '' for a part not given, the day padded).
+  `_bbTagPageReleaseExpected()`: one listed date with all its parts
+  tagged is enough, else the first date's parts are named;
+  `_bbTagPageSpurious()`: a month, year or day tag of none of the dates is
+  not expected. The first letter (`facts.releaseLetter`, a song's rule:
+  no "The" dropped, a digit "0-9") wherever the line is; missing only.
+- **A release's tab page cut at 60 characters**
+  (`retail:the-concert-for-the-rock-and-roll-hall-of-fame-credit`, four
+  pages) is a tab page now (`_bbTagRetailTab()`); `_BB_TAGCHK_RETAIL_TAB`
+  alone took them for releases. `_DP_PARSER_VERSION` 39.
+- **Counts** (probe `scripts/probe-bb-page-tags.py`, its `ship4b`, mirror
+  bb/2026-11-23 with its feed 1.10; Env: 2026-11-24T01:40+01:00 · NB-3641
+  · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) ·
+  Python, n/a): venue place 73 of 2,168 (BruceBaseParser 369), relation
+  name 17 of 1,292 checked (312), release dates missing 6 and not expected
+  6, the letter 38 of 209 releases (30 of them other artists' records).
+  130 pages more than batch 4's 41. `scripts/check-bb-page-tag-findings.js
+  --feed bb-feed.json` (the three switches on, the feed kept): 0 of 6,986
+  pages differ; without `--feed`, batch 4's 41, 0 differ.
+- Tests: the same spec, "batch 4b" (11 tests) on 9 more mirror pages
+  (`build-bb-findings-page-tags-fixtures.py --4b`) and
+  `tests/fixtures/bb-feed-batch4b.json` (the feed's tables and the maps of
+  those pages); mutations `scripts/mutations/bb-findings-page-tags-4b.json`
+  (15, `scripts/make-bb-batch4b-mutations.py`).
 
 ## The tuned tag families (batch 3b, 2026-11-19)
 
