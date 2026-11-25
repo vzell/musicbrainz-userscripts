@@ -16,6 +16,11 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-25)
 
+- *Now (2026-11-25, latest):* "Switch between SAED's view and the original page (EH's V)" *shipped* as
+  9.99.1695–9.99.1698 (=feat/original-page-toggle= merged after vzell's browser checks, =test:full= 3560/3560).
+  Left for later under the item: making more of the Springsteen copies work (their search boxes, jungleland.it's
+  Year menu). Not yet published to the mirror.
+
 - *Now (2026-11-25, later):* vzell posted the answer on #938 (10:34 CET,
   [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7158522166][comment]]: trace format
   a contract?, SAED's icon, the HUD under =data-mbu-quiet=), no answer yet. Adoption 1 *shipped* as
@@ -122,7 +127,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Stale-while-revalidate: popup engine done, =rel-ws2= left      | PART  | 9.99.1643     | Adoptions     |
 | In-page log window (=mbuLog=)                                  | DONE  | 9.99.1689     | Adoptions     |
 | In-page log: past sessions (mbuLog's history)                  | TODO  | —             | Adoptions     |
-| Switch between SAED's view and the original page (EH's V)      | TODO  | —             | Adoptions     |
+| Switch between SAED's view and the original page (EH's V)      | DONE  | 9.99.1695–98  | Adoptions     |
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
@@ -899,7 +904,7 @@ CLOSED: [2026-11-20 Fri]
   (=history.auto=), flushed on =pagehide=, a session picker and Clear history in the window. A log that survives a
   reload or a crashed tab. Deferred by vzell (2026-11-23: "later phase"); needs its own mockup step.
 
-** TODO Switch between SAED's view and the original page (EH's V) (moved from org/TODO.org)
+** DONE Switch between SAED's view and the original page (EH's V) (moved from org/TODO.org)
 
 - *Who fixes it*: *ours*.
 - *Corrected 2026-11-24 (vzell)*: this item first read "shine through" as hiding the native page until our render
@@ -953,8 +958,9 @@ CLOSED: [2026-11-20 Fri]
   =_origViewFrameTab()= switches a wikidot tabview. Then: "why is 'the site's own buttons may not respond here'
   still present" → the note now names what is dead in that copy (=_origViewFrameDead()=, measured by
   =scripts/probe-orig-frame-controls.js=), e.g. on Brucebase "Links work; searching, signing in and the page's
-  own buttons (Report a bug, Flag as objectionable) do not". Spec (12), mutations 21/21. *Waiting*: =test:full=
-  and the merge question.
+  own buttons (Report a bug, Flag as objectionable) do not". Spec (12), mutations 21/21. vzell's live check OK.
+- *Shipped* as 9.99.1695–9.99.1698 (2026-11-25; merge =79892f9c=, fold =468371b5=), after vzell's browser checks
+  of every site; =test:full= 3560/3560 on =main= (petri, 23 m 21 s). HELP: "Switching to the original page".
 - *Later, maybe* (vzell, 2026-11-25: "add 2. in the org notes for maybe later"): make more of the copy work
   instead of only naming it. Doable: the search boxes of springsteenlyrics.com (=search.php=, GET; the frame
   would need =allow-forms= and the leave-page guard on submit) and Brucebase (=action="dummy"=, run by the

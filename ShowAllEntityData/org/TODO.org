@@ -6356,12 +6356,13 @@ When there is a medley (songs separated with " / ") in the setlist section of an
 on the POH the "/ She's the One" from the medley "Mona / She's the One" is in the wrong column ==> "NOTES" under "SETLIST"
 
 
-* TODO make the doubling of the IP information on non-MB PTs shine through instead of appending it again on the FRP
+* DONE make the doubling of the IP information on non-MB PTs shine through instead of appending it again on the FRP
 
 make the doubling of the IP information on non-MB PTs shine through instead of appending it again on the FRP
 
 Planned 2026-11-24 as part 2 of [[file:majkinetor.org::*Switch between SAED's view and the original page (EH's V) (moved from org/TODO.org)][Switch between SAED's view and the original page (EH's V)]]:
 only the table view, with a switch back to the site's own page.
+Shipped 2026-11-25 as 9.99.1696 (discogs.com, archive.org, setlist.fm) and 9.99.1698 (the four Springsteen sites).
 
 
 * TODO BUG: When marking text on a POH and pressing "Ctrl-C", then text is not copied but instead the first table column is focused
