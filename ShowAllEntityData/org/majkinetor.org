@@ -666,7 +666,11 @@ CLOSED: [2026-11-25 Wed]
   =_mbGateTraceFlush()=, called once per page from it (flag =_mbgTrace.iconed=); test hooks =trace.icon()= and
   =trace.iconAgain()=. Specs T8–T10 (+ an assertion in T6), 40/40 in the file; mutations: five new in
   =mb-gate-trace.json=, 18/18 caught. Anchor =saed-logicons= flipped to present. Design: docs/claude/fetch-and-render-pipeline.md,
-  "The gate's trace", "The log's icon". *Waiting*: vzell's browser check (the Pre-test, expecting SAED's table icon).
+  "The gate's trace", "The log's icon". *Browser check OK* (vzell, 2026-11-25 ~19:48 CET, screenshots): the
+  Network log draws SAED's table icon in the time line (the "This tab" lane, each request mark and the marks' hover
+  list); the Script column shows names only, no icons, for every script. =mbu.logIcons= held the
+  =ShowAllEntityData= data URI. The off case: vzell removed the key with the setting off (no read-back shown). The
+  HUD under our quiet mark (upstream's change): *confirmed* by vzell, it vanishes while SAED's tables show.
 
 * Adoptions: what SAED takes from his scripts
 

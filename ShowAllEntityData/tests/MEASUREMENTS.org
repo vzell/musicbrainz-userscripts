@@ -5116,3 +5116,14 @@ Env: 2026-11-25T14:55:29+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.5
 
 3560 passed, none failed. The merge gate of =feat/original-page-toggle= (the switch between our tables and the
 original page), run on =main= after the merge and the fold, before the push.
+
+* 2026-11-25 — =npm run test:full= on =NB-3641=, feat/saed-log-icon (SAED's icon in the Network log, WIP.1)
+
+Env: 2026-11-25T19:38:30+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                       | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =709530f9= |  3563 |      14 | *26 m 44 s* | =run-test-full.py=, 19:38:30–20:05:14 CET |
+
+3563 passed, none failed. The merge gate of =feat/saed-log-icon= (on top of the unmerged
+=chore/refresh-majkinetor-8384078=): =_mbGateLogIcon()= and three new tests T8–T10 in =mb-shared-gate.spec.js=.
