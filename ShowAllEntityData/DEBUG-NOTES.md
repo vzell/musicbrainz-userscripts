@@ -31468,3 +31468,39 @@ The three sites' specs with both switch specs: 313/313. Mutations: the
 phase-3 list rewritten for the marking (11; one `"expect": "pass"`), all as
 expected; `setlistfm-list.json`'s "our section is not first" find follows
 the new call.
+
+## 2026-11-25 — setlist.fm's bar was a stacking context, not a colour; archive.org hid its player while we held its page at 0 × 0 (feat/original-page-toggle, WIP.2 + WIP.3)
+
+Env: 2026-11-25T10:00+01:00 → 10:16 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · vzell's browser (version unknown), Tampermonkey 5.5.1 · fixes verified in Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs)
+
+vzell's second check, two findings:
+
+- `debug/sfm-white-area-bug.html`
+  (https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html?tour=53d7e759):
+  the bar is white now, the toolbar still gone. The colour fix of the entry
+  above was the lesser half: `#mb-sfm-root` has `position: relative;
+  z-index: 2` (since 2026-11-02, reason not recorded), a stacking context,
+  so the header block's 105 counts only inside it, and `#mb-vsb-mask` in
+  `<body>` at 103 lay over the whole section. Not removed (its reason is
+  unknown); the mask lives in our section on discogs.com, archive.org and
+  setlist.fm instead (`_vsbMaskHost()`), where it stacks between rows and
+  toolbar again. The new test hit-tests the stuck toolbar: `mb-vsb-mask`
+  on top without the fix, the toolbar with it. The colour test alone could
+  never have seen this: it asked the wrong question.
+- `debug/ia-IP-release-ctrlmp-bug.html` /
+  `debug/ia-IP-release-ctrlmp-2-bug.html`
+  (https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16): after
+  Ctrl+M P the item's player, pictures and tracklist header were gone;
+  `#theatre-ia` had an inline `display: none` it did not have on the
+  initial page. No code of ours names it (grep), so archive.org's own
+  script set it while we held its page at `display: none`, where everything
+  measures 0 × 0. The table view now hides the marked page laid out: off
+  screen left (no scrollbar), a window wide and high (no page height),
+  `visibility: hidden`, no pointer. The test stands in for archive.org's
+  script with a ResizeObserver that hides a block at width 0: it fires
+  under `display: none` (mutation run) and not under the laid-out hide.
+
+Mutations: two new entries in `original-page-toggle-live.json`, the hide
+rule's entry and `eh-body-swap.json`'s mask entry follow the code; all
+caught. The three sites' specs with both switch specs and
+`eh-body-swap-floating`: 319/319.

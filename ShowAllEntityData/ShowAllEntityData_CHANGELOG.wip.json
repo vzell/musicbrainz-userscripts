@@ -6,7 +6,7 @@
       {
         "label": "🐛 Fix",
         "items": [
-          "setlist.fm: on a page long enough to scroll, the toolbar above our table (the action button and ☰ SAED) no longer turns into a black bar as soon as it sticks to the top. The backdrop behind it took the colour of setlist.fm's dark page instead of our white section. Discogs and archive.org use the same rule now; MusicBrainz and the Springsteen sites are unchanged."
+          "setlist.fm: on a page long enough to scroll, the toolbar above our table (the action button and ☰ SAED) no longer disappears under a dark bar as soon as it sticks to the top. The backdrop meant to sit behind it lay over our whole section, in the colour of setlist.fm's dark page. Discogs and archive.org use the same rule now; MusicBrainz and the Springsteen sites are unchanged."
         ]
       }
     ]
@@ -18,7 +18,7 @@
       {
         "label": "🚀 Feature",
         "items": [
-          "discogs.com, archive.org and setlist.fm: after a press only the table view shows; the site's own page no longer sits under our tables. The switch of WIP.1 (☰ SAED → View → \"📄 Show the original page\", Ctrl+M P, \"▦ Back to the tables\") shows the site's own page again, live and fully working, with a \"Live\" note on top, and hides our section; back again, the tables are as you left them. The site's header stays only where it sits above our section (a Discogs master, release, artist or label page); where our section comes first (archive.org, setlist.fm, Discogs' search, submissions and user pages) the header hides with the page, and so does the footer. Before a press nothing changes."
+          "discogs.com, archive.org and setlist.fm: after a press only the table view shows; the site's own page no longer sits under our tables. The switch of WIP.1 (☰ SAED → View → \"📄 Show the original page\", Ctrl+M P, \"▦ Back to the tables\") shows the site's own page again, live and fully working, with a \"Live\" note on top, and hides our section; back again, the tables are as you left them. The site's header stays only where it sits above our section (a Discogs master, release, artist or label page); where our section comes first (archive.org, setlist.fm, Discogs' search, submissions and user pages) the header hides with the page, and so does the footer. Before a press nothing changes. The site's page stays laid out while hidden, so its own scripts keep working: archive.org's player and pictures are still there after the switch."
         ]
       }
     ]

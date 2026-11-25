@@ -73192,6 +73192,26 @@
     }
 
     /**
+     * Where the header block's mask (`#mb-vsb-mask`) lives. It is
+     * `position: fixed`, so its parent only decides what it stacks against:
+     * it must sit in the same stacking context as the header block, under it
+     * and over the rows. setlist.fm's `#mb-sfm-root` is a stacking context
+     * (`position: relative; z-index: 2`, since 2026-11-02, reason not
+     * recorded), so a mask in `<body>` at 103 lay over our WHOLE section,
+     * toolbar included: a bar of the mask's colour once the toolbar stuck,
+     * black, then white after its colour was fixed (vzell, 2026-11-25,
+     * debug/sfm-black-area-bug.html, debug/sfm-white-area-bug.html). On the
+     * three sites with a section of our own (discogs.com, archive.org,
+     * setlist.fm) it lives in that section; elsewhere in `_saBody()`.
+     *
+     * @returns {HTMLElement}
+     */
+    function _vsbMaskHost() {
+        const site = (_isDgHost || _isIaHost || _isSfmHost) ? _origViewLiveSite() : null;
+        return (site && document.getElementById(site.root)) || _saBody();
+    }
+
+    /**
      * Installs the static stylesheet of the sticky filter bars once. Every
      * rule is scoped under `html.mb-vsb-on`; the offsets are in the dynamic
      * sheet (`_vsbRefresh()`). No `!important`, and lower specificity than
@@ -73571,6 +73591,8 @@
         if (_isSlHost) _slPlaceHead();
         _vsbEnsureStyle();
         document.documentElement.classList.add('mb-vsb-on');
+        // The mask may have been made before our section existed.
+        if (_vsb.mask && _vsb.mask.parentElement !== _vsbMaskHost()) _vsbMaskHost().appendChild(_vsb.mask);
         if (!_vsb.initialized) {
             _vsb.initialized = true;
             if (typeof ResizeObserver === 'function') _vsb.observer = new ResizeObserver(_vsbScheduleRefresh);
@@ -73579,7 +73601,7 @@
             const mask = document.createElement('div');
             mask.id = 'mb-vsb-mask';
             mask.setAttribute('aria-hidden', 'true');
-            _saBody().appendChild(mask);
+            _vsbMaskHost().appendChild(mask);
             _vsb.mask = mask;
             window.addEventListener('scroll', () => {
                 if (_vsb.maskPending) return;
@@ -114065,10 +114087,18 @@ ${sections.join('\n')}
         const s = document.createElement('style');
         s.id = 'mb-orig-view-css';
         // A live site's own page: what `_origViewTagSite()` marked, every
-        // <body> child after our section at page init.
+        // <body> child after our section at page init. Hidden LAID OUT, never
+        // `display: none`: at 0 × 0 the site's own scripts measure nothing and
+        // react (archive.org's item page hid its player and pictures for good,
+        // `#theatre-ia` got `display: none`; vzell, 2026-11-25,
+        // debug/ia-IP-release-ctrlmp-2-bug.html). So: off screen to the left
+        // (no scrollbar there), a window wide and high (it adds no page
+        // height), invisible and out of reach of the pointer.
         s.textContent = [
             `body.${_ORIG_VIEW_CLASS} #page:not([data-mb-orig-copy]) { display: none !important; }`,
-            `body.${_ORIG_TABLES_CLASS} > [data-mb-site] { display: none !important; }`,
+            `body.${_ORIG_TABLES_CLASS} > [data-mb-site] { position: absolute !important; top: 0 !important;`,
+            '    left: -200vw !important; right: auto !important; width: 100vw !important; height: 100vh !important;',
+            '    overflow: hidden !important; visibility: hidden !important; pointer-events: none !important; }',
             `body.${_ORIG_SITE_CLASS} > :is(#mb-dg-root, #mb-ia-root, #mb-sfm-root) { display: none !important; }`,
             `body:not(.${_ORIG_SITE_CLASS}) > #mb-orig-live-note { display: none !important; }`,
             '#mb-orig-live-note { margin: 10px 12px; }',

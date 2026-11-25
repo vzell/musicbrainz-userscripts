@@ -30,8 +30,8 @@
     "why": "body.mb-orig-tables > [data-mb-site] is the one rule of the table view.",
     "edits": [
       {
-        "find": "            `body.${_ORIG_TABLES_CLASS} > [data-mb-site] { display: none !important; }`,\n",
-        "replace": "            `body.${_ORIG_TABLES_CLASS} > [data-mb-no-site] { display: none !important; }`,\n"
+        "find": "            `body.${_ORIG_TABLES_CLASS} > [data-mb-site] { position: absolute !important; top: 0 !important;`,\n",
+        "replace": "            `body.${_ORIG_TABLES_CLASS} > [data-mb-no-site] { position: absolute !important; top: 0 !important;`,\n"
       }
     ],
     "spec": "tests/fixtures/original-page-toggle-live.spec.js",
@@ -140,6 +140,32 @@
     ],
     "spec": "tests/fixtures/sfm-list.spec.js",
     "grep": "mask behind the stuck toolbar",
+    "expect": "fail"
+  },
+  {
+    "name": "the site's page hides at display:none (0 × 0)",
+    "why": "vzell 2026-11-25 (debug/ia-IP-release-ctrlmp-2-bug.html): archive.org's own script hid its player for good while its page measured 0 × 0.",
+    "edits": [
+      {
+        "find": "            `body.${_ORIG_TABLES_CLASS} > [data-mb-site] { position: absolute !important; top: 0 !important;`,\n            '    left: -200vw !important; right: auto !important; width: 100vw !important; height: 100vh !important;',\n            '    overflow: hidden !important; visibility: hidden !important; pointer-events: none !important; }',\n",
+        "replace": "            `body.${_ORIG_TABLES_CLASS} > [data-mb-site] { display: none !important; }`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "stays laid out while hidden",
+    "expect": "fail"
+  },
+  {
+    "name": "the header block's mask lives in <body> on setlist.fm",
+    "why": "vzell 2026-11-25 (sfm-black/white-area-bug.html): #mb-sfm-root is a stacking context; a mask in <body> lay over our whole section, toolbar included.",
+    "edits": [
+      {
+        "find": "        return (site && document.getElementById(site.root)) || _saBody();\n",
+        "replace": "        return _saBody();\n"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "toolbar is on top",
     "expect": "fail"
   }
 ]

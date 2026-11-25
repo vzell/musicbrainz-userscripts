@@ -2722,3 +2722,18 @@ https://www.setlist.fm/setlist/bruce-springsteen/1976/the-stone-pony-asbury-park
 #+begin_example
 @debug/sfm-black-area-bug.html - FRP - https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html?tour=53d7e759 - [Image #2] - after scrolling down and the header line turns black
 #+end_example
+
+** bugs
+
+1.)
+
+SFM: Now it's white instead of black - @debug/sfm-white-area-bug.html - [Image #4]
+
+2.)
+
+IA release pages now do NOT show the IP after our table, but when switching back to the original page the header area with images, player and tracklist is vanished
+
+#+begin_example
+@debug/ia-IP-release-ctrlmp-bug.html - IP - https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16 - header area with images, player and tracklist present
+@debug/ia-IP-release-ctrlmp-2-bug.html - IP - https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16 - header area with images, player and tracklist vanished after pressing "Ctrl-M P" - [Image #5]
+#+end_example

@@ -1034,7 +1034,12 @@ puts `mb-orig-tables` on `<body>`, and the switch swaps it for
 `_*PrepareLivePage()` call it right after inserting our section, at page
 init, and it puts `data-mb-site` on every `<body>` child AFTER our section
 (never an `mb-`/`mbu-` one); `_origViewStyle()` hides
-`body.mb-orig-tables > [data-mb-site]`. It names nothing on purpose: the
+`body.mb-orig-tables > [data-mb-site]` LAID OUT, never `display: none`:
+off screen to the left, a window wide and high, `visibility: hidden`, no
+pointer. At 0 × 0 the site's own scripts measure nothing and react:
+archive.org's item page put `display: none` on its player and pictures
+(`#theatre-ia`) for good (vzell, 2026-11-25,
+`debug/ia-IP-release-ctrlmp-2-bug.html`). It names nothing on purpose: the
 first rules named elements per host from the saved fixtures (`#app`,
 `<main>`, `#topnav`, …) and hid nothing on the live pages, whose `<body>`
 is built differently (Discogs' search: `div.flex` around header and
@@ -1342,7 +1347,14 @@ h3 and thead offsets start below them), z-index 105 (`VSB_Z_HEAD`).
   the toolbar with a background (`_vsbForeignMaskBg()`). setlist.fm's body
   is dark (#343138), and the mask painted a black bar behind the toolbar as
   soon as it stuck (vzell, 2026-11-25, `debug/sfm-black-area-bug.html`; it
-  was there before the original-page switch). Spec: `sfm-list.spec.js`, "the
+  was there before the original-page switch). The colour was the lesser
+  half: `#mb-sfm-root` is a stacking context (`position: relative;
+  z-index: 2`), so a mask in `<body>` lay over our WHOLE section, toolbar
+  included (white, after the colour fix: `debug/sfm-white-area-bug.html`).
+  On those three sites the mask lives in our section (`_vsbMaskHost()`;
+  elsewhere `_saBody()`), moved there on every `initStickyFilterBars()`
+  in case it was made first. Spec: "once stuck, the toolbar is on top"
+  (`elementFromPoint` at the stuck toolbar). Spec: `sfm-list.spec.js`, "the
   mask behind the stuck toolbar" (the dark body set at DOMContentLoaded:
   later is too late, and the test would pass without the fix).
   Shown (`.mb-vsb-mask-on`) only while the block is STUCK

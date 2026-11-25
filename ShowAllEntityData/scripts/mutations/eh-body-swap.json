@@ -30,8 +30,8 @@
     "why": "initStickyFilterBars() makes the mask once at start-up and keeps it in _vsb.mask; in EH's body it is gone after V.",
     "edits": [
       {
-        "find": "            _saBody().appendChild(mask);\n            _vsb.mask = mask;",
-        "replace": "            document.body.appendChild(mask);\n            _vsb.mask = mask;"
+        "find": "        return (site && document.getElementById(site.root)) || _saBody();\n",
+        "replace": "        return (site && document.getElementById(site.root)) || document.body;\n"
       }
     ],
     "spec": "tests/fixtures/eh-body-swap-floating.spec.js",

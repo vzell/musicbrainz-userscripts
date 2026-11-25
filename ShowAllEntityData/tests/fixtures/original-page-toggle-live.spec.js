@@ -42,7 +42,10 @@ const NOTE = '#mb-orig-live-note';
  */
 const shown = (page, sels) => page.evaluate((s) => Object.fromEntries(Object.entries(s).map(([k, sel]) => {
     const el = document.querySelector(sel);
-    return [k, !!el && el.getClientRects().length > 0];
+    if (!el || !el.getClientRects().length) return [k, false];
+    // The table view keeps the site's page laid out, invisible and off screen.
+    const r = el.getBoundingClientRect();
+    return [k, getComputedStyle(el).visibility !== 'hidden' && r.right > 0];
 })), sels);
 
 /**
@@ -227,6 +230,43 @@ test.describe('the original page on archive.org, as the live item page is built'
         expect(await shown(page, WRAP)).toEqual({ ours: true, wrap: false, skip: false, root: false });
         await switchByKey(page);
         expect(await shown(page, WRAP)).toEqual({ ours: false, wrap: true, skip: true, root: true });
+    });
+
+    // vzell, 2026-11-25 (debug/ia-IP-release-ctrlmp-2-bug.html): after the
+    // switch, archive.org's player and pictures were gone: its own script had
+    // put display:none on #theatre-ia while we held the page at display:none
+    // (0 × 0). Stood in for here by a script that does the same on a zero
+    // width; the guarantee is that the site's page stays laid out, at a real
+    // width, while the table view hides it.
+    test('the site\'s page stays laid out while hidden, so its own scripts never see 0 × 0', async ({ page }) => {
+        const id = 'bs1975-12-27.aud.jk.cb.hrubesh.flac16';
+        await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+        await page.context().addInitScript((r) => { window.__gmXhrResponses = r; }, answers(`ia-metadata-${id}`));
+        await loadUserscriptPage(page, {
+            url: `https://archive.org/details/${id}`, fixtureFile: path.join(__dirname, 'ia-details-wrap.html'), testMode: true,
+            settingsOverride: { sa_enable_internetarchive: true, sa_render_threshold: 100000 },
+        });
+        await page.evaluate(() => {
+            const wrap = document.getElementById('wrap');
+            const theatre = document.createElement('div');
+            theatre.id = 'theatre-ia';
+            theatre.textContent = 'player and pictures';
+            wrap.prepend(theatre);
+            // As archive.org's own code did: nothing to measure, nothing to show.
+            new ResizeObserver(() => { if (theatre.getBoundingClientRect().width === 0) theatre.style.display = 'none'; }).observe(theatre);
+        });
+        await page.locator('#mb-ia-root button[data-label="Show all tracks"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        const hidden = await page.evaluate(() => {
+            const w = document.getElementById('wrap').getBoundingClientRect();
+            return { width: Math.round(w.width), onScreen: w.right > 0, visibility: getComputedStyle(document.getElementById('wrap')).visibility };
+        });
+        expect(hidden.width, 'laid out at a real width').toBeGreaterThan(300);
+        expect(hidden).toMatchObject({ onScreen: false, visibility: 'hidden' });
+        // A scroll of the page reaches no further than our section and a window.
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+        await switchByKey(page);
+        await expect(page.locator('#theatre-ia')).toBeVisible();
     });
 });
 
