@@ -5105,3 +5105,14 @@ press (=_origViewPageHtml()=, a clone of =<html>=).
 
 At most 35 ms once per press on the largest page measured; flagged to vzell with the result (CLAUDE.md
 "Performance is a priority"). Should it matter, the walk can skip our own tables' rows (most of the elements).
+
+* 2026-11-25 — =npm run test:full= on =petri=, main after the merge of feat/original-page-toggle (9.99.1695–9.99.1698)
+
+Env: 2026-11-25T14:55:29+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium 151.0.7922.34 (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                       | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =468371b5= |  3560 |      12 | *23 m 21 s* | =run-test-full.py=, 14:55:29–15:18:50 CET |
+
+3560 passed, none failed. The merge gate of =feat/original-page-toggle= (the switch between our tables and the
+original page), run on =main= after the merge and the fold, before the push.
