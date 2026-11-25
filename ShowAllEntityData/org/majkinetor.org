@@ -23,7 +23,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   stable); Apollo sets =mbLastWrite= again; the HUD hides under =data-mbu-quiet= (nothing to do for us); and a shared
   key for our icon in his log, =mbu.logIcons= → [[#saed-log-icon][SAED's icon in String Theory's Network log]],
   *shipped* as 9.99.1699 (=feat/saed-log-icon= with the refresh; vzell's browser check OK, the HUD confirmed hidden).
-  Next: adoption 2 (=search-shed= + the hold jitter).
+  Adoption 2 (=search-shed=, the hold jitter, upstream's hot rule) is *built* on =feat/gate-search-shed= (WIP.1,
+  measured first: 11 of 21 503s in case D were sheds); waiting for =test:full= and vzell's browser check
+  (item "The shared gate at eight a second").
 
 - *Now (2026-11-25, latest):* "Switch between SAED's view and the original page (EH's V)" *shipped* as
   9.99.1695–9.99.1698 (=feat/original-page-toggle= merged after vzell's browser checks, =test:full= 3560/3560).
@@ -120,7 +122,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | C3: adopt =data-mbu-keys-off= + =keys-keep= (EH's new keys)    | DONE  | 9.99.1675     | Interop       |
 | Standalone EH: use =data-mbu-eh= for the keys marks            | DONE  | 9.99.1676     | Interop       |
 | Event Horizon's player plays on under our page                 | DONE  | 9.99.1680     | Interop       |
-| The shared gate at eight a second (2026.11.23)                 | PART  | 9.99.1681     | Interop       |
+| The shared gate at eight a second (2026.11.23)                 | NEXT  | WIP.1         | Interop       |
 | SAED in String Theory's Network log (=mbnTrace=)               | DONE  | 9.99.1694     | Interop       |
 | SAED's icon in the Network log (=mbu.logIcons=)                | DONE  | 9.99.1699     | Interop       |
 | C7 =mbLastWrite=, C8 =MBU.artistImage=                         | DONE  | 9.99.1643, 46 | Adoptions     |
@@ -567,6 +569,23 @@ CLOSED: [2026-11-21 Sat]
     key, the lock and the field meanings stay the version-1 contract; "SAED's one-second slot in the same schedule is
     fine: a longer gap only gets fewer slots" (anchors =dev-pace-internal=, =dev-no-pace-numbers=). The pace
     question is closed and SAED keeps 1000 ms. Candidate 2 is unchanged.
+  - *Candidate 2 built* (2026-11-25 evening, =feat/gate-search-shed=, WIP.1; vzell: "yes start in plan mode", scope
+    "Shed + jitter + hot rule"). *Measured first* (probe field =trace.throttled=, new;
+    2026-11-25T20:19:55–20:22:46+01:00 · NB-3641 · Playwright 1.62.1, Chromium 151.0.7922.34 · GM stubs · SAED
+    9.99.1699 · EH 2026.11.25.191238, ST 2026.11.25.191333): two runs of case D (EH + SAED): 21 503s, 11
+    =search-shed= (all on EH's =release-group?query=…= searches, =Retry-After: 1=), 8 =global= (searches and lookups,
+    =Retry-After: 1=), 2 =per-ip= (=Retry-After: 2=: one EH search, one SAED =artist?inc=url-rels=); bundle cases B
+    and C: 7 =global= on members' lookups, no shed. So a shed is common, and under the old port every one would have
+    stopped all lookups everywhere. Built: =_mbGateAnswerState()= holds only searches on a shed (=scool=/=shot=,
+    =_mbgScoolSeen=), adds =_MBG_JITTER= (500 ms) to every hold, multiplies by =hot= only without a Retry-After and
+    not on =global= (and does not step =hot= on =global=); =_mbGateSlot()= makes a search wait out =scool=;
+    =_mbGateFetch()= marks a =?query== URL as a search; the trace's shed row carries =shold=/=shot=. =per-ip= is an
+    ordinary hold, as upstream. Not ported: =slip=, =rhead=/=bslip=. Specs =mb-shared-gate.spec.js= S1–S11 (and two
+    older tests' bounds for the jitter), 51/51; mutations =mb-gate-shed.json= (new) 13/13 and =mb-shared-gate.json=
+    52/52 (11 finds re-pointed). The first mutation run let three through (the booking's and the wait's =scool= checks
+    covered for each other; S3 could not see the search marker, a shed being known from its header alone): S10, S11
+    and a second search in S3 close them. Anchors =saed-search-shed=, =saed-gate-jitter=. Design: docs/claude/fetch-and-render-pipeline.md,
+    "Only 429/503 write a hold".
 - *Keep 1000 ms* (recommended): it is what MusicBrainz documents, and SAED's own pacing must not depend on a
   neighbour's choice. A post could ask majkinetor whether 125 ms is meant for MusicBrainz's own servers too (his
   comment cites 503s from MusicBrainz's load whatever the pace) and point out the DEVELOP.md line. vzell decides

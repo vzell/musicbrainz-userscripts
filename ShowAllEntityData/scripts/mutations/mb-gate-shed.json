@@ -1,0 +1,171 @@
+[
+  {
+    "name": "a search-shed is a full hold again",
+    "why": "The old port: a shed wrote cool, so every script's lookups in every tab stopped for a refusal of searches.",
+    "edits": [
+      {
+        "find": "            if (status === 503 && /^search-shed$/i.test(who)) {\n",
+        "replace": "            if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S1: a search-shed 503 holds searches only",
+    "expect": "fail"
+  },
+  {
+    "name": "a shed steps hot",
+    "why": "A shed is MusicBrainz's search load, not our pace; stepping hot would lengthen every later hold for everyone.",
+    "edits": [
+      {
+        "find": "                    if (mono >= scool) s.shot = Math.min((s.shot || 0) + 1, 6);\n",
+        "replace": "                    if (mono >= scool) s.shot = Math.min((s.shot || 0) + 1, 6);\n                    s.hot = Math.min((s.hot || 0) + 1, 6);\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S1: a search-shed 503 holds searches only",
+    "expect": "fail"
+  },
+  {
+    "name": "a search books past scool",
+    "why": "A search booked inside a shed goes straight into another 503.",
+    "edits": [
+      {
+        "find": "                o.search ? _mbGateHoldEnd(s.scool, now, mono, _mbgScoolSeen) : -Infinity);\n            const cool = now + (end - mono);",
+        "replace": "                -Infinity);\n            const cool = now + (end - mono);"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S10: a search booked inside a shed",
+    "expect": "fail"
+  },
+  {
+    "name": "a waiting search ignores a new scool",
+    "why": "A shed that begins while a search waits must still hold it (the wait loop re-reads both holds).",
+    "edits": [
+      {
+        "find": "                o.search ? _mbGateHoldEnd(sched.scool, wall, now, _mbgScoolSeen) : -Infinity);",
+        "replace": "                -Infinity);"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S11: a shed that begins while a search waits",
+    "expect": "fail"
+  },
+  {
+    "name": "a lookup waits out scool too",
+    "why": "Lookups and browses go on during a shed; holding them is the old full stop by another road.",
+    "edits": [
+      {
+        "find": "            const end = Math.max(_mbGateHoldEnd(s.cool, now, mono),\n                o.search ? ",
+        "replace": "            const end = Math.max(_mbGateHoldEnd(s.cool, now, mono),\n                true ? "
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S2: during a shed a lookup slot starts at once",
+    "expect": "fail"
+  },
+  {
+    "name": "_mbGateFetch marks no search",
+    "why": "Without the marker the two gated searches (length batch, event release-group lookup) never meet scool, and their shed becomes a full hold.",
+    "edits": [
+      {
+        "find": "        const search = o.search !== undefined ? !!o.search : /[?&]query=/.test(String(url));\n",
+        "replace": "        const search = !!o.search;\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S3: _mbGateFetch marks a",
+    "expect": "fail"
+  },
+  {
+    "name": "no jitter",
+    "why": "Without the spread every waiter of every tab leaves on the same millisecond into a fresh 503 (#1112).",
+    "edits": [
+      {
+        "find": "            const jitter = () => Math.round(Math.random() * _MBG_JITTER);\n",
+        "replace": "            const jitter = () => 0;\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S9: the jitter spreads",
+    "expect": "fail"
+  },
+  {
+    "name": "global steps hot",
+    "why": "A global 503 is MusicBrainz's own load; stepping hot slowed every later page (#1095).",
+    "edits": [
+      {
+        "find": "                if (!load && mono >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);\n",
+        "replace": "                if (mono >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S5: a 503 with X-RateLimit-Who: global",
+    "expect": "fail"
+  },
+  {
+    "name": "a Retry-After is multiplied by hot",
+    "why": "The old rule: Retry-After 2 s at hot 3 held every script 6 s where upstream holds 2 s.",
+    "edits": [
+      {
+        "find": "                const grow = load || raw != null ? 1 : Math.max(1, s.hot || 0);\n",
+        "replace": "                const grow = load ? 1 : Math.max(1, s.hot || 0);\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S6: a Retry-After is not multiplied by hot",
+    "expect": "fail"
+  },
+  {
+    "name": "a hold never grows with hot",
+    "why": "Without a Retry-After a run of throttles must get longer holds, or a busy spell gets as many requests as a quiet one.",
+    "edits": [
+      {
+        "find": "                const grow = load || raw != null ? 1 : Math.max(1, s.hot || 0);\n",
+        "replace": "                const grow = 1;\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S6: a Retry-After is not multiplied by hot",
+    "expect": "fail"
+  },
+  {
+    "name": "shot never steps back",
+    "why": "A clean search answer must take a step of the shed counter back, as upstream does.",
+    "edits": [
+      {
+        "find": "                if (o.search && s.shot) s.shot = ",
+        "replace": "                if (false && s.shot) s.shot = "
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S7: a clean answer to a search steps shot back",
+    "expect": "fail"
+  },
+  {
+    "name": "a lookup answer steps shot back",
+    "why": "Only a search's clean answer says the shed eased; a lookup's says nothing about searches.",
+    "edits": [
+      {
+        "find": "                if (o.search && s.shot) s.shot = ",
+        "replace": "                if (s.shot) s.shot = "
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S7: a clean answer to a search steps shot back",
+    "expect": "fail"
+  },
+  {
+    "name": "the shed's answer row lacks shold",
+    "why": "The Network log shows a shed's hold only from shold; without it the row looks like an unthrottled 503.",
+    "edits": [
+      {
+        "find": "                shold: ans.shed && ans.hold > 0 ? Math.round(ans.hold) : undefined,\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "S8: a shed's answer row in the trace",
+    "expect": "fail"
+  }
+]

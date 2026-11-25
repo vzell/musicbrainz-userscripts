@@ -32,7 +32,9 @@
 //     discogs.com the gate is not active at all (another origin's storage).
 //  7. THE FORMULAS. Episode stepping, the 30 s quiet reset, the 60 s cap,
 //     `Retry-After: 0` → a 1 s floor, the HTTP-date form — through the
-//     shipping `_mbGateAnswer()`, by seeding the stored schedule.
+//     shipping `_mbGateAnswer()`, by seeding the stored schedule. Since
+//     8384078 every hold has up to 500 ms jitter on top, and only a hold
+//     without a Retry-After grows with `hot` (S1–S8 at the end of the file).
 //
 // Network-free: every `**/ws/2/**` request is intercepted (`route.fulfill`).
 // Timestamps on the Node side are `performance.now()` (WSL2 steps the wall
@@ -376,11 +378,11 @@ test.describe('shared MusicBrainz request gate (mbu:mb-gate v1)', () => {
         const hold = (status, ra) => page.evaluate(([s, r]) => window.__saTest.mbGate.answer(s, r), [status, ra]);
         const read = () => page.evaluate(() => window.__saTest.mbGate.read());
 
-        // Retry-After: 0 → the 1 s floor, hot 1.
+        // Retry-After: 0 → the 1 s floor (+ up to 500 ms jitter, upstream's MBN_JITTER), hot 1.
         await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0 });
         let h = await hold(503, '0');
         expect(h).toBeGreaterThan(900);
-        expect(h).toBeLessThanOrEqual(1000);
+        expect(h).toBeLessThanOrEqual(1500);
         expect((await read()).hot).toBe(1);
 
         // A second 503 inside the same hold is the same episode: hot stays 1.
@@ -392,16 +394,17 @@ test.describe('shared MusicBrainz request gate (mbu:mb-gate v1)', () => {
         await hold(429, null);
         expect((await read()).hot, 'reset after 30 s of quiet, then one step').toBe(1);
 
-        // Inside the quiet window, a new episode steps up: hold = RA × hot.
+        // Inside the quiet window, a new episode steps up; without a Retry-After the hold is
+        // 1 s × hot (a Retry-After is not multiplied since 8384078: S6).
         await seedGate(page, { version: 1, tat: 0, coolAgo: 1000, hot: 2 });
-        h = await hold(503, '2');
+        h = await hold(503, null);
         expect((await read()).hot).toBe(3);
-        expect(h).toBeGreaterThan(5800);
-        expect(h).toBeLessThanOrEqual(6000);
+        expect(h).toBeGreaterThan(2800);
+        expect(h).toBeLessThanOrEqual(3500);
 
-        // The cap: hot 6 × 30 s → 60 s, never more.
+        // The cap: hot steps to 6 at most; a Retry-After of 90 s holds 60 s, never more.
         await seedGate(page, { version: 1, tat: 0, coolAgo: 1000, hot: 6 });
-        h = await hold(503, '30');
+        h = await hold(503, '90');
         expect((await read()).hot, 'hot is capped at 6').toBe(6);
         expect(h).toBeGreaterThan(59000);
         expect(h).toBeLessThanOrEqual(60000);
@@ -411,7 +414,7 @@ test.describe('shared MusicBrainz request gate (mbu:mb-gate v1)', () => {
         const date = await page.evaluate(() => new Date(Date.now() + 4000).toUTCString());
         h = await hold(503, date);
         expect(h).toBeGreaterThan(2500); // toUTCString drops the milliseconds
-        expect(h).toBeLessThanOrEqual(4000);
+        expect(h).toBeLessThanOrEqual(4500);
 
         // A clean answer below 500 cools hot by one; a 502 changes nothing.
         await seedGate(page, { version: 1, tat: 0, coolIn: 500, hot: 3 });
@@ -575,11 +578,11 @@ test.describe('shared request gate: aligned with upstream (lock race, sleep, hol
             }
         });
         expect(r.h, `the reported hold is the 503's own (${JSON.stringify(r)})`).toBeGreaterThan(1500);
-        expect(r.h).toBeLessThanOrEqual(2000);
+        expect(r.h, 'Retry-After 2 s plus at most 500 ms jitter (since 8384078)').toBeLessThanOrEqual(2500);
         expect(r.hot, 'a new episode: hot steps up behind the broken value too (the 200 took it to 0)').toBe(1);
         expect(r.ok).toBe(true);
         expect(r.ms, 'the next request waits out that hold').toBeGreaterThan(1200);
-        expect(r.ms).toBeLessThan(3500);
+        expect(r.ms).toBeLessThan(4000);
         expect(r.told.join(' | ')).toMatch(/waits \d.*MusicBrainz asked every script to wait/);
     });
 
@@ -1279,5 +1282,235 @@ test.describe("the gate's trace (String Theory's Network log)", () => {
         for (const [bad, v] of Object.entries(out)) {
             expect(v, `stored value ${bad}`).toEqual({ plain: true, mine: true });
         }
+    });
+});
+
+// ── search-shed, jitter and the hot rule (upstream's mbnAnswer() at 8384078) ──
+//
+//  S1. A SHED HOLDS SEARCHES ONLY. A 503 with `X-RateLimit-Who: search-shed`
+//      sets `scool` (1–1.5 s: the 1 s floor plus up to 500 ms jitter) and
+//      steps `shot`; `cool` and `hot` stay as they were. A port that wrote
+//      `cool` (the old full stop) fails on `cool`.
+//  S2. A LOOKUP PASSES A SHED, A SEARCH WAITS IT OUT. With a `scool` 1.5 s
+//      out, a lookup slot starts at once and a search slot (`search: true`)
+//      starts at the end of it, not before.
+//  S3. `_mbGateFetch()` KNOWS A SEARCH BY `query=`. A shed answered to a
+//      `?query=` URL through the shipping fetch sets `scool`, not `cool`; a
+//      lookup URL fetched right after is not held, a search URL is (the
+//      shed itself is known from its header alone, so only the second search
+//      tells whether the fetch marks one).
+//  S4. AN ORDINARY 503 STILL HOLDS EVERYONE, searches too, for 1–1.5 s.
+//  S5. `global` IS NOT OUR THROTTLE: no `hot` step, a flat hold.
+//  S6. A Retry-After IS MUSICBRAINZ'S OWN ANSWER: not multiplied by `hot`;
+//      without one the hold grows with `hot`.
+//  S7. A clean answer to a search steps `shot` back; to a lookup it does not.
+//  S8. The trace's `answer` row of a shed says `who`, `shold` and `shot`.
+//  S9. THE JITTER SPREADS. Six holds of `Retry-After: 0` from a quiet
+//      schedule lie between 1 and 1.5 s and are not all alike (uniform over
+//      500 ms: six within 50 ms of each other is about one run in 15,000).
+//  S10. A SEARCH BOOKS WITH THE SHED. Booked inside a `scool`, its `book` row
+//      names the real wait and `hold` as the reason (upstream: "booked with
+//      it, the log names the real wait"); S2 alone passes with the wait
+//      loop covering for a booking that ignored `scool`.
+//  S11. A SHED THAT BEGINS WHILE A SEARCH WAITS still holds it: the wait
+//      loop re-reads `scool` every slice (the booking alone cannot see it).
+
+const SHED = { 'X-RateLimit-Who': 'search-shed' };
+
+test.describe("shared request gate: search-shed, jitter and the hot rule (upstream 8384078)", () => {
+
+    /** @returns {Promise<Object>} The stored schedule, with times relative to the page's clock. */
+    const state = (page) => page.evaluate((k) => {
+        const s = JSON.parse(localStorage.getItem(k) || '{}');
+        const now = Date.now();
+        return { ...s, coolIn: (s.cool || 0) - now, scoolIn: (s.scool || 0) - now };
+    }, KEY);
+    /**
+     * The shipping `_mbGateAnswer()` with response headers.
+     * @returns {Promise<number>} The hold it set, ms.
+     */
+    const answer = (page, status, ra, headers, search) => page.evaluate(
+        ([s, r, h, q]) => window.__saTest.mbGate.answer(s, r, h, q), [status, ra, headers || null, !!search]);
+
+    test('S1: a search-shed 503 holds searches only: scool and shot, cool and hot untouched', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, coolAgo: 5000, hot: 2, shot: 0 });
+        const before = await state(page);
+        const h = await answer(page, 503, '0', SHED, true);
+        const s = await state(page);
+        expect(h, 'the search hold: the 1 s floor plus at most 500 ms').toBeGreaterThanOrEqual(900);
+        expect(h).toBeLessThanOrEqual(1500);
+        expect(s.scoolIn).toBeGreaterThan(800);
+        expect(s.scoolIn).toBeLessThanOrEqual(1500);
+        expect(s.shot, 'one step of the shed counter').toBe(1);
+        expect(s.cool, 'cool untouched: lookups and browses go on').toBe(before.cool);
+        expect(s.hot, 'hot untouched').toBe(2);
+    });
+
+    test('S2: during a shed a lookup slot starts at once, a search slot waits until scool', async ({ page }) => {
+        await loadRelPage(page, null);
+        const r = await page.evaluate(async (k) => {
+            const g = window.__saTest.mbGate;
+            localStorage.setItem(k, JSON.stringify({ version: 1, tat: 0, cool: 0, hot: 0, scool: Date.now() + 1500, shot: 1 }));
+            let t = performance.now();
+            await g.slot({ background: false, label: 'lookup' });
+            const lookup = performance.now() - t;
+            t = performance.now();
+            await g.slot({ background: false, label: 'search', search: true });
+            const search = performance.now() - t;
+            return { lookup, search };
+        }, KEY);
+        expect(r.lookup, 'a lookup is not held by a shed').toBeLessThan(400);
+        expect(r.search, 'a search waits out the shed').toBeGreaterThan(1000);
+        expect(r.search).toBeLessThan(2500);
+    });
+
+    test('S3: _mbGateFetch marks a ?query= URL as a search; a lookup fetched next is not held', async ({ page }) => {
+        let shed = true;
+        await loadRelPage(page, (url) => {
+            if (shed && url.includes('query=')) {
+                shed = false;
+                return { status: 503, headers: { 'Retry-After': '1', ...SHED } };
+            }
+            return null;
+        });
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0 });
+        const r = await page.evaluate(async () => {
+            const g = window.__saTest.mbGate;
+            const st = await g.fetch('/ws/2/recording?query=rid:(x)&limit=100&fmt=json', { background: false });
+            const sc = JSON.parse(localStorage.getItem('mbu:mb-gate'));
+            const after = { scoolIn: (sc.scool || 0) - Date.now(), coolIn: (sc.cool || 0) - Date.now() };
+            const t = performance.now();
+            const st2 = await g.fetch('/ws/2/artist/70248960-cb53-4ea4-943a-edb18f7d336f?inc=url-rels&fmt=json', { background: false });
+            const lookupMs = performance.now() - t;
+            const t3 = performance.now();
+            const st3 = await g.fetch('/ws/2/release-group?query=arid:x&limit=25&fmt=json', { background: false });
+            return { st, st2, lookupMs, st3, searchMs: performance.now() - t3, after };
+        });
+        expect(r.st, 'the search drew the shed').toBe(503);
+        expect(r.after.scoolIn, 'the shed went to scool').toBeGreaterThan(0);
+        expect(r.after.coolIn, 'not to cool').toBeLessThanOrEqual(0);
+        expect(r.st2).toBe(200);
+        expect(r.lookupMs, 'the lookup was not held').toBeLessThan(600);
+        expect(r.st3).toBe(200);
+        expect(r.searchMs, 'a ?query= URL is a search to _mbGateFetch: it waits out the shed').toBeGreaterThan(400);
+    });
+
+    test('S4: an ordinary 503 still holds every caller, searches included, 1–1.5 s', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0 });
+        const h = await answer(page, 503, '0', null, true);
+        expect(h).toBeGreaterThanOrEqual(900);
+        expect(h, 'the floor plus the jitter').toBeLessThanOrEqual(1500);
+        const s = await state(page);
+        expect(s.coolIn).toBeGreaterThan(800);
+        expect(s.hot).toBe(1);
+        const waited = await page.evaluate(async () => {
+            const t = performance.now();
+            await window.__saTest.mbGate.slot({ background: false, label: 'search', search: true });
+            return performance.now() - t;
+        });
+        expect(waited, 'a search waits out cool too').toBeGreaterThan(600);
+    });
+
+    test("S5: a 503 with X-RateLimit-Who: global does not step hot and holds a flat second", async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, coolAgo: 1000, hot: 3 });
+        const h = await answer(page, 503, null, { 'X-RateLimit-Who': 'global' });
+        expect((await state(page)).hot, 'MusicBrainz as a whole is out of room: not our throttle').toBe(3);
+        expect(h, 'no multiplier: 1 s + jitter, not 3 s').toBeLessThanOrEqual(1500);
+        expect(h).toBeGreaterThanOrEqual(900);
+    });
+
+    test('S6: a Retry-After is not multiplied by hot; without one the hold grows with it', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, coolAgo: 1000, hot: 2 });
+        let h = await answer(page, 503, '2');
+        expect((await state(page)).hot, 'a new episode still steps hot').toBe(3);
+        expect(h, 'Retry-After 2 s holds 2 s (+ jitter), not 2 × 3').toBeGreaterThanOrEqual(1900);
+        expect(h).toBeLessThanOrEqual(2500);
+        await seedGate(page, { version: 1, tat: 0, coolAgo: 1000, hot: 2 });
+        h = await answer(page, 503, null);
+        expect(h, 'no Retry-After: 1 s × hot 3 (+ jitter)').toBeGreaterThanOrEqual(2900);
+        expect(h).toBeLessThanOrEqual(3500);
+    });
+
+    test('S7: a clean answer to a search steps shot back; one to a lookup leaves it', async ({ page }) => {
+        await loadRelPage(page, null);
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0, shot: 3 });
+        await page.evaluate((k) => {
+            const s = JSON.parse(localStorage.getItem(k));
+            s.scool = Date.now() - 1000;
+            localStorage.setItem(k, JSON.stringify(s));
+        }, KEY);
+        await answer(page, 200, null, null, false);
+        expect((await state(page)).shot, 'a lookup answer leaves the shed counter').toBe(3);
+        await answer(page, 200, null, null, true);
+        expect((await state(page)).shot, 'a search answer steps it back').toBe(2);
+    });
+
+    test("S8: a shed's answer row in the trace says who, shold and shot", async ({ page }) => {
+        let shed = true;
+        await loadRelPage(page, (url) => {
+            if (shed && url.includes('query=')) {
+                shed = false;
+                return { status: 503, headers: { 'Retry-After': '0', ...SHED } };
+            }
+            return null;
+        });
+        await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0 });
+        await page.evaluate(() => window.__saTest.mbGate.fetch('/ws/2/release-group?query=x&limit=25&fmt=json', { background: false }));
+        const t = await readTrace(page);
+        const row = t.mine.find((x) => x.e === 'answer' && x.st === 503);
+        expect(row, JSON.stringify(t.mine)).toBeTruthy();
+        expect(row.who).toBe('search-shed');
+        expect(row.shold, 'the search hold it set').toBeGreaterThan(0);
+        expect(row.shot).toBe(1);
+        expect(row.hold, 'no hold for everyone').toBeUndefined();
+    });
+
+    test('S9: the jitter spreads six holds of the same answer over up to 500 ms', async ({ page }) => {
+        await loadRelPage(page, null);
+        const holds = [];
+        for (let i = 0; i < 6; i++) {
+            await seedGate(page, { version: 1, tat: 0, cool: 0, hot: 0 });
+            holds.push(await answer(page, 503, '0'));
+        }
+        for (const h of holds) {
+            expect(h).toBeGreaterThanOrEqual(900);
+            expect(h).toBeLessThanOrEqual(1500);
+        }
+        expect(Math.max(...holds) - Math.min(...holds), `holds ${holds.join(', ')}: not all on one beat`).toBeGreaterThan(50);
+    });
+
+    test('S10: a search booked inside a shed writes a book row with its real wait and hold as the reason', async ({ page }) => {
+        await loadRelPage(page, null);
+        await page.evaluate(async (k) => {
+            localStorage.setItem(k, JSON.stringify({ version: 1, tat: 0, cool: 0, hot: 0, scool: Date.now() + 1500, shot: 1 }));
+            await window.__saTest.mbGate.slot({ background: false, search: true, trace: { id: 's10', l: 'release-group?query=x', m: 'GET', b: 0 } });
+        }, KEY);
+        const t = await readTrace(page);
+        const book = t.mine.find((x) => x.id === 's10' && x.e === 'book');
+        expect(book, JSON.stringify(t.mine)).toBeTruthy();
+        expect(book.why, 'the shed is the reason').toBe('hold');
+        expect(book.w, 'the booking saw the shed: the wait it names is the shed\'s').toBeGreaterThan(1000);
+    });
+
+    test('S11: a shed that begins while a search waits still holds it', async ({ page }) => {
+        await loadRelPage(page, null);
+        const r = await page.evaluate(async (k) => {
+            // a background search booked about 1 s out (tat 3 s ahead, burst of three at 1 s)
+            localStorage.setItem(k, JSON.stringify({ version: 1, tat: Date.now() + 3000, cool: 0, hot: 0, lead: '', leadUntil: 0 }));
+            const t = performance.now();
+            const p = window.__saTest.mbGate.slot({ background: true, search: true, label: 'search' });
+            await new Promise((res) => setTimeout(res, 300));
+            const s = JSON.parse(localStorage.getItem(k));
+            s.scool = Date.now() + 2500;   // MusicBrainz sheds searches while it waits
+            localStorage.setItem(k, JSON.stringify(s));
+            await p;
+            return performance.now() - t;
+        }, KEY);
+        expect(r, 'held to the shed\'s end (~2.8 s), not released at its slot (~1 s)').toBeGreaterThan(2300);
+        expect(r).toBeLessThan(4500);
     });
 });
