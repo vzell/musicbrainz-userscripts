@@ -98,7 +98,8 @@ on every host, and only with `sa_pop_ext_setlistfm_key` set.
   named by the page's own `<h1>` ("State Farm Arena Atlanta Concert
   Setlists"). `body.mb-sa-host-sfm` joins `_ensureForeignTableStyle()`'s
   `:is()` list; `_ensureSfmStyle()`. After the render `div.body` (header
-  and content) hides (2026-11-25, WIP.2); Ctrl+M P / ☰ View "Show the
+  and content) hides, as everything after our section, marked at init
+  (`_origViewTagSite()`; 2026-11-25, WIP.2); Ctrl+M P / ☰ View "Show the
   original page" shows it again, live (docs/claude/toolbar-and-header-ui.md,
   "Switching to the original page").
 - `features.sfmToTable` → `applySfmToTable()`: an empty

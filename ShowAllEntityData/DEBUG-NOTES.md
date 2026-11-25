@@ -31418,3 +31418,53 @@ still work on Discogs' page, so the tests now switch first
 switch spec: 308 passed, 2 failed (those two); after the change both files of
 `discogs-pages` passed, 18/18.
 Mutations: 14, all caught.
+
+## 2026-11-25 — Live pages are not the fixtures: the switch hid nothing on Discogs' search and an archive.org item; setlist.fm's black toolbar (feat/original-page-toggle, WIP.2 + WIP.3)
+
+Env: 2026-11-25T09:30+01:00 → 09:47 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · vzell's browser (version unknown), Tampermonkey 5.5.1 · fixes verified in Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs)
+
+vzell's browser check of phase 3, three snapshots:
+
+- `debug/d-search-ctrlmp-bug.html` (https://www.discogs.com/search?q=bruce+springsteen&type=all,
+  stopped after one page): `<body>` = our `#mb-dg-root`, `<div hidden>`,
+  `div.flex.flex-1.flex-col` (holding `#esi-header-container` with the header
+  root, and `<main>`), an iframe, `<next-route-announcer>`,
+  `#onetrust-consent-sdk`, then our hosts. The fixture `dg-search.html` has
+  header root and `<main>` straight in `<body>`, so the rule
+  `body > :is(#app, main, …)` matched there and nowhere live: nothing hid,
+  and the switch looked dead.
+- `debug/ia-release-ctrlmp-bug.html`
+  (https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16): our
+  `#mb-ia-root`, a skip link, `div#wrap` (banners, top bar, `#maincontent`),
+  an `<img>`, `<modal-manager>`, colorbox's two, `#fc-root`. The fixture has
+  `#topnav` and `main` straight in `<body>`. Same failure.
+- In both, after our named hosts come anonymous `<div>`s that are OURS (a
+  column-visibility menu: "Column Visibility: Disc 1 · Flac · 1:13:19"), so
+  "everything after our section but ours" cannot be told by markup after
+  the render.
+
+Fix: `_origViewTagSite()` marks every `<body>` child after our section
+(`data-mb-site`) when the three `_*PrepareLivePage()` insert it, at init,
+before any host of ours is in `<body>`; the table view hides the marked.
+No names, so a site's markup can change. Fixtures with the live shapes:
+`scripts/make-live-shape-fixtures.py` → `dg-search-next.html`,
+`ia-details-wrap.html`; two tests in `original-page-toggle-live.spec.js`.
+
+`debug/sfm-black-area-bug.html`
+(https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html?tour=53d7e759):
+the toolbar turned black once it stuck, on any page long enough to scroll
+(older than this branch). `#mb-vsb-mask` (`.mb-vsb-mask-on`) had
+`background: rgb(52, 49, 56)`: `_vsbEnsureStyle()` took `<body>`'s colour,
+and setlist.fm's body is dark; the white is our `#mb-sfm-root`'s. Fix: on
+discogs.com, archive.org and setlist.fm the colour of the first ancestor of
+the toolbar with one (`_vsbForeignMaskBg()`); MusicBrainz and the
+Springsteen sites unchanged. The first test set the dark body after the
+load and passed WITHOUT the fix (the mutation run showed it: the colour is
+fixed at init, where `initStickyFilterBars()` runs once); an init script's
+`<style>` on `<html>` did not survive the parser; at DOMContentLoaded it
+does, and the test fails without the fix.
+
+The three sites' specs with both switch specs: 313/313. Mutations: the
+phase-3 list rewritten for the marking (11; one `"expect": "pass"`), all as
+expected; `setlistfm-list.json`'s "our section is not first" find follows
+the new call.

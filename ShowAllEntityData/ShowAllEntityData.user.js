@@ -22278,6 +22278,8 @@
         const app = document.getElementById('app');
         if (app) app.before(root);
         else document.body.insertBefore(root, document.body.firstChild);
+        // What follows our section now is Discogs' (the table view hides it).
+        _origViewTagSite(root);
         // Users' pictures of a submissions list, as their rows come on screen;
         // a picture's hover card and viewer.
         _dgAvatarInit();
@@ -25048,6 +25050,8 @@
         h1.appendChild(bdi);
         root.appendChild(h1);
         document.body.insertBefore(root, document.body.firstChild);
+        // What follows our section now is the site's (the table view hides it).
+        _origViewTagSite(root);
         return h1;
     }
 
@@ -26529,6 +26533,8 @@
         h1.appendChild(bdi);
         root.appendChild(h1);
         document.body.insertBefore(root, document.body.firstChild);
+        // What follows our section now is the site's (the table view hides it).
+        _origViewTagSite(root);
         return h1;
     }
 
@@ -73164,6 +73170,28 @@
     }
 
     /**
+     * The colour behind the toolbar on a non-MusicBrainz site, for the mask
+     * under the stuck header block: the first ancestor of the toolbar with a
+     * background of its own. On setlist.fm `<body>` is dark (#343138) and the
+     * white is our `#mb-sfm-root`'s, so `<body>`'s colour painted a black bar
+     * behind the toolbar as soon as it stuck (vzell, 2026-11-25,
+     * debug/sfm-black-area-bug.html). Used on the three sites whose section
+     * is a white block of our own over the site's body (discogs.com,
+     * archive.org, setlist.fm); MusicBrainz and the Springsteen sites keep
+     * `<body>`'s colour (the other branch in `_vsbEnsureStyle()`).
+     *
+     * @returns {string} A CSS colour, or '' when no ancestor has one.
+     */
+    function _vsbForeignMaskBg() {
+        const ctl = document.getElementById('mb-show-all-controls-container');
+        for (let el = ctl ? ctl.parentElement : document.body; el && el.nodeType === 1; el = el.parentElement) {
+            const bg = getComputedStyle(el).backgroundColor;
+            if (bg && bg !== 'transparent' && !/^rgba\([^)]*,\s*0\)$/.test(bg)) return bg;
+        }
+        return '';
+    }
+
+    /**
      * Installs the static stylesheet of the sticky filter bars once. Every
      * rule is scoped under `html.mb-vsb-on`; the offsets are in the dynamic
      * sheet (`_vsbRefresh()`). No `!important`, and lower specificity than
@@ -73175,7 +73203,10 @@
      */
     function _vsbEnsureStyle() {
         if (document.getElementById('mb-vsb-style')) return;
-        const pageBg = getComputedStyle(document.body).backgroundColor;
+        // Our own white section over the site's body (discogs.com, archive.org,
+        // setlist.fm): the colour behind the toolbar is the section's, not <body>'s.
+        const ownSection = _isDgHost || _isIaHost || _isSfmHost;
+        const pageBg = ownSection ? _vsbForeignMaskBg() : getComputedStyle(document.body).backgroundColor;
         const mask = (!pageBg || pageBg === 'transparent' || pageBg === 'rgba(0, 0, 0, 0)') ? '#ffffff' : pageBg;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
@@ -113904,7 +113935,8 @@ ${sections.join('\n')}
      * after a render, so the switch needs no copy (phase 3 of the item, vzell
      * 2026-11-25): discogs.com, archive.org, setlist.fm. `name` is how the
      * note names it, `root` our section's id. What the table view hides is
-     * the CSS of `_origViewStyle()`: the site's header stays only where it
+     * what `_origViewTagSite()` marked, every `<body>` child after our
+     * section (`_origViewStyle()`), so the site's header stays only where it
      * sits ABOVE our section (Discogs' React pages, `#mb-dg-root` after
      * `#__header_root_<n>`); elsewhere our section is first in `<body>`
      * (sticky headers, docs/claude/*.md) and the header would sit under our
@@ -113930,6 +113962,34 @@ ${sections.join('\n')}
     function _origViewMode() {
         if (!_foreignHost) return 'copy';
         return _origViewLiveSite() ? 'live' : null;
+    }
+
+    /**
+     * Marks the site's own page on a live site (`_origViewLiveSite()`):
+     * every `<body>` child AFTER our section gets `data-mb-site`, which the
+     * table view hides (`_origViewStyle()`). Called by the three
+     * `_*PrepareLivePage()` right after they insert our section, at page
+     * init, before any popup or menu of ours exists in `<body>` (several of
+     * ours have no id, a column-visibility menu for one, so they could not be
+     * told apart later). Names nothing: the live pages' `<body>` differs from
+     * the saved fixtures (Discogs' search: `div.flex` around header and
+     * `<main>`; an archive.org item: `div#wrap`; vzell's snapshots
+     * debug/d-search-ctrlmp-bug.html, debug/ia-release-ctrlmp-bug.html,
+     * 2026-11-25), and a list of names hid nothing there. What comes BEFORE
+     * our section stays: Discogs' header on its React pages. An element
+     * the site adds after init (a consent banner) is not marked and stays.
+     * Our own (`mb-`) and majkinetor's (`mbu-`) are never marked.
+     *
+     * @param {HTMLElement} root - Our section, a `<body>` child.
+     * @returns {void}
+     */
+    function _origViewTagSite(root) {
+        if (!root || root.parentElement !== document.body) return;
+        const ours = (el) => /^mbu?-/.test(el.id) || Array.from(el.classList).some((c) => /^mbu?-/.test(c));
+        for (let el = root.nextElementSibling; el; el = el.nextElementSibling) {
+            if (/^(SCRIPT|STYLE|LINK|NOSCRIPT|TEMPLATE)$/.test(el.tagName) || ours(el)) continue;
+            el.setAttribute('data-mb-site', '');
+        }
     }
 
     /**
@@ -114004,17 +114064,11 @@ ${sections.join('\n')}
         if (document.getElementById('mb-orig-view-css')) return;
         const s = document.createElement('style');
         s.id = 'mb-orig-view-css';
-        // The live sites' own page, by host (`_origViewLiveSite()`): Discogs'
-        // React app, search page, older pages and footer, and a header root
-        // only when it comes AFTER our section; archive.org's app shell or an
-        // item's top bar and content; setlist.fm's whole page.
-        const T = `.${_ORIG_TABLES_CLASS}`;
+        // A live site's own page: what `_origViewTagSite()` marked, every
+        // <body> child after our section at page init.
         s.textContent = [
             `body.${_ORIG_VIEW_CLASS} #page:not([data-mb-orig-copy]) { display: none !important; }`,
-            `body.mb-sa-host-dg${T} > :is(#app, main, #main_wrapper, #esi-footer-root),`,
-            `body.mb-sa-host-dg${T} > #mb-dg-root ~ [id^="__header_root_"],`,
-            `body.mb-sa-host-ia${T} > :is(app-root, #topnav, main#maincontent),`,
-            `body.mb-sa-host-sfm${T} > div.body { display: none !important; }`,
+            `body.${_ORIG_TABLES_CLASS} > [data-mb-site] { display: none !important; }`,
             `body.${_ORIG_SITE_CLASS} > :is(#mb-dg-root, #mb-ia-root, #mb-sfm-root) { display: none !important; }`,
             `body:not(.${_ORIG_SITE_CLASS}) > #mb-orig-live-note { display: none !important; }`,
             '#mb-orig-live-note { margin: 10px 12px; }',

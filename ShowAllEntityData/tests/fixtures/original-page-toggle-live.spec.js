@@ -111,6 +111,36 @@ test.describe('the original page on discogs.com', () => {
         expect(await shown(page, SEARCH)).toEqual({ ours: false, header: true, main: true, footer: true });
     });
 
+    // vzell, 2026-11-25 (debug/d-search-ctrlmp-bug.html): the LIVE search
+    // page wraps header and <main> in a div.flex and adds an iframe, Next's
+    // route announcer and the cookie banner root; rules naming <main> hid
+    // nothing there. Fixture: scripts/make-live-shape-fixtures.py.
+    test('the live search page\'s shape: whatever follows our section hides, whatever its names', async ({ page }) => {
+        const f = FX('discogs-search-springsteen-all-p1');
+        const d = JSON.parse(f.body);
+        d.pagination.pages = 1;
+        await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+        await page.context().addInitScript((r) => { window.__gmXhrResponses = r; }, {
+            'https://api.discogs.com/database/search?q=bruce%20springsteen&per_page=100&page=1':
+                { status: 200, responseHeaders: `Content-Type: ${f.contentType}`, responseText: JSON.stringify(d) },
+        });
+        await loadUserscriptPage(page, {
+            url: 'https://www.discogs.com/search?q=bruce+springsteen&type=all', fixtureFile: path.join(__dirname, 'dg-search-next.html'), testMode: true,
+            settingsOverride: { sa_enable_discogs: true, sa_render_threshold: 100000 },
+        });
+        const NEXT = { ours: '#mb-dg-root', wrap: 'body > div.flex', header: '[id^="__header_root_"]', banner: '#onetrust-consent-sdk' };
+        await page.evaluate(() => { document.getElementById('onetrust-consent-sdk').style.minHeight = '10px'; });
+        expect(await shown(page, NEXT)).toEqual({ ours: true, wrap: true, header: true, banner: true });
+        await page.locator('#mb-dg-root button[data-label="Show all results"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(await shown(page, NEXT)).toEqual({ ours: true, wrap: false, header: false, banner: false });
+        // Pins: our own floating hosts are never the site's.
+        expect(await page.evaluate(() => Array.from(document.querySelectorAll('body > [data-mb-site]'))
+            .filter((el) => /^mbu?-/.test(el.id)).length)).toBe(0);
+        await switchByKey(page);
+        expect(await shown(page, NEXT)).toEqual({ ours: false, wrap: true, header: true, banner: true });
+    });
+
     test('an older page (#main_wrapper: header and page together) hides whole, and comes back whole', async ({ page }) => {
         const file = path.join(__dirname, 'dg-submissions-flat.html');
         await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
@@ -173,6 +203,30 @@ test.describe('the original page on archive.org', () => {
         expect(await shown(page, PARTS)).toEqual({ ours: true, topnav: false, main: false });
         await clickToolbarItem(page, ROW);
         expect(await shown(page, PARTS)).toEqual({ ours: false, topnav: true, main: true });
+    });
+});
+
+// vzell, 2026-11-25 (debug/ia-release-ctrlmp-bug.html): the LIVE item page
+// holds top bar and content in div#wrap, beside overlays; rules naming
+// #topnav/main hid nothing there. Fixture: scripts/make-live-shape-fixtures.py.
+test.describe('the original page on archive.org, as the live item page is built', () => {
+    test('div#wrap and its neighbours hide after the render, and come back with the switch', async ({ page }) => {
+        const id = 'bs1975-12-27.aud.jk.cb.hrubesh.flac16';
+        await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
+        await page.context().addInitScript((r) => { window.__gmXhrResponses = r; }, answers(`ia-metadata-${id}`));
+        await loadUserscriptPage(page, {
+            url: `https://archive.org/details/${id}`, fixtureFile: path.join(__dirname, 'ia-details-wrap.html'), testMode: true,
+            settingsOverride: { sa_enable_internetarchive: true, sa_render_threshold: 100000 },
+        });
+        await page.route('https://archive.org/download/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        const WRAP = { ours: '#mb-ia-root', wrap: 'body > div#wrap', skip: 'body > a.hidden-for-screen-readers', root: '#fc-root' };
+        await page.evaluate(() => { document.getElementById('fc-root').style.minHeight = '10px'; });
+        expect(await shown(page, WRAP)).toEqual({ ours: true, wrap: true, skip: true, root: true });
+        await page.locator('#mb-ia-root button[data-label="Show all tracks"]').click();
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect(await shown(page, WRAP)).toEqual({ ours: true, wrap: false, skip: false, root: false });
+        await switchByKey(page);
+        expect(await shown(page, WRAP)).toEqual({ ours: false, wrap: true, skip: true, root: true });
     });
 });
 

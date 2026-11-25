@@ -1030,13 +1030,22 @@ render path.
 our section (org/TODO.org: "the doubling of the IP information"), so no
 copy: the render tail's `addOrigViewButton()` sets `_origView.live` and
 puts `mb-orig-tables` on `<body>`, and the switch swaps it for
-`mb-orig-site`. What hides is CSS in `_origViewStyle()`, by host class:
-
-| Host  | Hidden in the table view                                                                                                              |
-|-------|---------------------------------------------------------------------------------------------------------------------------------------|
-| `dg`  | `#app`, `<main>` (search), `#main_wrapper` (older pages), `#esi-footer-root`, and a `[id^="__header_root_"]` only AFTER `#mb-dg-root` |
-| `ia`  | `<app-root>` (search: header and results in one shadow DOM), `#topnav`, `main#maincontent`                                            |
-| `sfm` | `div.body` (header and content)                                                                                                       |
+`mb-orig-site`. What hides is what `_origViewTagSite()` marked: the three
+`_*PrepareLivePage()` call it right after inserting our section, at page
+init, and it puts `data-mb-site` on every `<body>` child AFTER our section
+(never an `mb-`/`mbu-` one); `_origViewStyle()` hides
+`body.mb-orig-tables > [data-mb-site]`. It names nothing on purpose: the
+first rules named elements per host from the saved fixtures (`#app`,
+`<main>`, `#topnav`, …) and hid nothing on the live pages, whose `<body>`
+is built differently (Discogs' search: `div.flex` around header and
+`<main>`, an iframe, Next's route announcer, the cookie banner; an
+archive.org item: `div#wrap` among overlays; vzell's snapshots
+`debug/d-search-ctrlmp-bug.html`, `debug/ia-release-ctrlmp-bug.html`).
+At init, because later several of our own hosts sit in `<body>` with no
+id (a column-visibility menu), and could not be told from the site's. An
+element the site adds after init (a consent banner) is not marked and
+stays. `tests/fixtures/dg-search-next.html` and `ia-details-wrap.html` have
+the live shapes (`scripts/make-live-shape-fixtures.py`).
 
 The site's header stays only where it sits ABOVE our section (Discogs'
 React pages: `#__header_root_<n>`, then `#mb-dg-root`, then `#app`);
@@ -1049,8 +1058,10 @@ Discogs' section headings), and the "Live" note (`#mb-orig-live-note`,
 `_origViewLiveNote()`, right after our section). Before a press nothing
 changes. A spec that works on the site's page after a press switches first
 (`showDiscogsPage()` in `discogs-pages.spec.js`). Spec:
-`tests/fixtures/original-page-toggle-live.spec.js` (6); mutations:
-`scripts/mutations/original-page-toggle-live.json` (14).
+`tests/fixtures/original-page-toggle-live.spec.js` (8); mutations:
+`scripts/mutations/original-page-toggle-live.json` (11; the guard against
+marking our own hosts is `"expect": "pass"`: no fixture has one in `<body>`
+at init).
 
 Two traps for a spec: open the ☰ menu and Playwright scrolls the sticky
 toolbar into view first, so the scroll position the switch saves is not the
@@ -1324,6 +1335,16 @@ h3 and thead offsets start below them), z-index 105 (`VSB_Z_HEAD`).
   block 105, under MB's sticky sidebar 105, over everything that scrolls).
   It also covers the `VSB_HEAD_GAP` (6 px) the h2 docks below the block,
   asked for so the bar does not sit glued to the stats line.
+  Its colour is fixed when the style is installed (`_vsbEnsureStyle()`, at
+  page init): `<body>`'s background on MusicBrainz and the Springsteen
+  sites, but on discogs.com, archive.org and setlist.fm, where our section
+  is a white block of its own over the site's body, the first ancestor of
+  the toolbar with a background (`_vsbForeignMaskBg()`). setlist.fm's body
+  is dark (#343138), and the mask painted a black bar behind the toolbar as
+  soon as it stuck (vzell, 2026-11-25, `debug/sfm-black-area-bug.html`; it
+  was there before the original-page switch). Spec: `sfm-list.spec.js`, "the
+  mask behind the stuck toolbar" (the dark body set at DOMContentLoaded:
+  later is too late, and the test would pass without the fix).
   Shown (`.mb-vsb-mask-on`) only while the block is STUCK
   (`_vsbUpdateMask()`: scrolled, and the first part at its sticky top; one
   rectangle read, at most once per frame on scroll): in its natural place

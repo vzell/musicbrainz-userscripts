@@ -30,8 +30,8 @@
     "why": "The sticky headers pin every <body> child but _sphPageEl(); inside setlist.fm's div.body the whole site would be pinned.",
     "edits": [
       {
-        "find": "        document.body.insertBefore(root, document.body.firstChild);\n        return h1;\n    }\n\n    /**\n     * The live page's part of `sfm-venue`",
-        "replace": "        document.body.appendChild(root);\n        return h1;\n    }\n\n    /**\n     * The live page's part of `sfm-venue`"
+        "find": "        document.body.insertBefore(root, document.body.firstChild);\n        // What follows our section now is the site's (the table view hides it).\n        _origViewTagSite(root);\n        return h1;\n    }\n\n    /**\n     * The live page's part of `sfm-venue`",
+        "replace": "        document.body.appendChild(root);\n        // What follows our section now is the site's (the table view hides it).\n        _origViewTagSite(root);\n        return h1;\n    }\n\n    /**\n     * The live page's part of `sfm-venue`"
       }
     ],
     "spec": "tests/fixtures/sfm-list.spec.js",

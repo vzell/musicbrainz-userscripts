@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-11-25",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "setlist.fm: on a page long enough to scroll, the toolbar above our table (the action button and ☰ SAED) no longer turns into a black bar as soon as it sticks to the top. The backdrop behind it took the colour of setlist.fm's dark page instead of our white section. Discogs and archive.org use the same rule now; MusicBrainz and the Springsteen sites are unchanged."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-11-25",
     "sections": [

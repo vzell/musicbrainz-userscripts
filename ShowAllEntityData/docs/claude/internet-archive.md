@@ -57,8 +57,11 @@ no button: advancedsearch.php does not index what it searches.
   reach it. `_sphPageEl()` returns it on archive.org (as `#mb-dg-root` on
   discogs.com): the sticky headers must never pin the site's shell whole.
   `body.mb-sa-host-ia` joins `_ensureForeignTableStyle()`'s `:is()` list.
-  After the render the site hides (2026-11-25, WIP.2): `<app-root>` on a
-  search, `#topnav` and `main#maincontent` on an item; Ctrl+M P / ☰ View
+  After the render the site hides (2026-11-25, WIP.2): every `<body>` child
+  after our section, marked at init (`_origViewTagSite()`): `<app-root>` on
+  a search; on a live item page `div#wrap` (top bar and content) and its
+  overlays, not the fixture's bare `#topnav`/`main` (`ia-details-wrap.html`
+  has the live shape). Ctrl+M P / ☰ View
   "Show the original page" shows it again, live
   (docs/claude/toolbar-and-header-ui.md, "Switching to the original page").
 - `features.iaToTable` → `applyIaToTable()`: an empty `table.tbl.mb-ia-table`
