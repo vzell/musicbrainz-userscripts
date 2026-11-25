@@ -21,8 +21,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   (=chore/refresh-majkinetor-next=). His answers: the player is EH's own (our 9.99.1680 fallback stays); the gate's
   numbers are internal and SAED's 1 s slot is fine; the trace is documented (DEVELOP.md "Request trace", not yet
   stable); Apollo sets =mbLastWrite= again; the HUD hides under =data-mbu-quiet= (nothing to do for us); and a shared
-  key for our icon in his log, =mbu.logIcons= → new item [[#saed-log-icon][SAED's icon in String Theory's Network
-  log]] (NEXT, =feat/saed-log-icon=). Then adoption 2 (=search-shed= + the hold jitter).
+  key for our icon in his log, =mbu.logIcons= → [[#saed-log-icon][SAED's icon in String Theory's Network log]],
+  *shipped* as 9.99.1699 (=feat/saed-log-icon= with the refresh; vzell's browser check OK, the HUD confirmed hidden).
+  Next: adoption 2 (=search-shed= + the hold jitter).
 
 - *Now (2026-11-25, latest):* "Switch between SAED's view and the original page (EH's V)" *shipped* as
   9.99.1695–9.99.1698 (=feat/original-page-toggle= merged after vzell's browser checks, =test:full= 3560/3560).
@@ -121,7 +122,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Event Horizon's player plays on under our page                 | DONE  | 9.99.1680     | Interop       |
 | The shared gate at eight a second (2026.11.23)                 | PART  | 9.99.1681     | Interop       |
 | SAED in String Theory's Network log (=mbnTrace=)               | DONE  | 9.99.1694     | Interop       |
-| SAED's icon in the Network log (=mbu.logIcons=)                | NEXT  | WIP.1         | Interop       |
+| SAED's icon in the Network log (=mbu.logIcons=)                | DONE  | 9.99.1699     | Interop       |
 | C7 =mbLastWrite=, C8 =MBU.artistImage=                         | DONE  | 9.99.1643, 46 | Adoptions     |
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions     |
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions     |
@@ -640,7 +641,8 @@ CLOSED: [2026-11-25 Wed]
   =#st-gate-hud-box= since String Theory 2026.11.25.174628 (anchor =st-quiet-hud=); SAED sets the quiet mark while
   its table shows (C4, 9.99.1580), so nothing to do on our side. The icon: =mbu.logIcons=, its own item below.
 
-** NEXT SAED's icon in String Theory's Network log (=mbu.logIcons=)
+** DONE SAED's icon in String Theory's Network log (=mbu.logIcons=)
+CLOSED: [2026-11-25 Wed]
 :PROPERTIES:
 :CUSTOM_ID: saed-log-icon
 :END:
@@ -671,6 +673,7 @@ CLOSED: [2026-11-25 Wed]
   list); the Script column shows names only, no icons, for every script. =mbu.logIcons= held the
   =ShowAllEntityData= data URI. The off case: vzell removed the key with the setting off (no read-back shown). The
   HUD under our quiet mark (upstream's change): *confirmed* by vzell, it vanishes while SAED's tables show.
+  Shipped as 9.99.1699 (=test:full= 3563/3563 on NB-3641).
 
 * Adoptions: what SAED takes from his scripts
 

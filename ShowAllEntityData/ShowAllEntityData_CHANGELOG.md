@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1869 versions; the month pages hold all of them.
+This page shows the newest 100 of 1870 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1699 — 2026-11-25
+
+**✨ Improve**
+
+- In String Theory's Network log (Ctrl+Alt+N), this script's rows now carry its own icon, the small table of its entries in Event Horizon's ⋯ menu, instead of String Theory's. It needs String Theory 2026.11.25.174628 or newer, which reads a script's icon from the shared browser storage (mbu.logIcons); this script writes its entry there once, on musicbrainz.org, when it first logs a request, and keeps every other script's entry. Like the log rows, only with "Share MusicBrainz's request budget with other userscripts (mbu:mb-gate)" on.
+
 
 ## 9.99.1698 — 2026-11-25
 
@@ -856,13 +863,6 @@ This page shows the newest 100 of 1869 versions; the month pages hold all of the
 
 - Brucebase previews: a picture now says what its file name tells, the photographer included ("Photo · Cliff Breining · \#01", "Setlist · \#01a · Handwritten", "Pass · \#01 · Backstage"), in the window and in the full-size viewer. The window shows the photos once per photographer, those without a known photographer last. Each group folds on a click on its heading, and a Ctrl+click folds or opens every group at once, so a gig with hundreds of photos can be folded away; the text sections stay as they are.
 - Brucebase previews: the window ends with the page's tags, folded at first, sorted into Date, Place, Tour, On the page, Songs, People, Releases and more; each tag links to the wiki's list of pages with it. Previews already cached are read once more.
-
-
-## 9.99.1599 — 2026-11-13
-
-**✨ Improve**
-
-- Brucebase: the side bar's show/hide handle now sits at the top of the side bar, as the MusicBrainz sidebar's does, instead of halfway down the window. Scrolled down, it stays near the top of the window; with the side bar hidden, it sits at the top of the page content.
 
 
 ---
