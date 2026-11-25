@@ -5052,3 +5052,15 @@ Env: 2026-11-24T14:12:10+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 
 3522 passed, none failed. The merge gate of 9.99.1693 (the branch on top of 9.99.1692's =feat/small-adoptions=);
 neither of the day's two timing failures (=popup-mb.spec.js=, =bb-place.spec.js=) came back.
+
+* 2026-11-25 — =npm run test:full= on =NB-3641=, feat/saed-gate-trace (the gate's trace, WIP.1)
+
+Env: 2026-11-25T11:40:40+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                       | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =053c946e= |  3529 |      14 | *24 m 52 s* | =run-test-full.py=, 11:40:40–12:05:32 CET |
+
+3529 passed, none failed. The merge gate of =feat/saed-gate-trace= (on top of the unmerged
+=chore/refresh-majkinetor-9f8aa0c=): SAED's requests in String Theory's Network log, seven new tests T1–T7 in
+=mb-shared-gate.spec.js=.
