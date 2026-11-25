@@ -2478,6 +2478,8 @@ SAED stays at one a second in the shared schedule (its slot moves `tat` by 1000 
     quiet rule matches only =[data-mb-corner],#mbu-dock-shelf= (ST:1309).
 
 #+begin_src markdown
+Regarding your personal question from yesterday evening: "How do u like network log? Does it show your script requests? :)"
+
 Looks great. The time line with the bursts and MusicBrainz's holds is exactly what I was missing when I measured the gate.
 
 It doesn't show SAED's requests yet, and that's on my side: SAED books its `/ws/2` requests in `mbu:mb-gate` (since #938), but it doesn't write `mbnTrace()`'s `mbu:mb-gate-trace:<tab>`, and its HTML page fetches (a list's `?page=N`) aren't gated at all. I'll add the trace writes, so SAED's requests show under their own name; the page fetches would be logged only, like `mbnLog()`, never paced.
