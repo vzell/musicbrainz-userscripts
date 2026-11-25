@@ -3243,7 +3243,6 @@ https://brucebase.wikidot.com/1985 - [Image #11]
 https://brucebase.wikidot.com/1985-list - [Image #12]
 #+end_example
 
-
 ** DONE 938 issue
 
 Done 2026-11-25 evening: the refresh to =8384078= ("Refresh log"), the answers in the items (player, pace, Network
@@ -3259,3 +3258,121 @@ https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-71
 #+end_example
 
 refresh his repo and tackle the new situation
+** DONE check for Adoption 2
+*** question
+
+Adoption 2 is built on feat/gate-search-shed and pushed (65636fab), ready for your browser check.
+
+test:full: 3573 of 3574 passed (25 m 51 s). The one failure was a hover card in findings-rec-dup.spec.js that didn’t appear within 5 s during the full parallel run. That spec never touches the gate. Run alone it passed 3 of 3, and the whole file passed 14 of 14, so I’ve recorded it as a load flake. If you’d rather merge on a fully green run, I’ll run the suite again on main after the merge, before pushing; that adds about 26 minutes.
+
+Live probe on the new code: case D drew two search-sheds, both on Event Horizon’s searches. They held only searches: the schedule kept cool and hot at 0, and SAED took no hold.
+
+Browser check. Re-import SAED from https://raw.githubusercontent.com/vzell/musicbrainz-userscripts/feat/gate-search-shed/ShowAllEntityData/ShowAllEntityData.user.js and keep String Theory on. A real shed can’t be forced, so these steps check that nothing regressed and that the log shows the new fields when one happens:
+
+Length batch (SAED’s searches). Open https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings, press the page’s “Show all” button, then ⏱ in the Length header.
+Expected: the lengths fill in with milliseconds.
+In the Network log (Ctrl+Alt+N), the length rows are recording?query=rid:(…) searches, about one per 100 rows.
+If one of them gets a 503 marked search-shed, its row shows that who and the following lookups go on.
+Relationships (lookups). Open https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c, press “Show all Releases for ReleaseGroup”, then ▶🔗.
+Expected: the relationships load.
+Any 503 row in the Network log shows its who: global, per-ip or search-shed.
+Optional, the debug log. With the mbgate debug channel on, SAED’s 🧾 Activity log shows “searches hold N s; lookups go on” whenever a shed happens, and ordinary holds now name their who in brackets.
+
+*** answer
+
+You already see it. In the expanded row, each answer line ends with “rate limit global”, and that last word is the who. String Theory writes it as rate limit <who>, followed by the remaining count and the limit when MusicBrainz sends them (gatelog.js:185 in his clone).
+
+Your screenshot shows the new rules working:
+
+who = global: all three 503s were MusicBrainz as a whole running out of room, not a limit on you.
+“everyone holds 1.3 s / 1.4 s / 1.1 s” with Retry-After 1: that is 1 s plus up to 0.5 s at random. Before this change, every hold would have been exactly 1.0 s.
+The Hot 0 chip: a global 503 no longer raises the hot counter, and the hold isn’t multiplied by it. That matches the hot rule from upstream.
+Lookups went on: the following rows are OK. This request gave up after 3 tries, which is the normal retry limit.
+
+The other two values would look like this on the same line:
+
+who	The answer line reads
+per-ip	HTTP 503 · Retry-After 1 · everyone holds 1.2s · rate limit per-ip
+search-shed	HTTP 503 · Retry-After 1 · searches hold 1.3s · rate limit search-shed
+
+A search-shed shows “searches hold” instead of “everyone holds”, because only searches wait. It can only appear on a ?query= request, such as the length rows from step 1 on the recordings page. The Result column only ever says “503, gave up ↻3”; to see the who, expand the row.
+
+Did step 1 (the ⏱ Length batch on the recordings page) also work? If it did, should I merge feat/gate-search-shed as 9.99.1700?
+
+Step 1 works too. The ⏱ batch sent its recording?query=rid:(…) searches with reason length, and all of them came back OK.
+
+The row you expanded (22:29:12.766) shows the new rules on a search:
+
+The 503 was global, not search-shed. MusicBrainz as a whole was busy, so the line says “everyone holds 1.4s”. A shed would have said “searches hold” instead. That is 1 s from Retry-After plus 0.4 s at random.
+Hot 0 stayed 0, and the hold was not multiplied by it.
+The retry went through. It started 1.4 s after the 503 and got HTTP 200, so the row shows “OK ↻2”. The book line says “waits 0s” because the retry’s own pause had already covered the hold.
+
+The Rate limit column now says “of 400” where the lookups said “of 1900”. MusicBrainz reports a separate, smaller budget for searches. SAED only shows the number it is given; that limit isn’t something we track.You already see it. In the expanded row, each answer line ends with “rate limit global”, and that last word is the who. String Theory writes it as rate limit <who>, followed by the remaining count and the limit when MusicBrainz sends them (gatelog.js:185 in his clone).
+
+Your screenshot shows the new rules working:
+
+who = global: all three 503s were MusicBrainz as a whole running out of room, not a limit on you.
+“everyone holds 1.3 s / 1.4 s / 1.1 s” with Retry-After 1: that is 1 s plus up to 0.5 s at random. Before this change, every hold would have been exactly 1.0 s.
+The Hot 0 chip: a global 503 no longer raises the hot counter, and the hold isn’t multiplied by it. That matches the hot rule from upstream.
+Lookups went on: the following rows are OK. This request gave up after 3 tries, which is the normal retry limit.
+
+The other two values would look like this on the same line:
+
+who	The answer line reads
+per-ip	HTTP 503 · Retry-After 1 · everyone holds 1.2s · rate limit per-ip
+search-shed	HTTP 503 · Retry-After 1 · searches hold 1.3s · rate limit search-shed
+
+A search-shed shows “searches hold” instead of “everyone holds”, because only searches wait. It can only appear on a ?query= request, such as the length rows from step 1 on the recordings page. The Result column only ever says “503, gave up ↻3”; to see the who, expand the row.
+
+Did step 1 (the ⏱ Length batch on the recordings page) also work? If it did, should I merge feat/gate-search-shed as 9.99.1700?
+
+Step 1 works too. The ⏱ batch sent its recording?query=rid:(…) searches with reason length, and all of them came back OK.
+
+The row you expanded (22:29:12.766) shows the new rules on a search:
+
+The 503 was global, not search-shed. MusicBrainz as a whole was busy, so the line says “everyone holds 1.4s”. A shed would have said “searches hold” instead. That is 1 s from Retry-After plus 0.4 s at random.
+Hot 0 stayed 0, and the hold was not multiplied by it.
+The retry went through. It started 1.4 s after the 503 and got HTTP 200, so the row shows “OK ↻2”. The book line says “waits 0s” because the retry’s own pause had already covered the hold.
+
+The Rate limit column now says “of 400” where the lookups said “of 1900”. MusicBrainz reports a separate, smaller budget for searches. SAED only shows the number it is given; that limit isn’t something we track.
+
+*** where do I switch on the mbgate debug channel
+
+I was imprecise when I wrote “the mbgate debug channel on”: there is no switch for a single channel. Debug output is all or nothing, and mbgate is only the label on SAED’s request-gate lines, so you filter for it afterwards.
+
+Record the detail lines. Use either of these:
+For this page only: open ☰ SAED → Help → 🧾 Activity log and tick Record detail. This comes off on the next page.
+To keep it on: turn on ⚙️ Settings → 🛠️ Generic → Enable debug logging.
+Do something that makes requests, such as the ⏱ Length batch or ▶🔗.
+Pick out the gate lines. In the Activity log, click the mbgate Channel chip, or type mbgate in the filter box. To find only a shed, type searches hold.
+
+Ordinary holds read like HTTP 503 (Retry-After: 1) [global] — everyone holds 1.4 s. A shed reads HTTP 503 (search-shed) — searches hold 1.3 s; lookups go on. The lines only appear while “Share MusicBrainz’s request budget with other userscripts (mbu:mb-gate)” is on, and String Theory’s Network log shows the same answers anyway, so this step is optional.
+
+Should I merge feat/gate-search-shed as 9.99.1700?
+
+You caught a real shed: HTTP 503 (search-shed) (Retry-After: 1) — searches hold 1.2 s; lookups go on.
+
+This is the first search-shed seen in your browser rather than in the live probe, and SAED handled it the new way:
+
+Only searches waited, for 1 s from Retry-After plus 0.2 s at random.
+Lookups and the other scripts’ requests could go on, and the schedule’s Hot count was left alone.
+It happened once (mbgate 1) during a 323-row ⏱ Length batch, so a shed is short and rare.
+
+The matching row in String Theory’s Network log should read HTTP 503 · Retry-After 1 · searches hold 1.2s · rate limit search-shed, with no “everyone holds”. Expand that length row if you want to see it.
+
+The header shows 9.99.1699 because the version is only bumped on main; the branch code is what ran.
+
+When I merge, I’ll record this observation in org/majkinetor.org (the gate item) and DEBUG-NOTES.md, with the page (The Rolling Stones’ recordings), the time (22:37:23 CET) and your screenshot as evidence. For the Env stamp I’ll write your browser and Tampermonkey versions as “unknown” unless you tell me them.
+
+Should I merge feat/gate-search-shed into main as 9.99.1700 and push?
+
+The Network log shows the same shed: HTTP 503 · Retry-After 1 · searches hold 1.2s · rate limit search-shed. There’s no “everyone holds” in it, so only searches waited.
+
+The rest of the row matches the new behaviour:
+
+Booking: the retry booked 1.1 s after the 503 and waited the last 0.1 s of the search hold. Its book line reads “waits 0.1s (MusicBrainz hold) · no other request waits”.
+Retry: it came back HTTP 200, so the row shows “OK ↻2”.
+Schedule: the chips read Hold none and Hot 0, because a shed doesn’t touch the hold or hot that lookups go by.
+
+That completes the browser check: an ordinary 503 marked global, a shed marked search-shed, and the Activity log line for each. Say “merge” and I’ll merge feat/gate-search-shed into main as 9.99.1700, record this observation and push.
+
