@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-25",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com, archive.org and setlist.fm: after a press only the table view shows; the site's own page no longer sits under our tables. The switch of WIP.1 (☰ SAED → View → \"📄 Show the original page\", Ctrl+M P, \"▦ Back to the tables\") shows the site's own page again, live and fully working, with a \"Live\" note on top, and hides our section; back again, the tables are as you left them. The site's header stays only where it sits above our section (a Discogs master, release, artist or label page); where our section comes first (archive.org, setlist.fm, Discogs' search, submissions and user pages) the header hides with the page, and so does the footer. Before a press nothing changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-25",
     "sections": [

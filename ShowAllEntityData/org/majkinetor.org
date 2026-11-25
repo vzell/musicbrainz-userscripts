@@ -19,7 +19,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 - *Now (2026-11-24, latest):* the "shine through" item is *corrected* (vzell): it means a switch between SAED's view
   and the original page, as EH's V does, not EH's =#eh-hide=. Renamed "Switch between SAED's view and the original
   page (EH's V)"; branch =feat/original-page-toggle=. Mockup approved (all eight recommendations); the MB part is
-  built (2026-11-25, WIP.1), waiting for vzell's browser check; the non-MB sites next.
+  built and checked live (WIP.1), the live sites built (WIP.2, dg/ia/sfm), waiting for vzell's browser check; the
+  Springsteen sites next.
 - *Now (2026-11-24, later):* item 1 of the "what next" list *shipped* in 9.99.1692: the EH launcher
   icon and the idle-mode HELP paragraph ("String Theory's idle mode" DONE); the scrollbar gutter was dropped
   (26 tests 15 px off, see "Smaller adoptions"). vzell's browser check OK.
@@ -845,8 +846,14 @@ CLOSED: [2026-11-20 Fri]
   tables" bottom right (majkinetor's corner marks, out of his dock); the #938 marks down while the original shows.
   Spec =original-page-toggle.spec.js= (7), mutations 13/13 as expected, neighbouring specs 105/105. The copy costs
   at most 3.2 ms (tests/MEASUREMENTS.org). Design: docs/claude/toolbar-and-header-ui.md, "Switching to the original
-  page". *Waiting*: vzell's browser check. *Next*: phase 3 (dg, ia, sfm). Possible post to majkinetor (not drafted):
-  a public restack entry point (=MBU.restackCorner=), since ours nudges his through the visual viewport's =resize=.
+  page". vzell's browser check OK (2026-11-25, after the dock-shelf fix =e4aabbfe=). Possible post to majkinetor (not
+  drafted): a public restack entry point (=MBU.restackCorner=), since ours nudges his through the visual viewport's
+  =resize=.
+- *Phase 3, live sites: built* (2026-11-25, WIP.2): discogs.com, archive.org, setlist.fm hide their own page after a
+  render (CSS by host class); the header stays only where it sits above our section (Discogs' React pages), header
+  and footer hide elsewhere (vzell's two answers). Spec =original-page-toggle-live.spec.js= (6), mutations 14/14,
+  the three sites' specs 310/310 after two tests in =discogs-pages.spec.js= switch first. *Waiting*: vzell's browser
+  check. *Next*: phase 4 (sl, jl, bs, bb: a copy, as MB).
 
 ** PART Entity pictures: more providers, area map with flag badge (moved from org/TODO.org)
 

@@ -97,7 +97,10 @@ on every host, and only with `sa_pop_ext_setlistfm_key` set.
   section on setlist.fm. Its `<h1 class="mb-sfm-h1">` holds the toolbar,
   named by the page's own `<h1>` ("State Farm Arena Atlanta Concert
   Setlists"). `body.mb-sa-host-sfm` joins `_ensureForeignTableStyle()`'s
-  `:is()` list; `_ensureSfmStyle()`.
+  `:is()` list; `_ensureSfmStyle()`. After the render `div.body` (header
+  and content) hides (2026-11-25, WIP.2); Ctrl+M P / ☰ View "Show the
+  original page" shows it again, live (docs/claude/toolbar-and-header-ui.md,
+  "Switching to the original page").
 - `features.sfmToTable` → `applySfmToTable()`: an empty
   `table.tbl.mb-sfm-table` under `h2.mb-sfm-list-heading` "Setlists", on the
   press and on reload/disk load (the same two engine sites as `iaToTable`).

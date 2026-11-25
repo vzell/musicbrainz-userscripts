@@ -1,0 +1,184 @@
+[
+  {
+    "name": "the render never switches the live site to the table view",
+    "why": "vzell: \"I want only the table view\" — after a render the site's page hides.",
+    "edits": [
+      {
+        "find": "            document.body.classList.add(_ORIG_TABLES_CLASS);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "Discogs' React app stays under our tables",
+    "why": "#app is the content of a master/release/artist/label page.",
+    "edits": [
+      {
+        "find": "            `body.mb-sa-host-dg${T} > :is(#app, main, #main_wrapper, #esi-footer-root),`,\n",
+        "replace": "            `body.mb-sa-host-dg${T} > :is(main, #main_wrapper, #esi-footer-root),`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "Discogs' search page stays under our tables",
+    "why": "A search page has no #app; its content is <main>.",
+    "edits": [
+      {
+        "find": "            `body.mb-sa-host-dg${T} > :is(#app, main, #main_wrapper, #esi-footer-root),`,\n",
+        "replace": "            `body.mb-sa-host-dg${T} > :is(#app, #main_wrapper, #esi-footer-root),`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a search page",
+    "expect": "fail"
+  },
+  {
+    "name": "Discogs' older pages stay under our tables",
+    "why": "Submissions and user pages: header and page share #main_wrapper.",
+    "edits": [
+      {
+        "find": "            `body.mb-sa-host-dg${T} > :is(#app, main, #main_wrapper, #esi-footer-root),`,\n",
+        "replace": "            `body.mb-sa-host-dg${T} > :is(#app, main, #esi-footer-root),`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "an older page",
+    "expect": "fail"
+  },
+  {
+    "name": "Discogs' footer stays under our tables",
+    "why": "vzell 2026-11-25: the footer hides in the table view.",
+    "edits": [
+      {
+        "find": "            `body.mb-sa-host-dg${T} > :is(#app, main, #main_wrapper, #esi-footer-root),`,\n",
+        "replace": "            `body.mb-sa-host-dg${T} > :is(#app, main, #main_wrapper),`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "every Discogs header hides, the one above our section too",
+    "why": "vzell 2026-11-25: the header stays where it sits above our section; only one after it hides.",
+    "edits": [
+      {
+        "find": "            `body.mb-sa-host-dg${T} > #mb-dg-root ~ [id^=\"__header_root_\"],`,\n",
+        "replace": "            `body.mb-sa-host-dg${T} > [id^=\"__header_root_\"],`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "Discogs' header after our section stays",
+    "why": "On a search page our section is first; the header after it would sit under our tables.",
+    "edits": [
+      {
+        "find": "            `body.mb-sa-host-dg${T} > #mb-dg-root ~ [id^=\"__header_root_\"],`,\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a search page",
+    "expect": "fail"
+  },
+  {
+    "name": "archive.org's app shell stays under our tables",
+    "why": "A search page's <app-root> is header and results in one shadow DOM.",
+    "edits": [
+      {
+        "find": "            `body.mb-sa-host-ia${T} > :is(app-root, #topnav, main#maincontent),`,\n",
+        "replace": "            `body.mb-sa-host-ia${T} > :is(#topnav, main#maincontent),`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a search page: the whole app shell",
+    "expect": "fail"
+  },
+  {
+    "name": "archive.org's item top bar stays under our tables",
+    "why": "An item page: #topnav after our section hides with the content.",
+    "edits": [
+      {
+        "find": "            `body.mb-sa-host-ia${T} > :is(app-root, #topnav, main#maincontent),`,\n",
+        "replace": "            `body.mb-sa-host-ia${T} > :is(app-root, main#maincontent),`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "an item page",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist.fm's page stays under our tables",
+    "why": "Its div.body holds header and content.",
+    "edits": [
+      {
+        "find": "            `body.mb-sa-host-sfm${T} > div.body { display: none !important; }`,\n",
+        "replace": "            `body.mb-sa-host-sfm${T} > div.no-such-body { display: none !important; }`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a venue page",
+    "expect": "fail"
+  },
+  {
+    "name": "our section stays over the site's page",
+    "why": "The switch shows the site's page INSTEAD of our section.",
+    "edits": [
+      {
+        "find": "            `body.${_ORIG_SITE_CLASS} > :is(#mb-dg-root, #mb-ia-root, #mb-sfm-root) { display: none !important; }`,\n",
+        "replace": "            `body.${_ORIG_SITE_CLASS} > :is(#mb-no-such-root) { display: none !important; }`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "the site's page comes without its note",
+    "why": "Approved mockup, the Discogs scene: the \"Live\" note above the site's page.",
+    "edits": [
+      {
+        "find": "            if (want) _origViewLiveNote();\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "the note says \"Discogs’s\"",
+    "why": "The approved wording is \"Discogs’ own page\".",
+    "edits": [
+      {
+        "find": "        const owner = site.name.endsWith('s') ?",
+        "replace": "        const owner = false ?"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist.fm has no switch",
+    "why": "Each live site is named in _origViewLiveSite().",
+    "edits": [
+      {
+        "find": "        if (_isSfmHost) return { name: 'setlist.fm', root: 'mb-sfm-root' };\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a venue page",
+    "expect": "fail"
+  }
+]

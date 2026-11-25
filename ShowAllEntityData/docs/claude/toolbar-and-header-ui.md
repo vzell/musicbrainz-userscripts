@@ -961,8 +961,10 @@ Scout's ISRC and Links columns").
 
 vzell, 2026-11-24 (org/majkinetor.org, "Switch between SAED's view and the
 original page (EH's V)"); approved mockup, all eight recommendations taken:
-https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf. MusicBrainz only so far
-(WIP.1); the non-MusicBrainz sites are the next phases of the item.
+https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf. MusicBrainz (WIP.1, a
+copy, below) and the sites whose own page stays live (WIP.2, "Live sites",
+further down); the Springsteen sites, which remove their list, are the next
+phase. `_origViewMode()` says which: `'copy'`, `'live'` or none.
 
 Event Horizon switches by swapping two bodies. This script cannot: it edits
 MusicBrainz's page in place and keeps no copy. So the original page is a
@@ -1022,6 +1024,33 @@ Cost: one `cloneNode` of the native page per press, at most 3.2 ms on the
 largest saved release page (5,327 elements; tests/MEASUREMENTS.org,
 2026-11-25, `scripts/measure-orig-copy.js`). Nothing on the filter, sort or
 render path.
+
+**Live sites** (WIP.2, 2026-11-25: discogs.com, archive.org, setlist.fm;
+`_origViewLiveSite()`). Their own page was never touched, only shown below
+our section (org/TODO.org: "the doubling of the IP information"), so no
+copy: the render tail's `addOrigViewButton()` sets `_origView.live` and
+puts `mb-orig-tables` on `<body>`, and the switch swaps it for
+`mb-orig-site`. What hides is CSS in `_origViewStyle()`, by host class:
+
+| Host  | Hidden in the table view                                                                                                              |
+|-------|---------------------------------------------------------------------------------------------------------------------------------------|
+| `dg`  | `#app`, `<main>` (search), `#main_wrapper` (older pages), `#esi-footer-root`, and a `[id^="__header_root_"]` only AFTER `#mb-dg-root` |
+| `ia`  | `<app-root>` (search: header and results in one shadow DOM), `#topnav`, `main#maincontent`                                            |
+| `sfm` | `div.body` (header and content)                                                                                                       |
+
+The site's header stays only where it sits ABOVE our section (Discogs'
+React pages: `#__header_root_<n>`, then `#mb-dg-root`, then `#app`);
+elsewhere our section is first in `<body>` (sticky headers, the sites'
+docs) and a header there would sit under our tables, so it hides with the
+page, as the footer does (vzell's two answers, 2026-11-25; the mockup had
+shown the Discogs case only). The site's page comes back live, with
+everything of ours that works on it (link previews, the ▲ toggles on
+Discogs' section headings), and the "Live" note (`#mb-orig-live-note`,
+`_origViewLiveNote()`, right after our section). Before a press nothing
+changes. A spec that works on the site's page after a press switches first
+(`showDiscogsPage()` in `discogs-pages.spec.js`). Spec:
+`tests/fixtures/original-page-toggle-live.spec.js` (6); mutations:
+`scripts/mutations/original-page-toggle-live.json` (14).
 
 Two traps for a spec: open the ☰ menu and Playwright scrolls the sticky
 toolbar into view first, so the scroll position the switch saves is not the

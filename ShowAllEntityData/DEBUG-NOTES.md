@@ -31385,3 +31385,36 @@ over String Theory's open dock shelf" (a shelf at his z-index over the corner;
 `elementFromPoint` at the button's centre must be the button), failed before
 ("mbu-dock-shelf"), passes after; mutation entry in
 `scripts/mutations/original-page-toggle.json`, caught.
+
+## 2026-11-25 — The original page on the live sites: what hides on discogs.com, archive.org, setlist.fm (feat/original-page-toggle, WIP.2)
+
+Env: 2026-11-25T00:58+01:00 → 01:11 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
+
+Phase 3 of the switch. The body children of the saved pages
+(tests/fixtures, read with a script, n/a browser):
+
+- Discogs, React (`dg-master.html`): `#__header_root_<n>`, then our
+  `#mb-dg-root` (`app.before()`), `#app`, `#esi-footer-root`.
+- Discogs search (`dg-search.html`): our section first, then the header
+  root, `<main>`, the footer. Older pages (`dg-submissions-flat.html`,
+  `dg-user-vzell.html`): our section, then `#main_wrapper` holding the
+  header root, a `<section>` and Discogs' own `#page` (an id that is ALSO
+  MusicBrainz's; the copy mode's `#page` rule is under `body.mb-orig-view`,
+  which only MusicBrainz sets), then the footer.
+- archive.org: search `<app-root>` only; item `#topnav` + `main#maincontent`.
+- setlist.fm (`sfm-page-venue-53d30b75.html`): `div.body` > `div.header` +
+  `div.container`.
+
+So only Discogs' React pages have the header above our section; vzell
+chose (2026-11-25) to keep it there only and hide header and footer
+elsewhere. The rules are CSS by host class (`_origViewStyle()`), the header
+"only after our section" a general sibling selector
+(`#mb-dg-root ~ [id^="__header_root_"]`), so no page walk and nothing to
+redo when React redraws. Two existing tests in `discogs-pages.spec.js`
+worked on `#app` after a press (previews in Discogs' content, the ▲ toggles
+on Discogs' section headings) and failed once `#app` hid; both features
+still work on Discogs' page, so the tests now switch first
+(`showDiscogsPage()`). The three sites' 33 spec files with the MusicBrainz
+switch spec: 308 passed, 2 failed (those two); after the change both files of
+`discogs-pages` passed, 18/18.
+Mutations: 14, all caught.

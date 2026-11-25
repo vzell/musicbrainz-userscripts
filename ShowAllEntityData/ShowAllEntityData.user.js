@@ -113879,14 +113879,58 @@ ${sections.join('\n')}
      *   - `label`, `at`: the pressed action and the time, for the note;
      *   - `showing`: the copy shows and the live `#page` is hidden (never
      *     removed: every listener, cache and rewired clone stays as it was);
-     *   - `scroll`: `window.scrollY` of each view, restored on a switch.
+     *   - `scroll`: `window.scrollY` of each view, restored on a switch;
+     *   - `live`: on a site whose own page stays live (`_origViewMode()`
+     *     `'live'`), a render happened, so the switch is there (no copy).
      * Not remembered (vzell): every render opens on the tables. Declared
      * before the init code that first uses it (no TDZ).
      */
-    const _origView = { copy: null, label: '', at: '', showing: false, scroll: { table: 0, orig: 0 } };
+    const _origView = { copy: null, label: '', at: '', showing: false, scroll: { table: 0, orig: 0 }, live: false };
 
     /** `_saBody()` class while the original page shows: the CSS hides the live `#page`. */
     const _ORIG_VIEW_CLASS = 'mb-orig-view';
+
+    /**
+     * `<body>` classes on a site whose own page stays LIVE below our section
+     * (`_origViewLiveSite()`): `_ORIG_TABLES_CLASS` while our tables show (the
+     * CSS hides the site's page), `_ORIG_SITE_CLASS` while the site's page
+     * shows (the CSS hides our section). Neither before a render.
+     */
+    const _ORIG_TABLES_CLASS = 'mb-orig-tables';
+    const _ORIG_SITE_CLASS = 'mb-orig-site';
+
+    /**
+     * The site of this page when its own page stays live below our section
+     * after a render, so the switch needs no copy (phase 3 of the item, vzell
+     * 2026-11-25): discogs.com, archive.org, setlist.fm. `name` is how the
+     * note names it, `root` our section's id. What the table view hides is
+     * the CSS of `_origViewStyle()`: the site's header stays only where it
+     * sits ABOVE our section (Discogs' React pages, `#mb-dg-root` after
+     * `#__header_root_<n>`); elsewhere our section is first in `<body>`
+     * (sticky headers, docs/claude/*.md) and the header would sit under our
+     * tables, so it hides with the page, as the footer does (vzell's two
+     * answers, 2026-11-25).
+     *
+     * @returns {?{name: string, root: string}}
+     */
+    function _origViewLiveSite() {
+        if (_isDgHost) return { name: 'Discogs', root: 'mb-dg-root' };
+        if (_isIaHost) return { name: 'archive.org', root: 'mb-ia-root' };
+        if (_isSfmHost) return { name: 'setlist.fm', root: 'mb-sfm-root' };
+        return null;
+    }
+
+    /**
+     * How the original page comes back on this host: `'copy'` on MusicBrainz
+     * (`_origViewCapture()`), `'live'` on a site of `_origViewLiveSite()`,
+     * null where there is no switch (yet).
+     *
+     * @returns {?string}
+     */
+    function _origViewMode() {
+        if (!_foreignHost) return 'copy';
+        return _origViewLiveSite() ? 'live' : null;
+    }
 
     /**
      * This script's own controls inside `#page` before a press (the h1
@@ -113960,8 +114004,22 @@ ${sections.join('\n')}
         if (document.getElementById('mb-orig-view-css')) return;
         const s = document.createElement('style');
         s.id = 'mb-orig-view-css';
+        // The live sites' own page, by host (`_origViewLiveSite()`): Discogs'
+        // React app, search page, older pages and footer, and a header root
+        // only when it comes AFTER our section; archive.org's app shell or an
+        // item's top bar and content; setlist.fm's whole page.
+        const T = `.${_ORIG_TABLES_CLASS}`;
         s.textContent = [
             `body.${_ORIG_VIEW_CLASS} #page:not([data-mb-orig-copy]) { display: none !important; }`,
+            `body.mb-sa-host-dg${T} > :is(#app, main, #main_wrapper, #esi-footer-root),`,
+            `body.mb-sa-host-dg${T} > #mb-dg-root ~ [id^="__header_root_"],`,
+            `body.mb-sa-host-ia${T} > :is(app-root, #topnav, main#maincontent),`,
+            `body.mb-sa-host-sfm${T} > div.body { display: none !important; }`,
+            `body.${_ORIG_SITE_CLASS} > :is(#mb-dg-root, #mb-ia-root, #mb-sfm-root) { display: none !important; }`,
+            `body:not(.${_ORIG_SITE_CLASS}) > #mb-orig-live-note { display: none !important; }`,
+            '#mb-orig-live-note { margin: 10px 12px; }',
+            '.mb-orig-note.mb-orig-note-live { border-left-color: #3f7a3a; }',
+            '.mb-orig-note-live .mb-orig-pill { color: #3f7a3a; }',
             '.mb-orig-note { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin: 0 0 10px;',
             '    padding: 6px 10px; background: #fbf8f1; color: #2b2622; border: 1px solid #d9cfbd;',
             '    border-left: 3px solid #9a6a00; border-radius: 3px; font: 13px/1.45 Georgia, "Times New Roman", serif; }',
@@ -113992,20 +114050,30 @@ ${sections.join('\n')}
      * `#sidebar` still find the live nodes first; going back removes the
      * copy. Each view's scroll is kept; open menus close, windows and cards
      * stay (approved question 6). The #938 marks follow (`_mbuTableVisible()`)
-     * and so does the corner button. Esc never comes here.
+     * and so does the corner button. Esc never comes here. On a live site
+     * (`_origViewMode()` `'live'`) there is no copy: the two `<body>` classes
+     * swap which shows, the site's page or our section, and the "Live" note
+     * comes with the site's page (`_origViewLiveNote()`).
      *
      * @param {boolean} want - True for the original page.
      * @returns {void}
      */
     function _origViewShow(want) {
-        if (_foreignHost || !_origView.copy || !isLoaded || want === _origView.showing) return;
-        const live = document.getElementById('page');
-        if (!live) return;
+        const mode = _origViewMode();
+        if (!mode || !isLoaded || want === _origView.showing) return;
+        if (mode === 'copy' ? !_origView.copy : !_origView.live) return;
+        const live = mode === 'copy' ? document.getElementById('page') : null;
+        if (mode === 'copy' && !live) return;
         _origViewStyle();
         _origView.scroll[_origView.showing ? 'orig' : 'table'] = window.scrollY;
         _closeToolbarMenus();
         const body = _saBody();
-        if (want) {
+        if (mode === 'live') {
+            // The site's own page is still there: only which of the two shows.
+            body.classList.toggle(_ORIG_TABLES_CLASS, !want);
+            body.classList.toggle(_ORIG_SITE_CLASS, want);
+            if (want) _origViewLiveNote();
+        } else if (want) {
             live.after(_origView.copy);
             body.classList.add(_ORIG_VIEW_CLASS);
         } else {
@@ -114029,6 +114097,32 @@ ${sections.join('\n')}
      */
     function _origViewToggle() {
         _origViewShow(!_origView.showing);
+    }
+
+    /**
+     * The note above a live site's own page while it shows (approved mockup,
+     * the Discogs scene: "Live", the site's page as it drew it, everything
+     * works). Added once, right after our section, so on Discogs' React
+     * pages it sits under the site's header and elsewhere first; the CSS
+     * shows it only under `_ORIG_SITE_CLASS`.
+     *
+     * @returns {void}
+     */
+    function _origViewLiveNote() {
+        const site = _origViewLiveSite();
+        const root = site && document.getElementById(site.root);
+        if (!root || document.getElementById('mb-orig-live-note')) return;
+        const p = document.createElement('p');
+        p.id = 'mb-orig-live-note';
+        p.className = 'mb-orig-note mb-orig-note-live';
+        const pill = document.createElement('span');
+        pill.className = 'mb-orig-pill';
+        pill.textContent = 'Live';
+        const text = document.createElement('span');
+        const owner = site.name.endsWith('s') ? `${site.name}’` : `${site.name}’s`;   // "Discogs’", "setlist.fm’s"
+        text.textContent = `${owner} own page, as the site drew it. Everything on it works.`;
+        p.append(pill, text);
+        root.after(p);
     }
 
     /**
@@ -114088,13 +114182,25 @@ ${sections.join('\n')}
      * @returns {void}
      */
     function addOrigViewButton() {
-        if (_foreignHost || !_origView.copy) return;
-        if (!document.getElementById('mb-show-all-controls-container') || document.getElementById('mb-orig-view-btn')) return;
+        const mode = _origViewMode();
+        if (!mode || (mode === 'copy' && !_origView.copy)) return;
+        if (!document.getElementById('mb-show-all-controls-container')) return;
+        if (mode === 'live' && !_origView.live) {
+            // From now on the tables show and the site's own page hides
+            // (vzell: "I want only the table view").
+            _origView.live = true;
+            _origViewStyle();
+            document.body.classList.add(_ORIG_TABLES_CLASS);
+        }
+        if (document.getElementById('mb-orig-view-btn')) return;
         const btn = document.createElement('button');
         btn.id = 'mb-orig-view-btn';
         btn.type = 'button';
         btn.innerHTML = '<span>📄 Show the original page</span>';
-        _setTip(btn, 'The page as it was before you pressed the button, instead of the tables; the tables stay as you left them');
+        const siteName = mode === 'live' ? _origViewLiveSite().name : '';
+        _setTip(btn, mode === 'live'
+            ? `${siteName}${siteName.endsWith('s') ? '’' : '’s'} own page instead of the tables, live; the tables stay as you left them`
+            : 'The page as it was before you pressed the button, instead of the tables; the tables stay as you left them');
         btn.style.cssText = uiActionBtnBaseCSS();
         btn.onclick = () => _origViewShow(true);
         _ensureViewMenu().adopt(btn, `${getPrefixDisplay()} P`);

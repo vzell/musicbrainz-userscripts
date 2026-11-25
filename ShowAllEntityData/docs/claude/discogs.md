@@ -130,6 +130,13 @@ the shared `_ensureForeignTableStyle()` (its `:is()` lists name the host).
 At the press (and on Load from Disk) `applyDgToTable()` adds the `<h2>` and
 an empty `table.tbl` with the columns; the rows come from the fetched pages.
 
+**After the render Discogs' page hides** (2026-11-25, WIP.2): `#app`,
+`<main>`, `#main_wrapper` and the footer, and the header root only where
+it comes after our section; Ctrl+M P / ☰ View "Show the original page"
+shows Discogs' page again, live. docs/claude/toolbar-and-header-ui.md,
+"Switching to the original page" ("Live sites"). A spec that works on
+`#app` after a press switches first.
+
 A toolbar button may now open a group of its own (`groupLabel`: "| Newest:"),
 the same look as a pageType's `buttonGroupLabel`; its hover text says what it
 costs (`_dgCost()`, `_dgCostPer()`).
