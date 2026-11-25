@@ -4,8 +4,8 @@
     "why": "vzell: \"I want only the table view\" — after a render the site's page hides.",
     "edits": [
       {
-        "find": "            document.body.classList.add(_ORIG_TABLES_CLASS);\n",
-        "replace": ""
+        "find": "            _origView.live = true;\n            _origViewStyle();\n            document.body.classList.add(_ORIG_TABLES_CLASS);\n",
+        "replace": "            _origView.live = true;\n            _origViewStyle();\n"
       }
     ],
     "spec": "tests/fixtures/original-page-toggle-live.spec.js",
@@ -160,8 +160,8 @@
     "why": "vzell 2026-11-25 (debug/ia-IP-release-ctrlmp-3-bug.html): makeH2sCollapsible() folded archive.org's h2.sr-only and the player after it.",
     "edits": [
       {
-        "find": "            .filter(h2 => _isDgHost || !h2.closest('[data-mb-site]'));\n",
-        "replace": "            .filter(h2 => h2);\n"
+        "find": "            .filter(h2 => _isDgHost || !h2.closest('[data-mb-site]'))\n",
+        "replace": "            .filter(h2 => h2)\n"
       }
     ],
     "spec": "tests/fixtures/original-page-toggle-live.spec.js",

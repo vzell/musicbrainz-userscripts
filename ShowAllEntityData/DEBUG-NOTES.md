@@ -31537,3 +31537,50 @@ before `#theatre-ia`) into the live-shape fixture: the player is hidden
 after the switch without the fix (mutation run), visible with it. 319/319.
 Lesson recorded where it bites: a "site script reacts" theory needs the
 writer's stack before a fix, and the probe is now there for the next one.
+
+## 2026-11-25 — The Springsteen sites: who is the site's by identity, the original page in a frame, a live Brucebase detail page (feat/original-page-toggle, WIP.4)
+
+Env: 2026-11-25T11:30+01:00 → 12:20 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
+
+Phase 4 of the switch. These sites remove their list when the table is
+built and put our section inside their own containers, differently per
+page; springsteenlyrics.com even closes `.project-detail` early. Three
+rounds of the live sites had taught that a list of the site's element names
+breaks on the first live page that differs, and that markup cannot tell
+ours from theirs (our id-less menus; their containers carrying our
+classes). So:
+
+- `_origSitePre`, a WeakSet of every `<body>` element taken at the script's
+  start on these four hosts: the site's by identity. The fold code's text
+  wrappers (`data-mb-text-wrap`) count as the site's: brucespringsteen.it's
+  "Last computed" line, a bare text node, came back wrapped and so "new".
+- What the table view still showed was measured on the saved pages first
+  (`scripts/probe-springsteen-table-view.js`; logs
+  `debug/probe-springsteen-table-view{,-after}.log`), then hidden by
+  `_origViewTagRest()` but for the kept headers.
+- The original view: the page's HTML from before the press in a sandboxed
+  frame (no scripts; `<base target="_top">`), so the site's own CSS draws
+  it; Ctrl+M P and the leave-page guard are wired into the frame's document
+  (neither a key nor a click there reaches the page).
+- Brucebase detail pages: the live wiki page in place (vzell's answer):
+  our blocks hide, the wiki's get back their press-time inline display, the
+  title shows, its own h2s are not folded.
+
+The Springsteen sites' 85 spec files: 979 passed, 11 failed. Seven were
+the decisions showing (bb-event's folded wiki page, bb-songs' breadcrumbs,
+sl-sticky-headers' walls and `.project-detail` without the compact bar,
+bs-records' filter link): updated. Two were layout-dependent and only
+showed because the table moved up: `bb-findings-batch1` read a cell's
+`title` while the pointer, left by an earlier click, now rested on that
+cell, where the card engine holds the title aside
+(`data-mb-dp-saved-title`): the pointer leaves first. And
+`dp-window-size.mobile`: a CDP touch on the info window's resize grip went
+to `.mb-dp-area` (logged: `doc-pointerdown:mb-dp-area`, then
+`pointercancel`) though `elementsFromPoint` named the grip on top;
+bisected to the leftover hiding (what lay under the window changed from a
+filter input to a table cell), so Chromium's touch adjustment, which moves a
+touch to a nearby element that answers taps, and the grip had pointer
+listeners only. It got a click listener: 3/3 then. That is a real-finger
+improvement as well. After the updates: 86/86 in those files, 164/164 in
+every spec of the leave-page guard, mutations 17/17 (+ the moved Event
+Horizon guard entry).

@@ -963,8 +963,9 @@ vzell, 2026-11-24 (org/majkinetor.org, "Switch between SAED's view and the
 original page (EH's V)"); approved mockup, all eight recommendations taken:
 https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf. MusicBrainz (WIP.1, a
 copy, below) and the sites whose own page stays live (WIP.2, "Live sites",
-further down); the Springsteen sites, which remove their list, are the next
-phase. `_origViewMode()` says which: `'copy'`, `'live'` or none.
+further down) and the Springsteen sites, which remove their list (WIP.4,
+"Springsteen sites", at the end). `_origViewMode()` says which: `'copy'`,
+`'live'`, `'frame'` or none.
 
 Event Horizon switches by swapping two bodies. This script cannot: it edits
 MusicBrainz's page in place and keeps no copy. So the original page is a
@@ -1070,6 +1071,62 @@ changes. A spec that works on the site's page after a press switches first
 `scripts/mutations/original-page-toggle-live.json` (11; the guard against
 marking our own hosts is `"expect": "pass"`: no fixture has one in `<body>`
 at init).
+
+**Springsteen sites** (WIP.4, 2026-11-25: springsteenlyrics.com,
+jungleland.it, brucespringsteen.it, brucebase.wikidot.com; `'frame'`). They
+remove their own list when the table is built and put our section inside
+their own containers, differently per page (springsteenlyrics.com's markup
+even closes `.project-detail` early), so neither the MusicBrainz copy of one
+region nor the live sites' "what follows our section" fits.
+
+- **Who is the site's**: `_origSitePre`, a WeakSet of every element in
+  `<body>` taken at the very start of the script (beside the host flags),
+  before anything of ours exists; only on these four hosts. By identity,
+  never by markup: these sites carry classes of ours (`mb-sl-wide`,
+  `mb-bb-cw`, `mb-sph-target`) and several of our blocks have no id. The
+  fold code's text wrappers (`data-mb-text-wrap`) count as the site's.
+- **Table view**: `_origViewTagRest()` (render tail) marks every visible
+  block of the site's that holds nothing of ours, but the kept headers
+  (`_ORIG_REST_KEEP`: springsteenlyrics.com's strip, navbar and breadcrumb;
+  Brucebase's header and side bar; vzell's answer to question 4),
+  `data-mb-site-rest`, hidden under `mb-orig-tables`. Measured first on the
+  saved pages (`scripts/probe-springsteen-table-view.js`, before/after logs
+  in `debug/`). A Brucebase detail page's folded "Brucebase page"
+  (`h2.mb-bb-native-h2`) hides there too.
+- **Original view**: the page's HTML taken at the press
+  (`_origViewPageHtml()`: no scripts, none of ours, every `mb-` class
+  stripped, `<base href target="_top">`), in a sandboxed full-window frame
+  (`#mb-orig-frame`, `_origViewFrame()`: `allow-same-origin`, popups,
+  top navigation by user activation; no scripts). The site's own stylesheet
+  draws it exactly; its buttons are inert (the note says so); its links open
+  in the tab. The page underneath keeps its scroll; the frame keeps its own.
+  A key inside the frame never reaches the page, so its document gets its
+  own prefix + P listener (`_origViewFrameKeys()`), and a click on one of its
+  links its own leave-page guard: `initNavigationGuard()`'s decision for one
+  click is `guardAnchorClick()`, shared as `_origView.navGuard` (a link into
+  one of the site's named frames is not asked about). The site's filter
+  links (brucespringsteen.it) are only there now, since the table view hides
+  the form.
+- **Brucebase detail pages** (an event, song, venue, person, release,
+  story, tag page: `h2.mb-bb-native-h2` after the render): the LIVE wiki page
+  in place instead (vzell, 2026-11-25, "Live wiki page"; the mockup's
+  question 5), `_origViewBbLive()`: our blocks in `#main-content` (not in
+  `_origSitePre`) hide (`data-mb-orig-ours` under `mb-orig-bblive`), the
+  wiki's get back the inline display they had at the press
+  (`_origView.bbDisp`: our fold had set `none`), the title we hid
+  (`mb-bb-hidden`) shows, the "Live" note goes before it; back restores the
+  fold's values. The wiki's own h2s in `#page-content` get no fold toggle
+  (`makeH2sCollapsible()`), or the live view would show them folded.
+
+Spec: `tests/fixtures/original-page-toggle-frame.spec.js`; mutations:
+`scripts/mutations/original-page-toggle-frame.json` (17). Specs that worked
+on the site's page under our tables now switch first or ignore what the
+table view hides (`bb-event`, `bb-songs`, `sl-sticky-headers`,
+`bs-records`), and two layout-dependent tests were made robust where the
+table moved up: the pointer leaves the table before a tooltip is read
+(`bb-findings-batch1`), and the info windows' resize grip is a tap target of
+its own (`dp-window-size.mobile`: Chromium's touch adjustment had moved a
+touch on it to the scroll area under it).
 
 Two traps for a spec: open the ☰ menu and Playwright scrolls the sticky
 toolbar into view first, so the scroll position the switch saves is not the

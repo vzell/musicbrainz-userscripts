@@ -106,6 +106,11 @@ site's `setup()`/`clean()`, which also reset the selects. It runs:
 
 ## The converter — `applyBsRecordsToTable(def, docContext)`
 
+(The original-page switch, 2026-11-25, WIP.4: after a render the filter form
+and the reload lines hide; the original view is the list's HTML from before
+the press in a frame. docs/claude/toolbar-and-header-ui.md, "Switching to the
+original page", "Springsteen sites".)
+
 It has the same three call sites as the other converters, with the roles
 reversed:
 

@@ -69,6 +69,11 @@ the compact bar; it was deliberately excluded before, having no cards).
 
 ## The toolbar anchor — `_slPrepareLivePage()`
 
+(The original-page switch, 2026-11-25, WIP.4: after a render the site's
+leftovers hide but the strip, navbar and breadcrumb; the original view is the
+page's HTML from before the press in a frame. docs/claude/toolbar-and-header-ui.md,
+"Switching to the original page", "Springsteen sites".)
+
 Called from the init block right after the header lookup, for SL definitions
 only (beside the scoped `user-edits` fallback). It injects
 `<h1 class="mb-sl-h1"><bdi>Collection — OFFICIAL ALBUMS</bdi></h1>` as the

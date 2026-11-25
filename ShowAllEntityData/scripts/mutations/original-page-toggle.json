@@ -82,7 +82,7 @@
     "why": "Each view keeps its own scroll position.",
     "edits": [
       {
-        "find": "        window.scrollTo(0, _origView.scroll[want ? 'orig' : 'table']);\n",
+        "find": "        if (mode !== 'frame' || _origView.bbLive) window.scrollTo(0, _origView.scroll[want ? 'orig' : 'table']);\n",
         "replace": ""
       }
     ],

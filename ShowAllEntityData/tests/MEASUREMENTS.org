@@ -5071,3 +5071,25 @@ page and the removal of our controls from it, timed 15 times per saved page by =
 
 At most 3.2 ms once per press, on the largest saved release page: no gate to raise (CLAUDE.md "Performance is a
 priority"). The copy is the native page only, never the fetched rows, so a 5,000-row render costs the same.
+
+* 2026-11-25 — the Springsteen sites' leftover walk (=_origViewTagRest()=) on =petri=, feat/original-page-toggle (WIP.4)
+
+Env: 2026-11-25T12:16:05+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium 151.0.7922.34 (headless), no Tampermonkey (GM stubs), debug logging on.
+
+What a press now costs extra on springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase: one
+walk over every element of the page after the render, marking the site's leftovers for the table view (its own
+debug line, read by =scripts/probe-springsteen-table-view.js=; log
+=debug/probe-springsteen-table-view-timing.log=). Once per press (and per load from disk), never on a filter or
+a sort. Plus a WeakSet of the page's elements at the script's start (no DOM writes) and the page's HTML at the
+press (=_origViewPageHtml()=, a clone of =<html>=).
+
+| Page (saved, =tests/fixtures/=)  | pageType        | tableMode | Elements walked | Blocks marked | Walk    |
+|----------------------------------+-----------------+-----------+-----------------+---------------+---------|
+| brucespringsteen.it records      | =bs-records=    | single    |           21551 |             5 | 35.0 ms |
+| Brucebase stats:songs            | =bb-songs=      | single    |            9160 |            31 | 20.0 ms |
+| jungleland.it list               | =jl-list=       | single    |           13331 |             1 | 16.1 ms |
+| Brucebase gig 1978-07-07         | =bb-event=      | multi     |            3017 |            13 |  6.2 ms |
+| springsteenlyrics.com collection | =sl-collection= | single    |            2942 |            17 |  3.4 ms |
+
+At most 35 ms once per press on the largest page measured; flagged to vzell with the result (CLAUDE.md
+"Performance is a priority"). Should it matter, the walk can skip our own tables' rows (most of the elements).

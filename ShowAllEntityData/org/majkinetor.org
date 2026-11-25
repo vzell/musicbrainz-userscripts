@@ -856,7 +856,15 @@ CLOSED: [2026-11-20 Fri]
   (2026-11-25): Discogs' React pages and archive.org's search OK; Discogs' search and an archive.org item hid
   nothing (the live =<body>= is built differently from the fixtures) → the site's page is now what follows our
   section, marked at init (=_origViewTagSite()=); and setlist.fm's toolbar turned black once stuck (older, fixed
-  as WIP.3). 313/313. *Waiting*: vzell's second check. *Next*: phase 4 (sl, jl, bs, bb: a copy, as MB).
+  as WIP.3). 313/313. vzell's later checks: setlist.fm's bar (a stacking context) and archive.org's player
+  (folded by our makeH2sCollapsible()) fixed; all OK.
+- *Phase 4, Springsteen sites: built* (2026-11-25, WIP.4): the table view hides the site's leftovers (by identity:
+  =_origSitePre=, taken at the script's start), springsteenlyrics.com keeps its navbar and breadcrumb, Brucebase its
+  header and side bar; the original view is the page's HTML from before the press in a sandboxed frame
+  (=_origViewPageHtml()=, =_origViewFrame()=), on a Brucebase detail page the LIVE wiki page (vzell: "Live wiki
+  page"; =_origViewBbLive()=). Spec =original-page-toggle-frame.spec.js= (8), mutations 17/17; the Springsteen
+  sites' 85 spec files and the guard's specs pass after the updates. *Waiting*: vzell's browser check; then
+  =test:full= and the merge question.
 
 ** PART Entity pictures: more providers, area map with flag badge (moved from org/TODO.org)
 

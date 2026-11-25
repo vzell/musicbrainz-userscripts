@@ -309,7 +309,13 @@ test.describe('Brucebase year table: the name and anchor findings (bbp-parity ba
         await expect.poll(async () => (await findingRow(page, 'warn', 'bb-title-spaces')).count).toBe(3);
         await clickFinding(page, 'bb-title-spaces');
         await expect.poll(() => findingRowState(page, 'bb-title-spaces')).toEqual({ visible: 3, withFinding: 3 });
-        // The tooltips mark the blanks, and name where they are.
+        // The tooltips mark the blanks, and name where they are. The pointer
+        // first leaves the table: on a cell it rests on, the card engine holds
+        // the title aside (data-mb-dp-saved-title), and where it rests depends
+        // on the layout above the table (2026-11-25: the year page's leftovers
+        // hide after the render and the table moved up under it).
+        await page.mouse.move(1, 1);
+        await expect.poll(() => page.evaluate(() => document.querySelectorAll('td[data-mb-dp-saved-title]:not([title])').length)).toBe(0);
         const tipOf = part => page.evaluate(sel => document.querySelector(sel).closest('td').getAttribute('title') || '', `td a[href*="${part}"]`);
         expect(await tipOf('captain-s-garter')).toContain('Event page "1972-01-21 Captain\'s Garter (The),␣␣Neptune, NJ"');
         expect(await tipOf('1972-12-29-hara-arena')).toContain('Year page "1972-12-29 - DAYTON HARA ARENA,␣␣DAYTON, OH"');
