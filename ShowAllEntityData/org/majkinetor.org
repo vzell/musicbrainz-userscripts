@@ -14,7 +14,21 @@ Claude drafts, vzell sends.*
 Keywords: TODO (open), NEXT (the next one to start), WAIT (someone else's call, here mostly majkinetor's), DONE,
 PART (partly done, the rest left out by decision), NOT (not done, with the reason).
 
-* PICKUP HERE (2026-11-24)
+* PICKUP HERE (2026-11-25)
+
+- *Now (2026-11-25, later):* vzell posted the answer on #938 (10:34 CET,
+  [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7158522166][comment]]: trace format
+  a contract?, SAED's icon, the HUD under =data-mbu-quiet=), no answer yet. Adoption 1 is *built* on
+  =feat/saed-gate-trace= (WIP.1, off the refresh branch): SAED's requests in the Network log. Waiting on vzell's
+  browser check ([[#saed-network-log][the item]]), then the merge question.
+- *Now (2026-11-25):* refreshed to =9f8aa0c= on NB-3641 (=chore/refresh-majkinetor-9f8aa0c=). majkinetor asked vzell
+  personally "How do u like network log? Does it show your script requests?" *No*, measured: SAED books in the gate
+  but writes no trace, which String Theory's Network log reads. vzell's own check is the Pre-test of [[#saed-network-log][SAED in String
+  Theory's Network log]]; the answer and two questions (is the trace format a contract, how SAED gets its icon) are
+  drafted in [[#post-network-log][On the record]], for vzell to send after that check. Recommended order of the
+  adoptions: 1. the trace (NEXT, small–medium), 2. =search-shed= + the hold jitter (candidate 2 of "The shared gate
+  at eight a second"), 3. the browser check on SAED's page fetches (measure first). *Waiting on majkinetor*: the two
+  posts of 2026-11-23 (player, pace), unanswered.
 
 - *Now (2026-11-24, later):* item 1 of the "what next" list *shipped* in 9.99.1692: the EH launcher
   icon and the idle-mode HELP paragraph ("String Theory's idle mode" DONE); the scrollbar gutter was dropped
@@ -57,8 +71,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   alias editor now sets =mbLastWrite= (he says his earlier comment was wrong). *Waiting on majkinetor*: nothing.
 - *Last merge:* 9.99.1676 (=feat/eh-version-mark=). Nothing since 9.99.1625 is published to
   =vzell/mb-userscripts= (vzell's call).
-- *Last refresh* of the analysis: 2026-11-23 at his =5d4d464= (refresh-majkinetor skill; before: 2026-11-20 at
-  =a1e8f54=). Apollo still sets no =mbLastWrite= in code: its writes move the gate's own =mbu:mb-gate-edit= (item
+- *Last refresh* of the analysis: 2026-11-25 at his =9f8aa0c=, on NB-3641 (refresh-majkinetor skill; before:
+  2026-11-23 at =5d4d464=, 2026-11-20 at =a1e8f54=, both on petri). Apollo still sets no =mbLastWrite= in code: its writes move the gate's own =mbu:mb-gate-edit= (item
   "Stale-while-revalidate"). The clone lives in
   =debug/majkinetor/= (not synced between hosts: on another host, clone it fresh as "Method" says).
 - *A new post* is drafted as a TODO entry under "On the record: posts to majkinetor"; vzell posts it, then it turns
@@ -86,6 +100,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Standalone EH: use =data-mbu-eh= for the keys marks            | DONE  | 9.99.1676     | Interop       |
 | Event Horizon's player plays on under our page                 | DONE  | 9.99.1680     | Interop       |
 | The shared gate at eight a second (2026.11.23)                 | PART  | 9.99.1681     | Interop       |
+| SAED in String Theory's Network log (=mbnTrace=)               | NEXT  | WIP.1         | Interop       |
 | C7 =mbLastWrite=, C8 =MBU.artistImage=                         | DONE  | 9.99.1643, 46 | Adoptions     |
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions     |
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions     |
@@ -104,8 +119,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
+| Browser check on SAED's page fetches (=mbnIsCheck=)            | TODO  | —             | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
-| Posts to majkinetor: thirteen posted                           | DONE  | —             | On the record |
+| Posts to majkinetor: fourteen posted                           | DONE  | —             | On the record |
 
 * Working with majkinetor
 
@@ -501,12 +517,77 @@ CLOSED: [2026-11-21 Sat]
      the recording-length batch (=/ws/2/recording?query=rid:(…)=, =_MS_BATCH_SIZE=) and the Brucebase/MusicBrainz event
      lookup (=/ws/2/event?query==, =_bbMbevGet()=). Medium.
   3. Not needed: the interactive lane, merged reads, the cache (SAED keeps its own answers).
+  - *2026-11-25 refresh* (=9f8aa0c=, from code): #1112 settled the search side. There is no search gap (tried and
+    dropped), a =search-shed= 503 still holds searches only, and every hold now gets up to 500 ms of random spread
+    (=MBN_JITTER=, anchor =gate-jitter=). Candidate 2 stands as written, and the jitter belongs to it: SAED's
+    =_mbGateAnswer()= holds every script on a =search-shed= 503, so it holds lookups longer than his gate does. Still
+    small and *ours*; the second of the three adoptions recommended on 2026-11-25 (after "SAED in String Theory's
+    Network log"). The pace question on #938 is still unanswered; his =MBN_GAP= comment now gives the reasons from
+    his own runs ("Request gate").
 - *Keep 1000 ms* (recommended): it is what MusicBrainz documents, and SAED's own pacing must not depend on a
   neighbour's choice. A post could ask majkinetor whether 125 ms is meant for MusicBrainz's own servers too (his
   comment cites 503s from MusicBrainz's load whatever the pace) and point out the DEVELOP.md line. vzell decides
   whether to ask.
 - *Pre-test / measurement*: probe case D (SAED's 31-page fetch with EH on and off) at =5d4d464=, compared with the
   2026-11-20 row: 503 count and who they hit, responses per second (see "Coexistence").
+
+** NEXT SAED in String Theory's Network log (=mbnTrace=)
+:PROPERTIES:
+:CUSTOM_ID: saed-network-log
+:END:
+
+- *Who fixes it*: *ours* (write the trace), and a *convention* question upstream: the trace format
+  (=mbu:mb-gate-trace:<tab>=, the row fields) is not in DEVELOP.md's "Shared request-gate protocol", and his log
+  shows String Theory's icon for a script it does not know (=stGateIconSrc()=). Ask whether the format is a
+  contract and how a non-member gets its own icon (draft: "On the record", "SAED in your Network log").
+- *Asked*: majkinetor to vzell, personally (2026-11-24/25): "How do u like network log? Does it show your script
+  requests? :)"
+- *Symptom* (*measured* 2026-11-25, probe field =trace=, "Coexistence": SAED alone booked a ws/2 slot and left no
+  trace row; beside EH its ws/2 request was in none of 74 rows): no. Its only source is the gate's trace
+  (=stGateEvents()= reads every =mbu:mb-gate-trace:= key; anchors =st-gatelog-source=, =gate-trace-key=). SAED books
+  its ws/2 in =mbu:mb-gate= (C6, 9.99.1583) but writes no trace (anchor =saed-no-trace=), and its HTML page fetches
+  (=fetchHtml()=, =_dpFetchText()=) are not gated at all. SAED shows only indirectly: longer "pacing" waits in his
+  rows while SAED books 1 s slots, and holds after a 503 SAED drew (the shared =cool=).
+- *Pre-test* (vzell, Vivaldi, String Theory from =main=, SAED 9.99.1693, both on):
+  1. Open https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c, DevTools → Network with the
+     filter =ws/2=, and his Network log (Ctrl+Alt+N or the launcher's "Network log").
+  2. Press "Show all Releases for ReleaseGroup", then load the Relationships column (▶🔗 in its header); Ctrl+hover
+     an artist link for its card.
+  3. Prediction: DevTools lists SAED's =/ws/2= requests (page =fetch()=, initiator the ShowAllEntityData
+     userscript); the Network log's Script filter has no ShowAllEntityData; in the console,
+     =Object.keys(localStorage).filter(k => k.startsWith('mbu:mb-gate-trace:'))= read with =JSON.parse= has no row
+     with =s: "ShowAllEntityData"=. SAED's =mbgate= debug channel (🧾 Activity log) shows its bookings meanwhile.
+- *Fix*: port =mbnTrace()= beside SAED's gate port (=_mbGateSlot()=, =_mbGateAnswer()=, =_mbGateFetch()=): events
+  =book=, =start=, =answer= (status, =Retry-After=), =giveup=, =cancel=, with =s= from =GM_info.script.name=, a
+  label (=l=, the path, through a port of =mbnHideUrl()=), the entity (=en=), a reason (=r=: relationships, popup,
+  length, pictures), a request id (=id=, =mbnRid()=) and the verb (=m=). Same buffer (in memory, written once a
+  second, and on =pagehide= and when the page is hidden), the same tab id (sessionStorage =mbu:mb-gate-tab=, shared
+  with his copies in the page), =MBN_TRACE_MAX= 400, the 10-minute sweep over =Object.keys(localStorage)=. HTML page
+  fetches log-only, like =mbnLog()= (no pacing), so a 31-page fetch shows too. Behind =sa_mb_shared_gate=, on
+  musicbrainz.org only (the trace is the origin's localStorage).
+- *Also found (from code, 2026-11-25, convention C4)*: the Network log's HUD =#st-gate-hud-box= is appended to
+  =<html>= (ST:5229), fixed at the bottom right, 520 px wide, z-index =--mbu-z-modal= (ST:4400), with no
+  =data-mb-corner=, so C4's quiet rule (=:root[data-mbu-quiet] :is([data-mb-corner],#mbu-dock-shelf)=, ST:1309)
+  does not hide it: once a user opens it, it floats over our table and our toasts, and =stGateReopen()= brings it
+  back on every page load. Its dock item =#st-gate-dock= is hidden (=data-mb-corner=br=), and off by default.
+  *Upstream* (one line in the quiet rule, or the mark on the HUD); asked in the same post.
+- *Performance*: one in-memory push per request and one localStorage write a second while requests run; nothing on
+  the filter/sort/render path.
+- *Tests*: a fixture spec in =mb-shared-gate.spec.js= (rows written with the right fields, one write per second,
+  page fetches log-only, a secret parameter hidden, nothing written with the switch off or off musicbrainz.org),
+  mutations in =mb-shared-gate.json=; the probe's =trace= field then shows =saWs2Traced= equal to =saWs2=; flip
+  anchor =saed-no-trace=.
+- *Built* (2026-11-25, =feat/saed-gate-trace=, WIP.1; vzell: "start with adoption 1"): =_mbGateTrace()= and its
+  helpers beside the gate port, events from =_mbGateSlot()=/=_mbGateAnswer()=/=_mbGateFetch()=, one id per request
+  in =_ws2GetJson()= (+ =giveup=), the ▶ expand's XHR, page fetches through =_mbGateLogFetch()= (=fetchHtml()=,
+  =_dpFetchText()=), a reason word at every call site. Name on the rows: =ShowAllEntityData= (=SCRIPT_BASE_NAME=;
+  the =@name= is 100+ characters). Design: docs/claude/fetch-and-render-pipeline.md, "The gate's trace". Spec
+  =mb-shared-gate.spec.js= T1–T7, mutations =scripts/mutations/mb-gate-trace.json= (13/13 caught; T6 first let
+  the trace's own switch check survive, since slot and answer stop early when off: T6 now also runs a request out of
+  tries). Anchor =saed-no-trace= flipped to =saed-trace=. *Waiting*: vzell's browser check (the Pre-test above,
+  expecting the opposite now: a ShowAllEntityData entry in the Script filter). *Measured* (2026-11-25T10:59+01:00,
+  NB-3641, probe case 0, GM stubs): 64 rows named ShowAllEntityData (31 pages + 1 ws/2, each =start= + =answer=),
+  =saWs2Traced= 1/1 (0/1 before).
 
 * Adoptions: what SAED takes from his scripts
 
@@ -906,6 +987,33 @@ CLOSED: [2026-11-20 Fri]
   (barcode, format kind and track count agree where both are known). Costs one search request per such release:
   behind a button or setting.
 
+** TODO The browser check on SAED's own page fetches (=mbnIsCheck=, =mbnReverify=)
+:PROPERTIES:
+:CUSTOM_ID: saed-browser-check
+:END:
+
+- *Who fixes it*: *ours*.
+- *Why now*: #1103 (2026-11-23) moved every website-side request of his scripts through =mbnFetch=, because after
+  the check cookie expires MusicBrainz answers such a request with its "Verifying your browser" page (1,396 bytes,
+  =debug/af1-rg-die-traktor.html=), not the page asked for. SAED's own fetch of a list's pages (=fetchHtml()=, every
+  "Show all" button) takes any 2xx as the page (anchor =saed-fetchhtml-nocheck=). Only the popup engine knows the
+  check (=_mbIsBrowserCheck()=, a note to open the page once). The analysis's 2026-11-06 verdict already said "take
+  the iframe re-verify"; it was never done.
+- *Unknown, to measure first*: what a check page as page N of a multi-page fetch does today: a page with no rows that
+  passes silently (data loss), or a failure the 🔄 resume indicator catches.
+- *Pre-test*: a fixture run where page 3 of a paginated list answers with the check page's HTML (the 1,396-byte file
+  above). Prediction: page 3's rows are missing and no warning is shown.
+- *Fix*: in =fetchHtml()=, test the answer the way =mbnIsCheck()= does (=<title>Verifying your browser= or the
+  =<noscript>= sentinel, never =/__meb_verify=). On a check, pass it once in a hidden 1×1 same-origin frame
+  (=mbnReverify()=, shared by requests that hit it together), then retry. If that fails, count the page as failed,
+  so =_fetchIncompleteSummary()= and the resume button take over. While there, align =_mbIsBrowserCheck()=: it
+  also counts =/__meb_verify= in the first 4 KB, which upstream calls a false positive (ordinary pages carry a
+  beacon there, Falcon #551). Our recent page snapshots carry no such beacon (=debug/*.html=, 2026-11-25), so it is
+  unverified (anchor =saed-check-beacon=).
+- *Tests*: a fixture spec for the check page as page N (fails before), the hidden frame stubbed; mutations for the
+  test and the retry.
+- Third of the three adoptions recommended on 2026-11-25.
+
 ** TODO Smaller adoptions
 
 - *Done (2026-11-24, 9.99.1692, =feat/small-adoptions=)*: the launcher icon (=_EH_MENU_ICON=, a 16 px data: SVG, mockup
@@ -938,14 +1046,14 @@ CLOSED: [2026-11-20 Fri]
   AR columns.
 - Optional: a read-only RG credit matrix, role × release with format badges (GT =openConsolidate=).
 
-* Analysis — 2026-11-23 (reference)
+* Analysis — 2026-11-25 (reference)
 
 The analysis the items above rest on: what each of his scripts does, how Event Horizon works, what SAED
 can take, and how the two behave together (measured). The refresh-majkinetor skill updates it in place.
 
-Env: 2026-11-23T14:48:02–14:53:55+01:00 (last refresh) · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) ·
-Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the live part, SAED 9.99.1679 from =main=
-(=dde80ef1=) · code reading: n/a. Previous: 2026-11-20T22:01–22:07 on petri (SAED 9.99.1669); 2026-11-17T19:37–19:43 on petri (SAED 9.99.1641); 2026-11-09T15:40–15:46 on petri (Linux 6.18.54.1); 2026-11-09T00:07–00:16,
+Env: 2026-11-25T10:10:51–10:16:56+01:00 (last refresh) · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) ·
+Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs) for the live part, SAED 9.99.1693 from =main=
+(=be23cf22=) · code reading: n/a. Previous: 2026-11-23T14:48–14:53 on petri (SAED 9.99.1679); 2026-11-20T22:01–22:07 on petri (SAED 9.99.1669); 2026-11-17T19:37–19:43 on petri (SAED 9.99.1641); 2026-11-09T15:40–15:46 on petri (Linux 6.18.54.1); 2026-11-09T00:07–00:16,
 2026-11-08T13:39–13:47 and 2026-11-06T15:04–15:13 (first analysis 2026-11-06 11:14–11:30), all on vzell-lap (WSL2
 Ubuntu 24.04.4 LTS, same Playwright and Chromium).
 
@@ -991,6 +1099,14 @@ Check, IS = ISRC Scout, AS = Art Station, CH = Credit Hoarder, GT = Group Therap
   interactive lane, search-only holds and a short cache; SAED stays at one a second in the same schedule (*measured*:
   up to nine responses a second in case D, one 503 on SAED). EH's player keeps playing under our page after V, with
   its controls gone (vzell, from code: =setOn1()= lacks the =plyPin()= call =relSet()= has). Two new TODOs.
+- *2026-11-25* (=9f8aa0c=, first refresh on NB-3641): String Theory has a *Network log* (#1093/#1103/#1115): every
+  request of every script and tab, built from the gate's trace (=mbu:mb-gate-trace:<tab>=). *SAED is not in it*
+  (measured: it books in the gate but writes no trace); majkinetor asked vzell exactly that, and the answer and two
+  questions are drafted. The gate kept eight a second and now explains why in its code, dropped its DOM watch
+  (#1095), tried and dropped a search pace (#1112), added a 500 ms jitter to holds, and since #1103 sends his
+  scripts' website-side requests through =mbnFetch= with the browser re-verify. Two new TODOs: "SAED in String
+  Theory's Network log" (NEXT) and "The browser check on SAED's own page fetches"; =search-shed= stays the gate
+  item's candidate 2. Coexistence unchanged.
 
 ** Method — clone or read from GitHub? (3.)
 
@@ -1005,7 +1121,13 @@ git -C debug/majkinetor sparse-checkout set --no-cone '/*' '!*.png' '!*.jpg' '!*
 git -C debug/majkinetor pull            # follow upstream later; re-pin the SHA below
 #+end_src
 
-- Pinned: =5d4d464= (2026-11-23T12:53:01+01:00, "build: regenerated from their sources [skip ci]"), =main=. The
+- Pinned: =9f8aa0c= (2026-11-25T09:58:06+01:00, "fix(gate): Network log, late-timer note and Apollo's alias batch no
+  longer misreport or repeat"), =main=, 282 commits after =5d4d464= (GitHub compare API). The clone was created fresh
+  on =NB-3641= (=debug/= is not synced), so the old pin's diff came from the compare API and the CHANGELOGs. The
+  harness copies are from =9f8aa0c=: ST 2026.11.25.095821, whose =@description= names EH and ISRC Scout
+  2026.11.25.095751, the same as the standalone copies; main's raw link served the same =@version= (checked
+  2026-11-25 10:0x CET, before the probe). =main= had moved to =9f8aa0c= from =10ca1d7= while the plan was written.
+- Earlier pin: =5d4d464= (2026-11-23T12:53:01+01:00, "build: regenerated from their sources [skip ci]"), =main=. The
   harness copies are from =5d4d464=: ST 2026.11.23.125301, whose =@description= names EH 2026.11.23.095945 and ISRC
   Scout 2026.11.23, the same as the standalone copies; main's raw link served the same =@version= (checked
   2026-11-23 right after the fetch, before the probe). vzell's browser ran 2026.11.21.134804 that day (=<html
@@ -1046,28 +1168,28 @@ To refresh all of this, use the *refresh-majkinetor* skill (=.claude/skills/refr
 covers the clone, the three harness copies, the manifest re-scan, the probe, and updating this section and the
 TODOs. The code anchors this analysis rests on are listed in =scripts/majkinetor-anchors.json=;
 =python3 scripts/check-majkinetor-anchors.py --versions= reports which still hold (28/28 at =326c6a4=, 34/34 at =1df6193=,
-38/38 at =65032ef=; 39 with the sidebar-handle defect anchor; 52/52 at =2d092e0=; 55/55 at =68512f9=; 68/68 at =0693aea=; 98/98 at =a1e8f54=, three rewritten and 28 added, among them the 19 =fusion-*= of the rec-dup port; 118/118 at =5d4d464=, =gate-lock-race= and =c7-writer-apollo= rewritten, nine added: six for the new gate, three for EH's player).
+38/38 at =65032ef=; 39 with the sidebar-handle defect anchor; 52/52 at =2d092e0=; 55/55 at =68512f9=; 68/68 at =0693aea=; 98/98 at =a1e8f54=, three rewritten and 28 added, among them the 19 =fusion-*= of the rec-dup port; 118/118 at =5d4d464=, =gate-lock-race= and =c7-writer-apollo= rewritten, nine added: six for the new gate, three for EH's player; 134/134 at =9f8aa0c=, =gate-sleep='s claim rewritten, twelve added: the trace and the Network log, its HUD and the quiet rule, the jitter, the search gap, the browser check, and SAED's three defect anchors).
 
 ** Inventory
 
 | Script                       | Size / lines      | @run-at        | @match (short)                                              | What it does                                                                                                 |
 |------------------------------+-------------------+----------------+-------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------|
-| String Theory                | 8.71 MB / 107,944 | document-start | union of 13 members                                         | One-file bundle; settings window, Dropbox/Drive/WebDAV sync, themes, Ctrl+K command palette                  |
-| Event Horizon                | 1.98 MB / 19,196  | document-start | every MB page (since 2026.11.16; before: 12 entity types)   | Alternative viewer (SPA in its own body), sections, discography tables, filter language, stars, recent, keys |
-| Apollo Editor                | 1.73 MB / 19,576  | document-start | release add/edit, entity create/edit, aliases, annotation   | Replaces MB's release editor; auto-matching, guess case, confusable chars, archive links, release clone      |
-| First Contact                | 0.58 MB / 7,882   | document-start | ~21 platforms + MB release (reader)                         | Import a platform's album page into /release/add or Harmony                                                  |
-| Falcon                       | 0.76 MB / 10,293  | (default)      | every MB page, Harmony                                      | Batch editor through a pool of iframe workers submitting MB's own seeded forms                               |
-| Credit Hoarder               | dist 15,518       | (default)      | release, edit-relationships, Tidal, Metal Archives          | Import credits from Discogs/Tidal/Qobuz/… into the relationship editor; *374-entry Discogs-role → MB map*    |
-| Discogs Credits (deprecated) | dist 6,116        | (default)      | edit-relationships                                          | Predecessor of CH (built on mattgoldspink's/vzell's/kellnerd's importers)                                    |
-| Group Therapy                | 0.80 MB / 10,691  | document-end   | edit-relationships (+create callbacks)                      | Bulk delete/copy/move/re-date credits; liner-note and ℗/© parser; RG credit matrix                           |
-| Fusion                       | 0.62 MB / 8,061   | (default)      | every MB page                                               | Duplicate-recording finder + background merges; AcoustID                                                     |
-| Mission Control              | 0.74 MB / 8,423   | (default)      | release/* overview only (=@exclude= subpages since 65032ef) | Dashboard: asks the other scripts over a CustomEvent bus (=mc:*=) what a release lacks                       |
-| Platform Check               | 0.92 MB / 11,821  | (default)      | release, release-group                                      | Finds the release on 16 platforms; barcode/format/track-count scoring                                        |
-| ISRC Scout                   | 0.87 MB / 11,364  | document-start | release/*                                                   | ISRCs and streaming links; "ISRC"/"Links" columns in the native tracklist                                    |
-| Art Station                  | 0.82 MB / 9,926   | document-start | release + cover/event-art pages                             | Cover-art gallery editor, image maximiser, full-screen viewer for the others                                 |
-| Mammoth                      | 0.33 MB / 4,011   | document-idle  | every MB page                                               | Saved/pinned edit notes and field recall                                                                     |
-| Fuzzy Logic                  | 0.39 MB / 4,245   | document-end   | release, RG, artist, label, recording                       | Genres/tags from linked sites → MB genres, batch vote                                                        |
-| Scribe                       | 159 KB / 2,067    | document-end   | every MB page                                               | Edit fields / a whole release (Markdown) in an external editor via a local helper                            |
+| String Theory                | 8.92 MB / 109,960 | document-start | union of 13 members                                         | One-file bundle; settings window, Dropbox/Drive/WebDAV sync, themes, Ctrl+K command palette                  |
+| Event Horizon                | 2.01 MB / 19,384  | document-start | every MB page (since 2026.11.16; before: 12 entity types)   | Alternative viewer (SPA in its own body), sections, discography tables, filter language, stars, recent, keys |
+| Apollo Editor                | 1.78 MB / 19,883  | document-start | release add/edit, entity create/edit, aliases, annotation   | Replaces MB's release editor; auto-matching, guess case, confusable chars, archive links, release clone      |
+| First Contact                | 0.65 MB / 8,892   | document-start | ~21 platforms + MB release (reader)                         | Import a platform's album page into /release/add or Harmony                                                  |
+| Falcon                       | 0.77 MB / 10,457  | (default)      | every MB page, Harmony                                      | Batch editor through a pool of iframe workers submitting MB's own seeded forms                               |
+| Credit Hoarder               | dist 15,685       | (default)      | release, edit-relationships, Tidal, Metal Archives          | Import credits from Discogs/Tidal/Qobuz/… into the relationship editor; *374-entry Discogs-role → MB map*    |
+| Discogs Credits (removed)    | —                 | (default)      | edit-relationships                                          | Predecessor of CH; deleted from the repo 2026-11-23 (#1103)                                                  |
+| Group Therapy                | 0.81 MB / 10,828  | document-end   | edit-relationships (+create callbacks)                      | Bulk delete/copy/move/re-date credits; liner-note and ℗/© parser; RG credit matrix                           |
+| Fusion                       | 0.63 MB / 8,245   | (default)      | every MB page                                               | Duplicate-recording finder + background merges; AcoustID                                                     |
+| Mission Control              | 0.78 MB / 8,554   | (default)      | release/* overview only (=@exclude= subpages since 65032ef) | Dashboard: asks the other scripts over a CustomEvent bus (=mc:*=) what a release lacks                       |
+| Platform Check               | 0.96 MB / 12,060  | (default)      | release, release-group                                      | Finds the release on 16 platforms; barcode/format/track-count scoring                                        |
+| ISRC Scout                   | 0.91 MB / 11,533  | document-start | release/*                                                   | ISRCs and streaming links; "ISRC"/"Links" columns in the native tracklist                                    |
+| Art Station                  | 0.86 MB / 10,070  | document-start | release + cover/event-art pages                             | Cover-art gallery editor, image maximiser, full-screen viewer for the others                                 |
+| Mammoth                      | 0.33 MB / 4,012   | document-idle  | every MB page                                               | Saved/pinned edit notes and field recall                                                                     |
+| Fuzzy Logic                  | 0.42 MB / 4,380   | document-end   | release, RG, artist, label, recording                       | Genres/tags from linked sites → MB genres, batch vote                                                        |
+| Scribe                       | 168 KB / 2,193    | document-end   | every MB page                                               | Edit fields / a whole release (Markdown) in an external editor via a local helper                            |
 | Bandcamp Player Enhanced     | 83 KB / 1,447     | (default)      | *.bandcamp.com/album/*                                      | Keyboard player for Bandcamp                                                                                 |
 | =picard/*.py=, =scripts/=    | —                 | —              | —                                                           | Picard v2 plugins; PowerShell MB client (≈1 req/s with a shared hold) and collection sync — n/a for SAED     |
 
@@ -1088,6 +1210,17 @@ TODOs. The code anchors this analysis rests on are listed in =scripts/majkinetor
   only in =inc= merge after 100 ms (#1094/#1097), and a 5-minute Cache Storage cache =mbu:mb-gate-cache= answers a
   repeated read until any write (#1098, =gate-edit-epoch=). String Theory has a gate log viewer (=gatelog.js=, #1093).
   Same protocol version 1; the new fields are written beside the old ones (TODO "The shared gate at eight a second").
+  *Since =9f8aa0c= (2026-11-25, from code)*: =MBN_GAP= stays 125 ms and =MBN_BURST= 4; its comment now gives the
+  reason (two a second was slower than Credit Hoarder's own four in flight, eight drew 5–8 s =Retry-After=s after
+  each burst, four only took longer: 112 s against 32–67 s). #1112 tried a search lane with its own gap (up to
+  3 s) and dropped it: searches have no pace of their own, a =search-shed= 503 holds searches only (=scool=), a
+  retry after a shed goes first (anchor =gate-no-search-gap=). Every hold gets up to 500 ms added at random
+  (=MBN_JITTER=, anchor =gate-jitter=). #1089: a page's own requests book the interactive line (a burst of three,
+  then one a second) and keep trying through throttled answers for up to 45 s; a background request still stops
+  after four tries. #1095: the DOM watch in =mbnSleep()= is gone (it slowed Mission Control); the backup wake-up is
+  a blob-worker timer, animation frames only where blob workers are blocked (anchor =gate-no-dom-watch=). The trace
+  is buffered and written once a second; its sweep reads the key names in one pass (=Object.keys=). DEVELOP.md's
+  protocol section still says "1,000 ms, with a burst of three". No answer on #938 to the pace question.
 - *Transport* (since =1df6193=): the gate's own requests go through =GM_xmlhttpRequest= with a
   =User-Agent= header (=mbnWsFetch=; EH got =@connect musicbrainz.org=), no longer the page's =fetch()=.
 - *Lead*: =mbnLead(token, ms)= (≈126), capped at 10 s. The tab whose page is loading leads, and every other script and
@@ -1100,7 +1233,12 @@ TODOs. The code anchors this analysis rests on are listed in =scripts/majkinetor
     =search-shed= 503 holds searches only, in =scool=/=shot=, anchor =gate-search-shed=);
   - =mbnFetch= retries up to 4 times.
 - *Browser check*: =mbnIsCheck= / =mbnReverify= (≈193-243) pass "Verifying your browser" in a hidden 1×1 same-origin
-  iframe, then retry.
+  iframe, then retry. =mbnIsCheck()= (=dev/net/mb-gate.mjs:1081= at =9f8aa0c=) knows the page by its =<title>= or
+  its =<noscript>= text, never by =/__meb_verify=: ordinary pages carry a beacon to it (Falcon #551). *Since #1103
+  (2026-11-23)* every website-side request of his scripts (Falcon, Group Therapy, Apollo, Credit Hoarder, Fusion)
+  goes through =mbnFetch= (=mbnWebsite()=), so an expired check cookie no longer breaks an edit (anchor
+  =gate-website-check=). SAED's =fetchHtml()= takes any 2xx as the page (anchor =saed-fetchhtml-nocheck=; TODO "The
+  browser check on SAED's own page fetches").
 - *SAED today*: a per-tab, in-memory slot (=_relAwaitRateSlot=, 1100 ms), =_ws2GetJson= transient retry,
   =_parseRetryAfterMs=. =_mbIsBrowserCheck= only tells the user to open the page.
 - *Verdict*: *adopt*. Booking SAED's ws/2 requests in the same =mbu:mb-gate= key makes SAED pace together with all of
@@ -1137,6 +1275,16 @@ majkinetor" means.
 - *SAED today*: =Lib.debug/info/warn/error= (VZ_MBLibrary:217-271) writes styled console lines only.
 - *Verdict*: *adopt* a ring buffer + viewer behind =Lib.*=, with SAED's debug channels as categories. That lets a
   user send us a log without opening DevTools.
+- *The Network log* (String Theory, #1093 → #1103 → #1115, 2026-11-21…25; anchors =gate-trace-key=,
+  =st-gatelog-source=, =gate-mbnlog=): Ctrl+Alt+N or the launcher's "Network log". One row per request (Tab,
+  Script, Verb, Request, Reason, Tries, Wait, Rate limit; filters on Tab/Script/Verb, a click opens the full URL, its
+  query parameters, body and size), above it a time line with one lane per tab (bursts as icon clusters, MusicBrainz's
+  holds as bands, zoom with the wheel), and a HUD strip that stays on screen across page loads. Its only source is
+  the gate's trace: =mbnTrace()= keeps each tab's last 400 events in localStorage =mbu:mb-gate-trace:<tab>=
+  (=book=, =start=, =answer=, =giveup=, =cache=, =join=, …; script name from =GM_info.script.name=), written once a
+  second; =mbnLog()= adds requests the gate does not pace (other hosts). *SAED writes no trace*, so it is absent from
+  the log (*measured* 2026-11-25, see "Coexistence"): only its effect shows, as longer waits in the
+  others' rows and as holds after a 503 it drew. TODO "SAED in String Theory's Network log".
 
 *** "Orig page shine through" (the same org/TODO.org item)
 
@@ -1316,8 +1464,22 @@ development version, which has the link previews, the other sites, the findings 
 Probe: =tests/support/probe-majkinetor-interop.js= (cases 0/A/B/C/D, E, F/G, I; JSON output). Runs at every
 refresh (see the Refresh log): 2026-11-06 (=326c6a4=, =1df6193=), 2026-11-08 (=65032ef=), 2026-11-09 (=2d092e0=,
 =68512f9=, the first with SAED in the shared gate), 2026-11-17 (=0693aea=, SAED 9.99.1641), 2026-11-20
-(=a1e8f54=, SAED 9.99.1669), 2026-11-23 (=5d4d464=, SAED 9.99.1679; all three on petri, Playwright 1.62.1, Chromium 151.0.7922.34, GM stubs). Every structural row came out the same each time; case D's 503s vary
+(=a1e8f54=, SAED 9.99.1669), 2026-11-23 (=5d4d464=, SAED 9.99.1679; all three on petri, Playwright 1.62.1, Chromium 151.0.7922.34, GM stubs), 2026-11-25 (=9f8aa0c=, SAED 9.99.1693, NB-3641). Every structural row came out the same each time; case D's 503s vary
 with MusicBrainz's load.
+
+*2026-11-25* (2026-11-25T10:10:51–10:16:56+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright
+1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · SAED 9.99.1693 =be23cf22= · ST 2026.11.25.095821, EH and
+ISRC Scout 2026.11.25.095751): every structural row as before (bodies, the bar under EH and after V, FRP rows over
+V/V, =h= taken on the IP and the FRP, the C-case reload, ISRC Scout 37/37 icons and 51/51 cells natively and on the
+FRP, alone and in the bundle). New field =trace= (=gateTrace()=, the Network log's source): *SAED is absent,
+measured*. Case 0 (SAED alone): SAED booked one ws/2 slot, the trace has no key and no row. Case D (EH + SAED): 74
+trace rows, SAED's one ws/2 request (=fetch=, =/ws/2/artist/…?inc=url-rels=) in none of them (=saWs2Traced= 0/1);
+SAED waited 4.3 s in the gate, its 31-page fetch took 29.5 s (30.7 s alone). In the harness every script's rows carry
+the stub's name ("ShowAllEntityData (test)", one global =GM_info=), so the field tells SAED's requests apart by URL
+and transport, not by name; in the bundle the members' rows carry their own names ("Platform Check*", "Event
+Horizon*", "Fuzzy Logic*", "Apollo Editor*", "ISRC Scout*"). Case D: up to five responses a second, four 503s, all
+on EH's GM requests (=release-group?artist=…= browse, three =query=arid:= searches), none on SAED. Bundle cases A–C
+and I: two or three 503s each; EH alone, cases B and C: three and six; all on the members' gated GM requests.
 
 *2026-11-23* (2026-11-23T14:48:02–14:53:55+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright
 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · SAED 9.99.1679 =dde80ef1= · ST 2026.11.23.125301, EH
@@ -1398,6 +1560,19 @@ Answers to your three questions:
 
 Newest first; one line per refresh (refresh-majkinetor skill). The full notes are in git history.
 
+- 2026-11-25 10:09–10:30 CET, NB-3641 (clone created fresh): =5d4d464= → =9f8aa0c= (282 commits; ST
+  2026.11.25.095821, EH and ISRC Scout 2026.11.25.095751). No answer on #938 to the two posts of 2026-11-23; #938
+  closed. String Theory's Network log (#1093/#1103/#1115) reads the gate's trace only; majkinetor asked vzell
+  whether it shows SAED. Gate: DOM watch dropped (#1095), the search pace tried and dropped, hold jitter (#1112),
+  website-side requests through =mbnFetch= with the browser re-verify (#1103), the page's own lane (#1089); still 125
+  ms. Discogs Credits deleted. EH: keys T and A open its tag and alias editors (already in =_EH_SINGLE_KEYS=).
+  Probe: structure unchanged; new field =trace= measured SAED absent from the trace (case 0: no row; case D: 0/1);
+  case D four 503s, all on EH. Anchors 134/134 (=gate-sleep= rewritten, twelve added). New TODOs "SAED in String
+  Theory's Network log" (NEXT) and "The browser check on SAED's own page fetches"; a post drafted. The manifest
+  re-scan found the log's HUD (=#st-gate-hud-box=, on =<html>=, no =data-mb-corner=) outside C4's quiet rule,
+  asked in the same post; EH's player now defaults to a 48 px bar that pads MusicBrainz's body; ISRC Scout routes
+  its requests through =mbnFetch=/=mbnLog()= (in the Network log).
+
 - 2026-11-23 14:35–15:20 CET, petri: =a1e8f54= → =5d4d464= (ST 2026.11.23.125301, EH 2026.11.23.095945, ISRC Scout
   2026.11.23). No new #938 comment from majkinetor. The shared gate went to eight starts a second (#1095) with an
   interactive lane, search-only holds, a 30 ms lock hold, merged reads and a 5-minute cache (#1093–#1098); its
@@ -1469,7 +1644,11 @@ turns DONE with its link. Never posted by Claude.
 - vzell 2026-11-21 17:13 CET
   ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7065483733][comment]]): thanks;
   SAED 9.99.1676 takes =data-mbu-eh=, and Apollo's =mbLastWrite= counts with no change; "Nothing open from me".
-- Open: nothing on either side.
+- Open (checked 2026-11-25 through the GitHub API): the two posts of 2026-11-23 (the player after V, the gate's
+  pace) have no answer; #938 is closed (last activity 2026-11-23 16:40 UTC, the pace post). His =MBN_GAP= comment
+  at =9f8aa0c= now gives the reasons for eight a second from his own runs, without naming MetaBrainz.
+- Off GitHub: majkinetor asked vzell personally (2026-11-24/25) "How do u like network log? Does it show your
+  script requests? :)"; the answer is drafted below ("SAED in your Network log").
 - Note on the #839 comment: one sentence says SAED "re-reads them on your =is:counts-changed= event", which was
   only planned (and later not built: the fix came upstream with C1).
 
@@ -2294,6 +2473,45 @@ I read the reasoning in the comment above `MBN_GAP`: the 503s you see come from 
 3. **Which number is the contract for other scripts?** `DEVELOP.md`'s "Shared request-gate protocol" still says "The sustained gap is 1,000 ms, with a burst of three", and the gate's log line says "pacing, four requests a second".
 
 SAED stays at one a second in the shared schedule (its slot moves `tat` by 1000 ms, yours by 125 ms), and since 9.99.1681 it keeps the lock 30 ms after a booking, as yours does. If one a second from SAED gets in your scripts' way in the same schedule, tell me.
+#+end_src
+
+** DONE 2026-11-25 10:34 · Post: SAED in your Network log (answer to "Does it show your script requests?")
+:PROPERTIES:
+:CUSTOM_ID: post-network-log
+:END:
+
+- *Posted* by vzell 2026-11-25T10:34:50+01:00 on #938:
+  https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7158522166 (checked through the
+  GitHub API: the block below word for word, after one opening line of his own: "Regarding your personal question
+  from yesterday evening: "How do u like network log? Does it show your script requests? :)""). No answer yet
+  (checked 2026-11-25 10:3x CET). Building the trace started the same day (=feat/saed-gate-trace=).
+
+- *Draft* (NB-3641, 2026-11-25; vzell: majkinetor asked him personally "How do u like network log? Does it show your
+  script requests? :)"). For vzell to send, on #1115 ("Network log improvements"), on #938, or personally (then as
+  plain text); never posted by Claude. Item: "SAED in String Theory's Network log". Send it after vzell's own browser
+  check (the item's Pre-test) agrees with the code reading. Facts, each checked today at =9f8aa0c=:
+  - the log's only source is =mbu:mb-gate-trace:<tab>= (String Theory =stGateEvents()=, =ST_GATE_PRE=), written by
+    =mbnTrace()= (=dev/net/mb-gate.mjs=); SAED 9.99.1693 writes none (anchor =saed-no-trace=), its ws/2 is booked in
+    =mbu:mb-gate= since 9.99.1583, its HTML page fetches are not gated;
+  - DEVELOP.md's "Shared request-gate protocol" does not mention the trace;
+  - =stGateIconSrc()= falls back to String Theory's icon for a script that is neither a member nor in
+    =mbuShared('dockKnown')=;
+  - the HUD =#st-gate-hud-box= is appended to =<html>= without =data-mb-corner= (ST:5229, CSS ST:4400), and C4's
+    quiet rule matches only =[data-mb-corner],#mbu-dock-shelf= (ST:1309).
+
+#+begin_src markdown
+Regarding your personal question from yesterday evening: "How do u like network log? Does it show your script requests? :)"
+
+Looks great. The time line with the bursts and MusicBrainz's holds is exactly what I was missing when I measured the gate.
+
+It doesn't show SAED's requests yet, and that's on my side: SAED books its `/ws/2` requests in `mbu:mb-gate` (since #938), but it doesn't write `mbnTrace()`'s `mbu:mb-gate-trace:<tab>`, and its HTML page fetches (a list's `?page=N`) aren't gated at all. I'll add the trace writes, so SAED's requests show under their own name; the page fetches would be logged only, like `mbnLog()`, never paced.
+
+Two questions so I build it to last:
+
+1. **Is the trace format something other scripts may write**, the way the schedule is? I mean the key, the tab id in sessionStorage `mbu:mb-gate-tab`, and the row fields (`t s e l u en r id m b st …`). If yes, a few lines next to the protocol in `DEVELOP.md` would make it a contract I can test against.
+2. **How does a script that isn't a member get its own icon?** `stGateIconSrc()` falls back to String Theory's icon. Should SAED register a launcher in your dock (`dockKnown`), or could the log read an icon from the row itself?
+
+And one small thing for the quiet mark (C4): the HUD `#st-gate-hud-box` sits on `<html>` at the bottom right without `data-mb-corner`, so `:root[data-mbu-quiet]` doesn't hide it, and over SAED's table it covers the last rows and SAED's toasts. Could the quiet rule include it, or the HUD carry `data-mb-corner`?
 #+end_src
 
 * vzell's notes

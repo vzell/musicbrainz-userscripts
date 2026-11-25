@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "8bad0b825b07cc4607decca1476eb903aafe0e15",
-    "revisions_walked": 1374
+    "head": "95fcb3784c932e0332f62e5049ad0bd38980c341",
+    "revisions_walked": 1403
   },
   "changes": [
     {
@@ -850,6 +850,7 @@
     "sa_column_descriptions": true,
     "sa_enable_density_control": true,
     "sa_mbu_quiet_corner": true,
+    "sa_eh_player_quiet": true,
     "sa_mb_shared_gate": true,
     "sa_enable_sticky_headers": true,
     "sa_enable_sticky_filter_bars": true,
@@ -1021,6 +1022,8 @@
     "sa_bb_tag_family_content": false,
     "sa_bb_tag_family_cast": false,
     "sa_bb_tag_family_songs": false,
+    "sa_bb_tag_family_relation": false,
+    "sa_bb_tag_family_release": false,
     "sa_findings_tint_bb_tags": true,
     "sa_findings_bb_feed_title": true,
     "sa_findings_bb_feed_no_tags": true,

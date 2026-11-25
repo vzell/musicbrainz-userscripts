@@ -459,6 +459,65 @@ function rateFigures(list) {
 }
 
 /**
+ * What String Theory's Network log would show for this tab: the gate's trace,
+ * `mbu:mb-gate-trace:<tab>` in localStorage, written by upstream's `mbnTrace()`
+ * (dev/net/mb-gate.mjs; read by String Theory's `stGateEvents()`). The trace is
+ * buffered in memory for up to a second, so the buffer is flushed first where
+ * the page exposes it (`globalThis.__mbnTrace.flush()`), and the read waits
+ * 1.2 s otherwise. Rows are counted by script name (`s`, from `GM_info`) and by
+ * event kind (`e`). Added 2026-11-25 to MEASURE whether SAED (which books in
+ * the shared schedule but, up to 9.99.1693, writes no trace) shows in the log.
+ *
+ * The script NAME cannot tell it here: gmStubs.js gives every injected script
+ * one global `GM_info` ('ShowAllEntityData (test)'), so majkinetor's rows carry
+ * that name too. What tells it is the URL: SAED's ws/2 requests are page
+ * `fetch`es (`responses` type 'fetch'), majkinetor's go through
+ * GM_xmlhttpRequest (type 'gm'). `saWs2Traced` counts SAED's answered ws/2
+ * paths that appear in any trace row's `l` or `u`, out of `saWs2`.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {Object[]} responses - openPage()'s response list
+ * @returns {Promise<?{keys: number, rows: number, byScript: Object<string, number>, byEvent: Object<string, number>,
+ *          saWs2: number, saWs2Traced: number}>} `null` when the page cannot be read (closed, navigated away).
+ */
+async function gateTrace(page, responses) {
+    await page.evaluate(() => {
+        try { if (globalThis.__mbnTrace && globalThis.__mbnTrace.flush) globalThis.__mbnTrace.flush(); } catch (_) { /* none */ }
+    }).catch(() => {});
+    await page.waitForTimeout(1200);
+    const out = await page.evaluate(() => {
+        const pre = 'mbu:mb-gate-trace:';
+        const out = { keys: 0, rows: 0, byScript: {}, byEvent: {}, paths: [] };
+        for (const k of Object.keys(localStorage)) {
+            if (k.indexOf(pre) !== 0) continue;
+            out.keys++;
+            let list = [];
+            try { list = JSON.parse(localStorage.getItem(k) || '[]'); } catch (_) { /* unreadable */ }
+            if (!Array.isArray(list)) continue;
+            for (const ev of list) {
+                if (!ev || !ev.t) continue;
+                out.rows++;
+                const s = ev.s || '(none)';
+                out.byScript[s] = (out.byScript[s] || 0) + 1;
+                out.byEvent[ev.e || '?'] = (out.byEvent[ev.e || '?'] || 0) + 1;
+                for (const p of [ev.l, ev.u]) if (p) out.paths.push(String(p).replace(/^https?:\/\/[a-z.]*musicbrainz\.org/, ''));
+            }
+        }
+        return out;
+    }).catch(() => null);
+    if (!out) return null;
+    // A trace label is the path as upstream's mbnFetch() writes it: no '/ws/2/', no 'fmt=json'
+    // (SAED's _mbGateTraceCtx() does the same), so both sides are compared in that form.
+    const norm = (p) => String(p).replace(/^\/ws\/2\//, '').replace(/[?&]fmt=json\b/, '').replace(/^([^?]*)&/, '$1?').slice(0, 60);
+    const traced = new Set(out.paths.map(norm));
+    const sa = (responses || []).filter((r) => r.type === 'fetch' && r.url.startsWith('/ws/2'));
+    out.saWs2 = sa.length;
+    out.saWs2Traced = sa.filter((r) => traced.has(norm(r.url))).length;
+    delete out.paths;
+    return out;
+}
+
+/**
  * Runs one case and returns its observations.
  *
  * @param {import('@playwright/test').Browser} browser
@@ -467,7 +526,8 @@ function rateFigures(list) {
  * @param {string|null} urlOverride - --url, used by case I only
  * @param {string} [saGate] - --sa-gate: 'off' seeds SA's sa_mb_shared_gate false
  * @returns {Promise<Object>} `out.gate` is the shared schedule (localStorage 'mbu:mb-gate') and SA's
- *          gate counters (__saTest.mbGate.stats()) at the end of the case.
+ *          gate counters (__saTest.mbGate.stats()) at the end of the case; `out.trace` is the
+ *          Network log's source, counted by script and event (`gateTrace()`).
  */
 async function runCase(browser, name, entries, urlOverride, saGate = 'on') {
     const steps = [];
@@ -593,6 +653,8 @@ async function runCase(browser, name, entries, urlOverride, saGate = 'on') {
         return { stored, sa: g ? { active: g.active(), ...g.stats() } : null };
     }).catch(() => null);
     console.log(`[${name}] gate: ${JSON.stringify(out.gate)}`);
+    out.trace = await gateTrace(page, responses);
+    console.log(`[${name}] trace (Network log): ${JSON.stringify(out.trace)}`);
     console.log(`[${name}] requests: ${JSON.stringify(out.rate)} pageErrors=${errors.length}`);
     await context.close();
     return out;

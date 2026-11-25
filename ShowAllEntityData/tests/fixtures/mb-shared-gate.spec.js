@@ -984,3 +984,223 @@ test.describe('shared request gate: a write lowers a broken hold or lead in stor
         expect(r).toEqual({ cool: 0, lead: 0 });
     });
 });
+
+// ── The gate's trace: this script's requests in String Theory's Network log ──
+//
+// What each test pins (docs/claude/fetch-and-render-pipeline.md, "The gate's
+// trace"):
+//
+//  T1. A /ws/2 REQUEST IS ONE ROW, IN UPSTREAM'S SHAPE. A clicked
+//      Relationships cell leaves `start` and `answer` under one id in
+//      `mbu:mb-gate-trace:<tab>`, the tab being sessionStorage
+//      `mbu:mb-gate-tab`, with the script name, the label upstream's
+//      `mbnFetch()` would give (no `/ws/2/`, no `fmt=json`), the verb, the
+//      reason, foreground (`b: 0`) and the status. "Some row was written"
+//      would also pass rows a log cannot pair, so the id and the fields are
+//      asserted by value.
+//  T2. A RETRY STAYS IN ITS ROW, AND A 503 SAYS WHOSE. A 503 then a 200: both
+//      answers carry the first attempt's id; the 503's answer has the status,
+//      `Retry-After`, the hold it set and `X-RateLimit-Who`.
+//  T3. BUFFERED, NOT ONE WRITE PER EVENT (#1095). The events wait in memory
+//      and reach storage in one write about a second after the first.
+//  T4. PAGE FETCHES ARE LOGGED, NOT PACED. A page fetch (`fetchHtml()`) leaves
+//      `start`/`answer` with `x: 1` and the reason `pages`, and books nothing.
+//  T5. OTHER WRITERS' ROWS SURVIVE; IDLE TABS GO. A row another script wrote
+//      to this tab's key is kept (append, never replace); another tab's trace
+//      idle for over ten minutes is dropped, a recent one kept.
+//  T6. OFF MEANS NOTHING. With `sa_mb_shared_gate` off no trace key appears,
+//      for an answered request and for one that runs out of tries: the
+//      slot and the answer already stop early when the gate is off, so only
+//      the give-up row reaches `_mbGateTrace()`'s own switch check (a run
+//      without the failing request let that check go untested).
+//  T7. SECRETS ARE HIDDEN. `token`/`api_key` values become •••, `barcode`
+//      and `keyword` stay.
+
+const TRACE_PRE = 'mbu:mb-gate-trace:';
+
+/**
+ * Writes this page's buffered trace now and reads every tab's trace.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{tab: string, keys: string[], rows: Object[], mine: Object[], title: ?string}>}
+ *          `rows`: every row of every tab; `mine`: this tab's rows.
+ */
+const readTrace = (page) => page.evaluate((pre) => {
+    window.__saTest.mbGate.trace.flush();
+    const tab = sessionStorage.getItem('mbu:mb-gate-tab') || '';
+    const keys = Object.keys(localStorage).filter((k) => k.indexOf(pre) === 0).sort();
+    const rows = [];
+    for (const k of keys) rows.push(...JSON.parse(localStorage.getItem(k) || '[]'));
+    return {
+        tab, keys, rows,
+        mine: JSON.parse(localStorage.getItem(pre + tab) || '[]'),
+        title: localStorage.getItem('mbu:mb-gate-title:' + tab),
+    };
+}, TRACE_PRE);
+
+test.describe("the gate's trace (String Theory's Network log)", () => {
+
+    test('T1: a clicked cell is one request in upstream\'s shape: start + answer under one id', async ({ page }) => {
+        await loadRelPage(page, null);
+        const target = (await rowMbids(page))[3];
+        await clickCell(page, target);
+        await expect.poll(() => cellDone(page, target)).toBe(true);
+        const t = await readTrace(page);
+        expect(t.tab, 'the tab id lives in sessionStorage, as upstream keeps it').toMatch(/^[0-9a-z]{6,8}$/);
+        expect(t.keys, 'one key, this tab\'s').toEqual([TRACE_PRE + t.tab]);
+        expect(t.title, 'the page title for the log\'s tooltip').toBeTruthy();
+        const ws = t.mine.filter((r) => r.l && r.l.includes(target) && !r.x);
+        const start = ws.find((r) => r.e === 'start');
+        const answer = ws.find((r) => r.e === 'answer');
+        expect(start, JSON.stringify(t.mine)).toBeTruthy();
+        expect(answer, JSON.stringify(t.mine)).toBeTruthy();
+        expect(answer.id, 'the log pairs them by id').toBe(start.id);
+        for (const r of [start, answer]) {
+            expect(r.s).toBe('ShowAllEntityData');
+            expect(r.l.startsWith('/ws/2/'), `label as mbnFetch() gives it: ${r.l}`).toBe(false);
+            expect(r.l).not.toMatch(/fmt=json/);
+            expect(r.m).toBe('GET');
+            expect(r.r).toBe('relationships');
+            expect(r.b, 'a click is foreground').toBe(0);
+            expect(typeof r.t).toBe('number');
+        }
+        expect(answer.st).toBe(200);
+        expect(typeof start.w, 'the start says how long it waited').toBe('number');
+    });
+
+    test('T2: a 503 and its retry stay one request; the 503 carries Retry-After, the hold and X-RateLimit-Who', async ({ page }) => {
+        let target = null;
+        let seen = 0;
+        await loadRelPage(page, (url) => {
+            if (!target || !url.includes(target)) return null;
+            seen += 1;
+            return seen === 1 ? { status: 503, headers: { 'Retry-After': '0', 'X-RateLimit-Who': 'global' } } : null;
+        });
+        target = (await rowMbids(page))[3];
+        await clickCell(page, target);
+        await expect.poll(() => cellDone(page, target), { timeout: 10000 }).toBe(true);
+        expect(seen).toBe(2);
+        const t = await readTrace(page);
+        const answers = t.mine.filter((r) => r.e === 'answer' && r.l && r.l.includes(target));
+        expect(answers.map((r) => r.st), JSON.stringify(t.mine)).toEqual([503, 200]);
+        expect(answers[1].id, 'the retry keeps the request\'s id: one row in the log').toBe(answers[0].id);
+        expect(answers[0].ra).toBe('0');
+        expect(answers[0].who).toBe('global');
+        expect(answers[0].hold, 'the hold this 503 set, ms').toBeGreaterThanOrEqual(900);
+        expect(answers[1].hold, 'a clean answer sets none').toBeUndefined();
+        expect(t.mine.filter((r) => r.e === 'start' && r.id === answers[0].id)).toHaveLength(2);
+        expect(t.mine.some((r) => r.e === 'giveup'), 'answered in the end: no give-up').toBe(false);
+    });
+
+    test('T3: events wait in memory and reach storage in one write about a second later', async ({ page }) => {
+        await loadRelPage(page, null);
+        const r = await page.evaluate(async (pre) => {
+            const g = window.__saTest.mbGate;
+            g.trace.flush();
+            const w0 = g.trace.writes();
+            const tab = () => sessionStorage.getItem('mbu:mb-gate-tab') || '';
+            const stored = () => JSON.parse(localStorage.getItem(pre + tab()) || '[]').length;
+            const before = stored();
+            await g.answer(200, null); // no trace context: nothing noted
+            const quiet = g.trace.buffered().length;
+            await Promise.all([1, 2, 3].map(() => g.slot({ background: false, trace: { id: 'x', l: 'test', m: 'GET', b: 0 } })));
+            const buffered = g.trace.buffered().length;
+            const right = stored() - before;
+            await new Promise((ok) => setTimeout(ok, 1500));
+            return { quiet, buffered, right, later: stored() - before, writes: g.trace.writes() - w0 };
+        }, TRACE_PRE);
+        expect(r.quiet, 'a call without a trace context notes nothing').toBe(0);
+        expect(r.buffered, 'three starts wait in memory').toBeGreaterThanOrEqual(3);
+        expect(r.right, 'nothing written at once').toBe(0);
+        expect(r.later, 'all of them written later').toBe(r.buffered);
+        expect(r.writes, 'in ONE write').toBe(1);
+    });
+
+    test('T4: a page fetch (fetchHtml) is logged (x: 1, reason pages) and books nothing', async ({ page }) => {
+        await loadRelPage(page, null);
+        // A one-page list reads the live page, so the shipping fetchHtml() is called through its hook.
+        const len = await page.evaluate((u) => window.__saTest.mbGate.trace.pageFetch(u), `${SERIES.url}?page=2`);
+        expect(len).toBeGreaterThan(1000);
+        const t = await readTrace(page);
+        const pages = t.mine.filter((r) => r.x === 1);
+        expect(pages.length, JSON.stringify(t.mine)).toBeGreaterThanOrEqual(2);
+        const start = pages.find((r) => r.e === 'start');
+        const answer = pages.find((r) => r.e === 'answer' && r.id === start.id);
+        expect(start.l).toMatch(/^\/series\/aa3694d3-/);
+        expect(start.r).toBe('pages');
+        expect(start.h, 'musicbrainz.org itself: no host').toBeUndefined();
+        expect(answer.st).toBe(200);
+        expect(await page.evaluate(() => window.__saTest.mbGate.stats().booked), 'logged only, never paced').toBe(0);
+    });
+
+    test("T5: another writer's rows in this tab's key survive; another tab's idle trace is swept", async ({ page }) => {
+        await loadRelPage(page, null);
+        const r = await page.evaluate(async (pre) => {
+            const g = window.__saTest.mbGate;
+            await g.slot({ background: false, trace: { id: 'a', l: 'first', m: 'GET', b: 0 } });
+            g.trace.flush();
+            const tab = sessionStorage.getItem('mbu:mb-gate-tab');
+            const key = pre + tab;
+            const list = JSON.parse(localStorage.getItem(key));
+            list.push({ t: Date.now(), s: 'Event Horizon*', e: 'start', l: 'release/x', id: 'eh1' });
+            localStorage.setItem(key, JSON.stringify(list));
+            const old = Date.now() - 11 * 60000;
+            localStorage.setItem(pre + 'oldtab', JSON.stringify([{ t: old, s: 'Fusion*', e: 'start' }]));
+            localStorage.setItem('mbu:mb-gate-title:oldtab', 'gone');
+            localStorage.setItem(pre + 'newtab', JSON.stringify([{ t: Date.now() - 60000, s: 'Fusion*', e: 'start' }]));
+            // the sweep runs at most once a minute: the first flush above ran it
+            const realNow = Date.now;
+            Date.now = () => realNow.call(Date) + 61000;
+            try {
+                await g.slot({ background: false, trace: { id: 'b', l: 'second', m: 'GET', b: 0 } });
+                g.trace.flush();
+            } finally { Date.now = realNow; }
+            const mine = JSON.parse(localStorage.getItem(key));
+            return {
+                ids: mine.map((x) => x.id),
+                oldTab: localStorage.getItem(pre + 'oldtab'),
+                oldTitle: localStorage.getItem('mbu:mb-gate-title:oldtab'),
+                newTab: !!localStorage.getItem(pre + 'newtab'),
+            };
+        }, TRACE_PRE);
+        expect(r.ids, 'appended after the other writer\'s row, never replacing it').toEqual(expect.arrayContaining(['a', 'eh1', 'b']));
+        expect(r.ids.indexOf('eh1')).toBeLessThan(r.ids.indexOf('b'));
+        expect(r.oldTab, 'a tab idle for over ten minutes is dropped').toBeNull();
+        expect(r.oldTitle, 'with its title').toBeNull();
+        expect(r.newTab, 'a recent one stays').toBe(true);
+    });
+
+    test('T6: switched off, no trace is written', async ({ page }) => {
+        let failing = null;
+        let failed = 0;
+        await loadRelPage(page, (url) => {
+            if (!failing || !url.includes(failing)) return null;
+            failed += 1;
+            return { status: 503, headers: { 'Retry-After': '0' } };
+        }, { sa_mb_shared_gate: false });
+        const [target, other] = (await rowMbids(page)).slice(3, 5);
+        await clickCell(page, target);
+        await expect.poll(() => cellDone(page, target)).toBe(true);
+        // A request that runs out of tries: its give-up row is the one event that reaches the trace's own check.
+        failing = other;
+        await clickCell(page, other);
+        await expect.poll(() => failed, { timeout: 15000 }).toBe(3);
+        // The cell's error mark comes after _ws2GetJson() returned, i.e. after its give-up;
+        // readTrace() then writes whatever was buffered, so nothing has to be waited out.
+        await expect.poll(() => page.evaluate((m) => {
+            const td = document.querySelector(`table.tbl tbody td.mb-rel-cell[data-mbid="${m}"]`);
+            return !!td && 'relError' in td.dataset;
+        }, other), { timeout: 10000 }).toBe(true);
+        const t = await readTrace(page);
+        expect(t.keys).toEqual([]);
+        expect(await page.evaluate(() => window.__saTest.mbGate.trace.tab())).toBe('');
+    });
+
+    test('T7: a secret in a URL is hidden; ordinary keys that end alike are not', async ({ page }) => {
+        await loadRelPage(page, null);
+        const h = (s) => page.evaluate((x) => window.__saTest.mbGate.trace.hideUrl(x), s);
+        expect(await h('/ws/2/x?token=abc&barcode=123')).toBe('/ws/2/x?token=•••&barcode=123');
+        expect(await h('/x?api_key=k1&keyword=rock&apiKey=k2')).toBe('/x?api_key=•••&keyword=rock&apiKey=•••');
+        expect(await h('/x?query=arid:1')).toBe('/x?query=arid:1');
+    });
+});

@@ -31326,3 +31326,101 @@ springsteenlyrics.com sticky headers would first have to read the gutter
 (e.g. `window.innerWidth - document.documentElement.clientWidth` taken once
 per layout pass, not per scroll event) — scroll-path code, so with a
 performance comparison. These 18 tests are the regression set for it.
+
+## 2026-11-25 — majkinetor refresh: 5d4d464 → 9f8aa0c (SAED is absent from String Theory's Network log, measured)
+
+Env: 2026-11-25T10:10:51+01:00 – 2026-11-25T10:16:56+01:00 (probe) · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · SAED 9.99.1693 (`be23cf22`) · code reading: n/a
+
+refresh-majkinetor skill, branch `chore/refresh-majkinetor-9f8aa0c`, the
+first refresh on NB-3641: `debug/majkinetor/` did not exist there (`debug/`
+is not synced), so the clone was made fresh, and only `ISRC-scout.user.js`
+was in `tests/fixtures/live-userscripts/`. Upstream `main` 282 commits on
+(GitHub compare API); harness copies ST 2026.11.25.095821, EH and ISRC Scout
+2026.11.25.095751, the bundle's `@description` naming the same member
+versions; main's raw link served the same `@version`. Everything else is in
+`org/majkinetor.org` (Refresh log, the two new TODOs, "Coexistence", the
+drafted post).
+
+- **The question that started it**: majkinetor asked vzell personally "How
+  do u like network log? Does it show your script requests?" String
+  Theory's Network log (#1093, #1103, #1115) is built only from the gate's
+  trace: `mbnTrace()` in `dev/net/mb-gate.mjs` keeps each tab's last 400
+  events in `localStorage['mbu:mb-gate-trace:<tab>']`, and
+  `stGateEvents()` reads those keys and nothing else. SAED's gate port
+  (`_mbGateSlot()`/`_mbGateAnswer()`/`_mbGateFetch()`) books in
+  `mbu:mb-gate` but writes no trace, and `fetchHtml()` is not gated at all.
+- **Measured** with a new probe field (`gateTrace()` in
+  `tests/support/probe-majkinetor-interop.js`): case 0 (SAED alone) booked
+  one ws/2 slot and left no trace key and no row; case D (EH + SAED) had 74
+  trace rows, and SAED's one ws/2 request was in none of them. **Harness
+  trap**: `gmStubs.js` gives every injected script one global `GM_info`
+  ('ShowAllEntityData (test)'), so EH's rows carry SAED's test name. The
+  field therefore matches SAED's requests by URL and transport (page
+  `fetch` = SAED, GM xhr = majkinetor's), never by the `s` name. In the
+  bundle the members carry their own names ("Platform Check*" etc.).
+- **Gate, from code**: `MBN_GAP` 125 / `MBN_BURST` 4 unchanged, with the
+  reasons now in its comment; the DOM watch in `mbnSleep()` is gone (#1095:
+  it slowed Mission Control); the backup wake-up is a blob-worker timer. A
+  search pace was tried and dropped (#1112); holds get up to 500 ms of
+  random spread (`MBN_JITTER`). Since #1103 his scripts' website-side
+  requests go through `mbnFetch` with the browser re-verify; `mbnIsCheck()`
+  knows the check by `<title>`/`<noscript>`, never by `/__meb_verify`,
+  which ordinary pages carry as a beacon (Falcon #551). SAED's
+  `_mbIsBrowserCheck()` does count `/__meb_verify` in the first 4 KB. None
+  of our recent page snapshots in `debug/` carry that beacon (only the
+  1,396-byte check pages do), so whether it is a false positive is
+  unverified (anchor `saed-check-beacon`).
+- **Probe otherwise unchanged**: bodies, the bar, V/V, `h`, the C reload,
+  ISRC Scout 37/37 and 51/51. Case D: four 503s, all on EH's GM requests;
+  SAED waited 4.3 s in the gate, its 31-page fetch 29.5 s (30.7 s alone).
+- Anchors 134/134: `gate-sleep` rewritten, twelve added, three of them SAED
+  defect anchors (`saed-no-trace` absent, `saed-fetchhtml-nocheck`,
+  `saed-check-beacon`).
+- **Manifest re-scan** (all three entries, in place): the Network log's HUD
+  `#st-gate-hud-box` is appended to `<html>` without `data-mb-corner`
+  (ST:5229), fixed at the bottom right, 520 px wide (ST:4400). C4's quiet rule
+  (`:root[data-mbu-quiet] :is([data-mb-corner],#mbu-dock-shelf)`, ST:1309)
+  therefore does not hide it over our table, and `stGateReopen()` brings it
+  back on every load; asked upstream in the drafted post (anchors
+  `st-gate-hud-root`, `conv-c4-quiet-rule`). EH's player defaults to a 48 px
+  bottom bar that pads MusicBrainz's body; EH marks every failed `<img>`
+  `eh-nimg` (ours too). Validation: one failure that predates this refresh,
+  `lotheric-instrument-icons`, whose file is not on NB-3641.
+
+## 2026-11-25 — SAED's requests in String Theory's Network log: the gate's trace (feat/saed-gate-trace, WIP.1)
+
+Env: 2026-11-25T10:41–10:59+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · SAED 9.99.1693 + WIP.1 · ST/EH 2026.11.25.095751 (harness copies at `9f8aa0c`)
+
+Adoption 1 of the 2026-11-25 refresh (vzell: "start with adoption 1"); the
+answer to majkinetor's "Does it show your script requests?", posted on #938 by
+vzell the same morning. `_mbGateTrace()` and its helpers port upstream's
+`mbnTrace()`/`mbnTabCheck()`/`mbnRid()`/`mbnHideUrl()`/`mbnLog()`: the same key
+`mbu:mb-gate-trace:<tab>`, tab id, row fields, one write a second. Design and
+rules: docs/claude/fetch-and-render-pipeline.md, "The gate's trace".
+
+- **Which events, from where**: `lead`/`book`/`cancel`/`start` from
+  `_mbGateSlot()`, `answer` (status, `Retry-After`, hold, `X-RateLimit-*`,
+  size) from `_mbGateAnswer()`, `error` from `_mbGateFetch()`, `giveup` from
+  `_ws2GetJson()`, which keeps ONE id over a request's retries. The ▶ expand's
+  XHR writes the same. Page fetches (`fetchHtml()`, `_dpFetchText()`) go through
+  `_mbGateLogFetch()`: logged with `x: 1`, never paced.
+- **Rows are named `ShowAllEntityData`** (`SCRIPT_BASE_NAME`), not the 100+
+  character `@name`. In the harness this also tells our rows from the GM
+  stub's "ShowAllEntityData (test)" that every other injected script carries.
+- **A mutation survivor, fixed in the spec**: "the trace ignores the switch"
+  first passed T6. With `sa_mb_shared_gate` off, `_mbGateSlot()` and
+  `_mbGateAnswer()` return before any trace call, so an answered request never
+  reaches `_mbGateTrace()`'s own switch check; only `_ws2GetJson()`'s give-up
+  does. T6 now also runs a request out of its three tries, and waits on the
+  cell's `data-rel-error` instead of a fixed timeout (lint: no new
+  `waitForTimeout`).
+- **Measured live** (probe, `gateTrace()`; its matcher now compares paths in
+  the label form, without `/ws/2/` and `fmt=json`): case 0 (SAED alone, the
+  31-page artist fetch) 64 rows, all ShowAllEntityData: 32 `start` + 32
+  `answer` (31 pages + 1 ws/2), `saWs2Traced` 1/1 (was 0/1 at 10:12). Case D
+  beside EH: 67 of 140 rows ours.
+- Tests: `mb-shared-gate.spec.js` T1–T7 (new) and the whole file, plus
+  `ws2-transient-classifier.spec.js` and `popup-mb.spec.js`: 195 passed
+  (9 m 8 s). Mutations: `mb-gate-trace.json` 13/13 caught; two finds of
+  `mb-shared-gate.json` moved with the code, both still caught. The full suite
+  (`test:full`) has not run on this branch yet: due before any merge.

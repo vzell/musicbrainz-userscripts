@@ -241,7 +241,8 @@ version 1 (on his `main` since `7eb7c563`). Anchors `gate-version`,
   setlist.fm or the Springsteen sites there is no schedule to join — their
   `/ws/2` requests (`_mbWsGetForeign()`, `_extGet()`) keep the per-tab gate.
   HTML page fetches (`fetchHtml()`, `_dpFetchText()`) are not gated, as in the
-  protocol.
+  protocol; since WIP.1 of `feat/saed-gate-trace` they are LOGGED in the gate's
+  trace (`_mbGateLogFetch()`), never paced (see "The gate's trace" below).
 - **One wrapper.** Every same-origin `/ws/2` request goes through
   `_mbGateFetch()` (slot → `fetch()` → `_mbGateAnswer()`): `_ws2GetJson()`
   (everything that retries), the two ⏱ millisecond-length lookups. The only
@@ -371,6 +372,71 @@ rest, the job log's second line; and the wall clock stepped back and forward
 during a hold and a paced slot, the ten-minute lead and its renewal, through
 the spec's `installClock()`: `pass()` moves both clocks, `step()` the wall
 clock only); mutations `scripts/mutations/mb-shared-gate.json`.
+
+### The gate's trace (String Theory's Network log)
+
+*Added 2026-11-25 (branch `feat/saed-gate-trace`, WIP.1; org/majkinetor.org,
+"SAED in String Theory's Network log").* String Theory's Network log
+(majkinetor's #1093/#1103/#1115, Ctrl+Alt+N) shows every request of every
+script and tab, from ONE source: each tab's last events in
+`localStorage['mbu:mb-gate-trace:<tab>']`, written by upstream's `mbnTrace()`
+and read by String Theory's `stGateEvents()`. Booking in `mbu:mb-gate` alone
+left this script out of it (measured: probe case 0, 2026-11-25). `_mbGateTrace()`
+and its helpers are a PORT of `mbnTrace()`, `mbnTabCheck()`, `mbnRid()`,
+`mbnHideUrl()` and `mbnLog()` at `9f8aa0c`. The format is not in his DEVELOP.md
+protocol; whether it is a contract was asked on #938 (2026-11-25), so the code
+anchors `gate-trace-key` and `st-gatelog-source` watch it.
+
+**Rules that fail silently when broken:**
+
+- **One id per request, over its retries.** `_ws2GetJson()` makes it
+  (`_mbGateRid()`) and passes it to every attempt's `_mbGateFetch()`; the log
+  pairs `start` and `answer` by it. Without it a 503 and its retry show as two
+  requests (spec T2).
+- **Upstream's row shape.** `{t, s, e, l, m, r, b, id}` on every event, plus
+  per kind: `lead` (`w`, `by`), `book` (`w`, `why` `hold`|`pace`, only when the
+  slot is not now), `cancel` (`w`), `start` (`w`, the whole wait), `answer`
+  (`st`, `ra`, `hold`, `lim`/`rem`/`rst`/`who` from `X-RateLimit-*`, `rs`),
+  `error` (`err`), `giveup` (`st`, `n`). The label `l` is the path without
+  `/ws/2/` and `fmt=json`, exactly as upstream's `mbnFetch()` labels a
+  request, so his log's short names ("ws/2 url lookup") apply. `b` is 0 for a
+  foreground (clicked) request. `r` is a reason word set at each call site
+  (`relationships`, `preview`, `length`, `recording of`, `release events`,
+  `works`, `expand`, `pages`); a new `/ws/2` call site passes one.
+- **The name is `SCRIPT_BASE_NAME`** ("ShowAllEntityData"), not
+  `GM_info.script.name` as upstream: this script's `@name` is over a hundred
+  characters and the log's Script column shows it whole.
+- **Page fetches are logged only** (`_mbGateLogFetch()`, upstream's
+  `mbnLog()`): `start`/`answer`/`error` with `x: 1`, `h` for a host that is not
+  MusicBrainz, reason `pages` (`fetchHtml()`) or `preview` (`_dpFetchText()`).
+  They book nothing (spec T4).
+- **Buffered, one write a second** (`_MBG_TRACE_FLUSH_MS`), and at once on
+  `pagehide` and when the page is hidden; the top page adds `e: 'left'` on
+  `pagehide`. A write per event re-parses the whole trace and fires a storage
+  event in every other MusicBrainz tab (#1095; spec T3).
+- **Append, never replace.** Several writers share one tab's key (his copies
+  of the gate in the page and this one; each its own buffer, since
+  Tampermonkey sandboxes them apart): the flush reads, concatenates, keeps the
+  newest 400 (`_MBG_TRACE_MAX`) and writes back in one synchronous step, so
+  another writer in the tab cannot interleave (spec T5).
+- **The tab id is upstream's**: sessionStorage `mbu:mb-gate-tab`, made if
+  absent; a duplicated tab asks the others over the BroadcastChannel
+  `mbu:mb-gate-tab` and takes a new id when one answers
+  (`_mbGateTabCheck()`); copies in one document share `<html data-mbn-doc>`
+  and do not answer each other. Idle tabs' traces (no event for ten minutes)
+  are swept at most once a minute, reading the key names in one pass
+  (`Object.keys(localStorage)`: in Firefox each `localStorage.key(i)` walks the
+  store from its start).
+- **Only where the gate is active** (`_mbGateActive()`: musicbrainz.org,
+  `sa_mb_shared_gate`, a known protocol version). On another host there is no
+  trace to write (spec T6).
+- **Secrets are hidden** in `l` and `u` (`_mbGateHideUrl()`: `token`, `key`,
+  `secret`, … as words; `barcode`, `keyword` stay; spec T7).
+
+Cost: one object pushed per event and one `localStorage` read-modify-write a
+second while requests run; nothing on the filter, sort or render path. Tests:
+`mb-shared-gate.spec.js`, describe "the gate's trace" (T1–T7, through
+`__saTest.mbGate.trace`); mutations `scripts/mutations/mb-gate-trace.json`.
 
 ## The in-tab request schedulers book on `_steadyNow()`, never the wall clock (2026-11-09)
 

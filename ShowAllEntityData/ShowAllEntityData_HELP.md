@@ -1999,8 +1999,11 @@ them, so they no longer crowd those scripts out. That never makes this
 script faster, since its own pace of one request per 1.1 s still applies.
 While the others are busy or MusicBrainz asked everyone to wait, the
 Relationships column's [progress card](#the-progress-card) says so in its
-last requests. Only on musicbrainz.org. To pace this script on its own
-again, turn off *Share MusicBrainz's request budget with other userscripts*
+last requests. With String Theory installed, its *Network log* (Ctrl+Alt+N)
+lists this script's requests too, under *ShowAllEntityData*: each Web
+Service request with its reason, its wait and MusicBrainz's answer, and the
+pages a list or a card loads, marked as not paced. Only on musicbrainz.org.
+To pace this script on its own again, turn off *Share MusicBrainz's request budget with other userscripts*
 in ⚙️ Settings → 🎨 UI FEATURES. Without any of majkinetor's scripts
 installed, it matters only when several MusicBrainz tabs fetch at once:
 they now share the one budget instead of each pacing on its own.
