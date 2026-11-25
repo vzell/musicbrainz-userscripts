@@ -20,8 +20,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7158522166][comment]]: trace format
   a contract?, SAED's icon, the HUD under =data-mbu-quiet=), no answer yet. Adoption 1 *shipped* as
   9.99.1694 (=feat/saed-gate-trace= with the refresh, merged after vzell's browser check): SAED's requests in the
-  Network log ([[#saed-network-log][the item]]). The follow-up with vzell's screenshot is drafted
-  ([[#post-network-log-shipped][On the record]]), for vzell to send. Next: adoption 2 (=search-shed= + the hold jitter).
+  Network log ([[#saed-network-log][the item]]). The follow-up with vzell's screenshot is posted
+  (13:26 CET, [[#post-network-log-shipped][On the record]]); no answer yet to either post. Next: adoption 2 (=search-shed= + the hold jitter).
 - *Now (2026-11-25):* refreshed to =9f8aa0c= on NB-3641 (=chore/refresh-majkinetor-9f8aa0c=). majkinetor asked vzell
   personally "How do u like network log? Does it show your script requests?" *No*, measured: SAED books in the gate
   but writes no trace, which String Theory's Network log reads. vzell's own check is the Pre-test of [[#saed-network-log][SAED in String
@@ -2517,10 +2517,15 @@ Two questions so I build it to last:
 And one small thing for the quiet mark (C4): the HUD `#st-gate-hud-box` sits on `<html>` at the bottom right without `data-mb-corner`, so `:root[data-mbu-quiet]` doesn't hide it, and over SAED's table it covers the last rows and SAED's toasts. Could the quiet rule include it, or the HUD carry `data-mb-corner`?
 #+end_src
 
-** TODO 2026-11-25 · Post: SAED is in your Network log now (follow-up on #938)
+** DONE 2026-11-25 13:26 · Post: SAED is in your Network log now (follow-up on #938)
 :PROPERTIES:
 :CUSTOM_ID: post-network-log-shipped
 :END:
+
+- *Posted* by vzell 2026-11-25T13:26:02+01:00:
+  https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7162366138 (checked through the
+  GitHub API: the block below word for word, with the browser-check screenshot inserted after the first
+  paragraph).
 
 - *Draft* (NB-3641, 2026-11-25T13:20:38+01:00; vzell: "create a followup response to majkinetor that we have
   implemented the integration and I will send the same screenshot"). For vzell to send on #938 under the
