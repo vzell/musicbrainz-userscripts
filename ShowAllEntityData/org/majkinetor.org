@@ -121,7 +121,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Event Horizon's player plays on under our page                 | DONE  | 9.99.1680     | Interop       |
 | The shared gate at eight a second (2026.11.23)                 | PART  | 9.99.1681     | Interop       |
 | SAED in String Theory's Network log (=mbnTrace=)               | DONE  | 9.99.1694     | Interop       |
-| SAED's icon in the Network log (=mbu.logIcons=)                | NEXT  | —             | Interop       |
+| SAED's icon in the Network log (=mbu.logIcons=)                | NEXT  | WIP.1         | Interop       |
 | C7 =mbLastWrite=, C8 =MBU.artistImage=                         | DONE  | 9.99.1643, 46 | Adoptions     |
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions     |
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions     |
@@ -662,6 +662,11 @@ CLOSED: [2026-11-25 Wed]
 - *Tests*: =mb-shared-gate.spec.js=, the trace describe: the entry on the first flush with another script's entry
   kept; no second write when it is already there; nothing with the gate off; a broken value replaced. Mutations in
   =scripts/mutations/mb-gate-trace.json=.
+- *Built* (2026-11-25, =feat/saed-log-icon=, WIP.1): =_mbGateLogIcon()= and =_MBG_LOG_ICONS_KEY= beside
+  =_mbGateTraceFlush()=, called once per page from it (flag =_mbgTrace.iconed=); test hooks =trace.icon()= and
+  =trace.iconAgain()=. Specs T8–T10 (+ an assertion in T6), 40/40 in the file; mutations: five new in
+  =mb-gate-trace.json=, 18/18 caught. Anchor =saed-logicons= flipped to present. Design: docs/claude/fetch-and-render-pipeline.md,
+  "The gate's trace", "The log's icon". *Waiting*: vzell's browser check (the Pre-test, expecting SAED's table icon).
 
 * Adoptions: what SAED takes from his scripts
 

@@ -2025,7 +2025,9 @@ Relationships column's [progress card](#the-progress-card) says so in its
 last requests. With String Theory installed, its *Network log* (Ctrl+Alt+N)
 lists this script's requests too, under *ShowAllEntityData*: each Web
 Service request with its reason, its wait and MusicBrainz's answer, and the
-pages a list or a card loads, marked as not paced. Only on musicbrainz.org.
+pages a list or a card loads, marked as not paced. With String Theory
+2026.11.25.174628 or newer, these rows carry this script's own icon (the
+small table of its entries in Event Horizon's ⋯ menu). Only on musicbrainz.org.
 To pace this script on its own again, turn off *Share MusicBrainz's request budget with other userscripts*
 in ⚙️ Settings → 🎨 UI FEATURES. Without any of majkinetor's scripts
 installed, it matters only when several MusicBrainz tabs fetch at once:

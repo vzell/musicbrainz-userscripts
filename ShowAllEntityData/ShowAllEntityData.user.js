@@ -71894,14 +71894,23 @@
      * and filter show it whole, so the short base name is used.
      */
     const _MBG_TRACE_NAME = SCRIPT_BASE_NAME;
+    /**
+     * Shared localStorage key of the icons String Theory's Network log draws
+     * for scripts outside its suite: `{<row name s>: <data:image/ or https://
+     * address>}` (`mbuShared('logIcons')`; upstream's DEVELOP.md "Shared
+     * storage", 8384078, #938). Read by its `stGateIconSrc()` after the
+     * members' icons and the dock's, before String Theory's own.
+     */
+    const _MBG_LOG_ICONS_KEY = 'mbu.logIcons';
 
     /**
      * This page's trace buffer: the tab id, the events not yet written, the
      * pending write and the last sweep. This script's own, never upstream's
      * `globalThis.__mbnTrace` (another sandbox under Tampermonkey).
-     * @type {{tab: string, buf: Object[], timer: number, swept: number, hooked: boolean, writes: number}}
+     * `iconed`: this page has named its icon for the log (`_mbGateLogIcon()`).
+     * @type {{tab: string, buf: Object[], timer: number, swept: number, hooked: boolean, writes: number, iconed: boolean}}
      */
-    const _mbgTrace = { tab: '', buf: [], timer: 0, swept: 0, hooked: false, writes: 0 };
+    const _mbgTrace = { tab: '', buf: [], timer: 0, swept: 0, hooked: false, writes: 0, iconed: false };
 
     /**
      * A short random id (upstream's `mbnRid()`/`mbnTabId()`): a request's,
@@ -71973,6 +71982,34 @@
     }
 
     /**
+     * Names this script's icon for String Theory's Network log: merges
+     * `{ShowAllEntityData: _EH_MENU_ICON}` into the shared
+     * `localStorage['mbu.logIcons']` (`_MBG_LOG_ICONS_KEY`), keeping every
+     * other script's entry; a value that is not a plain object is replaced.
+     * Writes only when the entry differs, so a page costs one read. Without it
+     * the log draws String Theory's own icon on this script's rows.
+     *
+     * Called once per page from `_mbGateTraceFlush()`, so only where the trace
+     * runs (musicbrainz.org with `sa_mb_shared_gate` on) and only once there
+     * are rows. A flush is always asynchronous (its timer, pagehide or a test
+     * hook), so `_EH_MENU_ICON`, a `const` declared further down this IIFE, is
+     * initialised by then. The icon is the approved 16 px table of this
+     * script's launchers in Event Horizon's More menu: a data URI, no request.
+     *
+     * @returns {void}
+     */
+    function _mbGateLogIcon() {
+        try {
+            let icons = null;
+            try { icons = JSON.parse(localStorage.getItem(_MBG_LOG_ICONS_KEY) || 'null'); } catch (_) { /* broken: replaced */ }
+            if (!icons || typeof icons !== 'object' || Array.isArray(icons)) icons = {};
+            if (icons[_MBG_TRACE_NAME] === _EH_MENU_ICON) return;
+            icons[_MBG_TRACE_NAME] = _EH_MENU_ICON;
+            localStorage.setItem(_MBG_LOG_ICONS_KEY, JSON.stringify(icons));
+        } catch (_) { /* no storage: String Theory's icon */ }
+    }
+
+    /**
      * Writes the buffered events to this tab's trace now: one read and one
      * write of `mbu:mb-gate-trace:<tab>`, the newest `_MBG_TRACE_MAX` kept,
      * plus the page title for the log's tooltip; at most once a minute the
@@ -71987,6 +72024,10 @@
         clearTimeout(_mbgTrace.timer);
         _mbgTrace.timer = 0;
         if (!_mbgTrace.buf.length) return;
+        if (!_mbgTrace.iconed) {
+            _mbgTrace.iconed = true;
+            _mbGateLogIcon();
+        }
         const add = _mbgTrace.buf;
         _mbgTrace.buf = [];
         try {
@@ -198566,6 +198607,10 @@ a { color: #1565c0; }`;
                     writes: () => _mbgTrace.writes,
                     /** @returns {string} This tab's id, '' before the first event. */
                     tab: () => _mbgTrace.tab,
+                    /** @returns {string} The icon `_mbGateLogIcon()` names in `mbu.logIcons`. */
+                    icon: () => _EH_MENU_ICON,
+                    /** @returns {void} Lets the next flush name the icon again (a spec's second page). */
+                    iconAgain: () => { _mbgTrace.iconed = false; },
                     /**
                      * @param {string} s
                      * @returns {string} `_mbGateHideUrl()`.

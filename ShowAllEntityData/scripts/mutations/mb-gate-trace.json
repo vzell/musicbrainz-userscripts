@@ -167,5 +167,70 @@
     "spec": "tests/fixtures/mb-shared-gate.spec.js",
     "grep": "T7: a secret in a URL is hidden",
     "expect": "fail"
+  },
+  {
+    "name": "the log's icon is never written",
+    "why": "Without the mbu.logIcons entry String Theory's Network log draws its own icon on this script's rows.",
+    "edits": [
+      {
+        "find": "            if (icons[_MBG_TRACE_NAME] === _EH_MENU_ICON) return;\n",
+        "replace": "            return;\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T8: the first write names this script's icon",
+    "expect": "fail"
+  },
+  {
+    "name": "the icon write drops other scripts' icons",
+    "why": "mbu.logIcons is shared: replacing the object takes every other non-member's icon out of the log.",
+    "edits": [
+      {
+        "find": "            if (!icons || typeof icons !== 'object' || Array.isArray(icons)) icons = {};\n",
+        "replace": "            icons = {};\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T8: the first write names this script's icon",
+    "expect": "fail"
+  },
+  {
+    "name": "the icon is written on every page",
+    "why": "One read per page is the cost; a write each time touches every tab's storage event for nothing.",
+    "edits": [
+      {
+        "find": "            if (icons[_MBG_TRACE_NAME] === _EH_MENU_ICON) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T9: with the entry already there",
+    "expect": "fail"
+  },
+  {
+    "name": "a broken mbu.logIcons value is kept",
+    "why": "An array or a string in the key would leave this script without its icon for good.",
+    "edits": [
+      {
+        "find": "            if (!icons || typeof icons !== 'object' || Array.isArray(icons)) icons = {};\n",
+        "replace": "            if (icons == null) icons = {};\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T10: a broken mbu.logIcons value is replaced",
+    "expect": "fail"
+  },
+  {
+    "name": "the icon is written with the gate off",
+    "why": "Off means nothing: the icon is named only where the trace runs, i.e. once there are rows.",
+    "edits": [
+      {
+        "find": "        if (!_mbgTrace.buf.length) return;\n        if (!_mbgTrace.iconed) {\n",
+        "replace": "        if (!_mbgTrace.iconed) {\n            _mbGateLogIcon();\n        }\n        if (!_mbgTrace.buf.length) return;\n        if (!_mbgTrace.iconed) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T6: switched off, no trace is written",
+    "expect": "fail"
   }
 ]

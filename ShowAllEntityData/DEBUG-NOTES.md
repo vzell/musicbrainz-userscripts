@@ -31721,3 +31721,32 @@ was in the stored schedule. Anchors 141/141: `saed-mbu-awareness` (count 8,
 the original-page switch reads `data-mbu-dock` too), `conv-c7` and
 `c7-writer-apollo` (count 2 each, Apollo's flipped to present) and three
 Network log claims rewritten; seven added.
+
+## 2026-11-25 — SAED's own icon in String Theory's Network log, `mbu.logIcons` (feat/saed-log-icon, WIP.1)
+
+Env: 2026-11-25T19:32:13–19:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · browser check pending
+
+majkinetor's answer on #938 (milic-bot, 2026-11-25 17:46 CET, `79a48b4`)
+gave a script outside his suite a way to name its icon in String Theory's
+Network log: the shared `localStorage['mbu.logIcons']`, an object keyed by
+the rows' script name `s`, holding a `data:image/` or `https://` address.
+`stGateIconSrc()` reads it after the members' icons and the dock's, before
+String Theory's own (anchor `st-logicons`). Until now SAED's rows carried
+String Theory's icon.
+
+`_mbGateLogIcon()` merges `{ShowAllEntityData: _EH_MENU_ICON}` into that key,
+keeps every other script's entry, replaces a value that is not a plain
+object, and writes only when the entry differs (one read per page). It runs
+once per page from `_mbGateTraceFlush()`, after the "nothing buffered"
+return, so only where the trace runs (musicbrainz.org, the gate's switch on)
+and only once there are rows. The icon is the approved 16 px table of
+SAED's ⋯-menu launchers (mockup candidate A), a data URI. `_EH_MENU_ICON` is a
+`const` declared about 43,000 lines further down the IIFE; a flush is always
+asynchronous (its timer, pagehide or a test hook), so it is initialised
+by then.
+
+Tests: `mb-shared-gate.spec.js` T8 (the entry, another script's kept), T9
+(no write when equal, also on a later page), T10 (not JSON, an array, a
+string, null: replaced), and T6 now asserts no key with the gate off. The
+file: 40/40 (2 m 5 s). Mutations `mb-gate-trace.json`: five new, 18/18
+caught; the userscript restored and hash-verified.

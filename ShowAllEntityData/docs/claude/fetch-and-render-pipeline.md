@@ -432,11 +432,28 @@ anchors `gate-trace-key` and `st-gatelog-source` watch it.
   trace to write (spec T6).
 - **Secrets are hidden** in `l` and `u` (`_mbGateHideUrl()`: `token`, `key`,
   `secret`, … as words; `barcode`, `keyword` stay; spec T7).
+- **The log's icon** (*added 2026-11-25, `feat/saed-log-icon`*): upstream's
+  `stGateIconSrc()` (8384078) takes a non-member's icon from the shared
+  `localStorage['mbu.logIcons']`, `{<row name s>: <data:image/ or https://
+  address>}`, after the members' icons and the dock's; without an entry the
+  rows carry String Theory's icon. `_mbGateLogIcon()` merges
+  `{ShowAllEntityData: _EH_MENU_ICON}` into it on the first flush of a page
+  that has rows (so only where the trace runs), keeps every other script's
+  entry, replaces a value that is not a plain object, and writes only when
+  its entry differs. `_EH_MENU_ICON` is a `const` declared further down the
+  IIFE; the flush is always asynchronous, so it is initialised by then (specs
+  T8–T10, and T6 for the gate off).
+
+Upstream documents the trace since `8384078` (his DEVELOP.md, "Request
+trace") as "new and not yet stable": events this script does not write
+(`moved`, `hidden`, `join`, `cache`, `check`, `lead+`, `lead-`) are allowed,
+since the log ignores an event it does not know. Anchor `dev-trace-section`.
 
 Cost: one object pushed per event and one `localStorage` read-modify-write a
-second while requests run; nothing on the filter, sort or render path. Tests:
-`mb-shared-gate.spec.js`, describe "the gate's trace" (T1–T7, through
-`__saTest.mbGate.trace`); mutations `scripts/mutations/mb-gate-trace.json`.
+second while requests run, plus one read of `mbu.logIcons` per page; nothing
+on the filter, sort or render path. Tests: `mb-shared-gate.spec.js`, describe
+"the gate's trace" (T1–T10, through `__saTest.mbGate.trace`); mutations
+`scripts/mutations/mb-gate-trace.json`.
 
 ## The in-tab request schedulers book on `_steadyNow()`, never the wall clock (2026-11-09)
 
