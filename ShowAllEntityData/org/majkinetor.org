@@ -21,7 +21,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   a contract?, SAED's icon, the HUD under =data-mbu-quiet=), no answer yet. Adoption 1 *shipped* as
   9.99.1694 (=feat/saed-gate-trace= with the refresh, merged after vzell's browser check): SAED's requests in the
   Network log ([[#saed-network-log][the item]]). The follow-up with vzell's screenshot is posted
-  (13:26 CET, [[#post-network-log-shipped][On the record]]); no answer yet to either post. Next: adoption 2 (=search-shed= + the hold jitter).
+  (13:26 CET, [[#post-network-log-shipped][On the record]]); no answer yet to either post. Next: adoption 2
+  (=search-shed= + the hold jitter).
 - *Now (2026-11-25):* refreshed to =9f8aa0c= on NB-3641 (=chore/refresh-majkinetor-9f8aa0c=). majkinetor asked vzell
   personally "How do u like network log? Does it show your script requests?" *No*, measured: SAED books in the gate
   but writes no trace, which String Theory's Network log reads. vzell's own check is the Pre-test of [[#saed-network-log][SAED in String
