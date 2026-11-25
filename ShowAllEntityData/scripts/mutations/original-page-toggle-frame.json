@@ -233,5 +233,44 @@
     "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
     "grep": "a letter tab of the copy switches its panel",
     "expect": "fail"
+  },
+  {
+    "name": "the note is never worked out from the copy",
+    "why": "The fixed sentence stood on every copy, vague where nothing or something specific was dead (vzell, 2026-11-25).",
+    "edits": [
+      {
+        "find": "                if (n) n.textContent = _origViewNoteText(_origViewFrameDead(d));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "jungleland.it: only the Year menu does not",
+    "expect": "fail"
+  },
+  {
+    "name": "a jump menu inside a counted form is not named",
+    "why": "brucespringsteen.it wraps its whole page in one form; its Section menu went unnamed.",
+    "edits": [
+      {
+        "find": "select[onchange]')).filter(vis);",
+        "replace": "select[onchange]')).filter(el => vis(el) && !inCounted(el));"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "the Section menu do not",
+    "expect": "fail"
+  },
+  {
+    "name": "long account-menu entries crowd the button list",
+    "why": "Brucebase's 'Stop watching site …' pushed Edit, Tags, History out of the three named.",
+    "edits": [
+      {
+        "find": "            if (text.length > 24) continue;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "Brucebase songs: tabs work",
+    "expect": "fail"
   }
 ]

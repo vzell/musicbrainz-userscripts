@@ -1110,6 +1110,15 @@ region nor the live sites' "what follows our section" fits.
   tabs (Brucebase's song list letters, the side bar's News/Media/Released)
   switch their panels, `_origViewFrameTab()` from the same click listener
   (vzell, 2026-11-25: "the tabs do not react on clicks" on stats:songs).
+  The note names what does NOT work in that copy (vzell, 2026-11-25, his
+  choice over making more of it work, which `org/majkinetor.org` keeps for
+  later): `_origViewFrameDead()` reads the laid-out copy at its load
+  (visible forms: a password field → signing in, a text field → searching,
+  tick boxes only → the filter form; a `select[onchange]` → the jump menu;
+  other `javascript:`/`onclick` controls with a short text → the page's own
+  buttons, three named; picture-only links, tabs and sign-in links aside),
+  `_origViewNoteText()` words it. Measured with
+  `scripts/probe-orig-frame-controls.js`.
 - **Brucebase detail pages** (an event, song, venue, person, release,
   story, tag page: `h2.mb-bb-native-h2` after the render): the LIVE wiki page
   in place instead (vzell, 2026-11-25, "Live wiki page"; the mockup's
@@ -1122,7 +1131,7 @@ region nor the live sites' "what follows our section" fits.
   (`makeH2sCollapsible()`), or the live view would show them folded.
 
 Spec: `tests/fixtures/original-page-toggle-frame.spec.js`; mutations:
-`scripts/mutations/original-page-toggle-frame.json` (18). Specs that worked
+`scripts/mutations/original-page-toggle-frame.json` (21). Specs that worked
 on the site's page under our tables now switch first or ignore what the
 table view hides (`bb-event`, `bb-songs`, `sl-sticky-headers`,
 `bs-records`), and two layout-dependent tests were made robust where the

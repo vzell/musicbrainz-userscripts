@@ -46,6 +46,7 @@ const deadControls = (page) => page.locator('#mb-orig-frame').evaluate((f) => {
         jsLinks: js.filter(a => !tabs.includes(a)).map(tag),
         tabLinks: tabs.length,
         onHandlers: onAttr.filter(el => !js.includes(el)).map(el => `${tag(el)} [${Array.from(el.attributes).filter(a => /^on/i.test(a.name)).map(a => a.name).join(',')}]`),
+        note: (d.getElementById('mb-orig-frame-note') || {}).textContent || '',
         controls: Array.from(d.querySelectorAll('button, input:not([type=hidden]), select, textarea')).map(tag),
     };
 });

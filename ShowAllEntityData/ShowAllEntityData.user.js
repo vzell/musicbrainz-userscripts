@@ -114075,16 +114075,19 @@ ${sections.join('\n')}
             note.id = 'mb-orig-frame-note';
             note.setAttribute('style', 'margin:0;padding:8px 12px;background:#fbf8f1;color:#2b2622;border-bottom:1px solid #d9cfbd;'
                 + 'border-left:3px solid #9a6a00;font:13px/1.45 Georgia,"Times New Roman",serif;position:relative;z-index:2147483000');
-            const what = _origView.label ? `pressed “${_origView.label}”` : 'pressed the button';
-            note.textContent = `COPY · A copy of this page from before you ${what} (${_origView.at}). `
-                + 'Links work; the site’s own buttons may not respond here. Reload for the live page.';
+            note.textContent = _origViewNoteText(null);
             doc.body.prepend(note);
             f = document.createElement('iframe');
             f.id = 'mb-orig-frame';
             f.title = 'The page before the press';
             f.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation');
             f.setAttribute('style', 'position:fixed;inset:0;width:100%;height:100%;border:0;margin:0;background:#fff;z-index:2147482900');
-            f.addEventListener('load', () => _origViewFrameKeys(f));
+            f.addEventListener('load', () => {
+                _origViewFrameKeys(f);
+                const d = f.contentDocument;
+                const n = d && d.getElementById('mb-orig-frame-note');
+                if (n) n.textContent = _origViewNoteText(_origViewFrameDead(d));
+            });
             f.srcdoc = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
             _saBody().appendChild(f);
             _origView.frame = f;
@@ -114177,6 +114180,82 @@ ${sections.join('\n')}
             for (const [el, d] of (_origView.bbNow || new Map())) el.style.display = d;
             if (title && _origView.bbTitleHidden) { title.classList.add('mb-bb-hidden'); _origView.bbTitleHidden = false; }
         }
+    }
+
+    /**
+     * The "COPY" note of the original-page frame: the press it predates, what
+     * works and, when `dead` is known, what does not (vzell, 2026-11-25:
+     * the fixed "the site's own buttons may not respond here" was there on
+     * every copy, also where it was vague; he chose to name what is dead).
+     * Until the frame has loaded (`dead` null) it names nothing dead.
+     *
+     * @param {?{works: string[], dead: string[]}} dead - `_origViewFrameDead()`'s answer.
+     * @returns {string}
+     */
+    function _origViewNoteText(dead) {
+        const what = _origView.label ? `pressed “${_origView.label}”` : 'pressed the button';
+        const list = (a) => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+        const works = ['Links'].concat(dead ? dead.works : []);
+        let t = `COPY · A copy of this page from before you ${what} (${_origView.at}). ${list(works)} work`;
+        if (dead && dead.dead.length) t += `; ${list(dead.dead)} do${dead.dead.length > 1 || /s\b/.test(dead.dead[0].split(' (')[0]) ? '' : 'es'} not`;
+        return t + '. Reload for the live page.';
+    }
+
+    /**
+     * What the original-page copy holds that cannot work there (no script
+     * runs in the frame, no form submits), from its laid-out document, so the
+     * note names it (`_origViewNoteText()`). Measured on the saved pages
+     * (scripts/probe-orig-frame-controls.js, 2026-11-25): Brucebase's search
+     * box, Sign in / Create account and the page options at its foot;
+     * springsteenlyrics.com's search boxes and log-in form;
+     * jungleland.it's Year menu; brucespringsteen.it's Section menu and
+     * filter form. Only what is visible counts. A `javascript:` link that is
+     * only a picture (the wiki's legend icons) does nothing on the live page
+     * either and is not named; the tabview tabs work (`_origViewFrameTab()`).
+     *
+     * @param {Document} d - The frame's document.
+     * @returns {{works: string[], dead: string[]}}
+     */
+    function _origViewFrameDead(d) {
+        const vis = (el) => el.getClientRects().length > 0 && d.defaultView.getComputedStyle(el).visibility !== 'hidden';
+        const out = { works: [], dead: [] };
+        const isTab = (a) => !!(a.parentElement && a.parentElement.parentElement
+            && a.parentElement.parentElement.classList.contains('yui-nav'));
+        const signInRe = /^(sign (in|out)|log ?(in|out)|create account|register)$/i;
+        const counted = new Set();
+        let search = false, signIn = false, filter = false;
+        for (const fm of Array.from(d.forms).filter(vis)) {
+            // A search box may come with tick boxes (springsteenlyrics.com's
+            // Song Title / Subtitle / Lyrics): its text field decides.
+            if (fm.querySelector('input[type="password"]')) signIn = true;
+            else if (fm.querySelector('input[type="text"], input[type="search"], input:not([type])')) search = true;
+            else if (fm.querySelector('input[type="radio"], input[type="checkbox"]')) filter = true;
+            else continue;
+            counted.add(fm);
+        }
+        const inCounted = (el) => Array.from(counted).some(fm => fm.contains(el));
+        // A jump menu counts on its own, also inside a counted form
+        // (brucespringsteen.it's whole page is one form).
+        const menus = Array.from(d.querySelectorAll('select[onchange]')).filter(vis);
+        const buttons = [];
+        for (const el of d.querySelectorAll('a[href^="javascript:" i], [onclick], button')) {
+            if (el.id === 'mb-orig-frame-note' || !vis(el) || inCounted(el) || (el.tagName === 'A' && isTab(el))) continue;
+            const text = (el.textContent || el.value || '').trim().replace(/\s+/g, ' ');
+            if (!text) continue;
+            if (signInRe.test(text)) { signIn = true; continue; }
+            // A long entry (Brucebase's "Stop watching site …" in the
+            // account menu) would crowd out the short ones the note names.
+            if (text.length > 24) continue;
+            if (/^[\u25bc\u25b2\u25be\u25b8+-]$/.test(text)) continue;
+            if (!buttons.includes(text)) buttons.push(text);
+        }
+        if (Array.from(d.querySelectorAll('.yui-nav > li > a')).some(vis)) out.works.push('tabs');
+        if (search) out.dead.push('searching');
+        if (signIn) out.dead.push('signing in');
+        if (filter) out.dead.push('the filter form');
+        if (menus.length) out.dead.push(menus.length > 1 ? 'the jump menus' : 'the jump menu');
+        if (buttons.length) out.dead.push(`the page’s own buttons (${buttons.slice(0, 3).join(', ')}${buttons.length > 3 ? ' …' : ''})`);
+        return out;
     }
 
     /**

@@ -863,8 +863,19 @@ CLOSED: [2026-11-20 Fri]
   header and side bar; the original view is the page's HTML from before the press in a sandboxed frame
   (=_origViewPageHtml()=, =_origViewFrame()=), on a Brucebase detail page the LIVE wiki page (vzell: "Live wiki
   page"; =_origViewBbLive()=). Spec =original-page-toggle-frame.spec.js= (8), mutations 17/17; the Springsteen
-  sites' 85 spec files and the guard's specs pass after the updates. *Waiting*: vzell's browser check; then
-  =test:full= and the merge question.
+  sites' 85 spec files and the guard's specs pass after the updates. vzell's browser check (2026-11-25): all
+  sites OK except Brucebase's song list, whose letter tabs did not switch in the copy (no script runs there) →
+  =_origViewFrameTab()= switches a wikidot tabview. Then: "why is 'the site's own buttons may not respond here'
+  still present" → the note now names what is dead in that copy (=_origViewFrameDead()=, measured by
+  =scripts/probe-orig-frame-controls.js=), e.g. on Brucebase "Links work; searching, signing in and the page's
+  own buttons (Report a bug, Flag as objectionable) do not". Spec (12), mutations 21/21. *Waiting*: =test:full=
+  and the merge question.
+- *Later, maybe* (vzell, 2026-11-25: "add 2. in the org notes for maybe later"): make more of the copy work
+  instead of only naming it. Doable: the search boxes of springsteenlyrics.com (=search.php=, GET; the frame
+  would need =allow-forms= and the leave-page guard on submit) and Brucebase (=action="dummy"=, run by the
+  wiki's script: rebuild it as a link to the wiki's search page); jungleland.it's Year menu (=goThere()=, a
+  jump within the list). Not sensible in a copy: signing in, the wiki's page options (Edit, Tags, History …),
+  brucespringsteen.it's filter form (posts back to the server). The note would then name only what is left.
 
 ** PART Entity pictures: more providers, area map with flag badge (moved from org/TODO.org)
 
@@ -2754,7 +2765,7 @@ Everything is fixed except the IA release pages when switching back to the origi
 @debug/ia-IP-release-ctrlmp-3-bug.html
 #+end_example
 
-** BB bugs
+** DONE BB bugs
 
 1.)
 
@@ -2785,3 +2796,20 @@ the tabs do not react on clicks
 3.)
 
 All other sites work as noted
+
+** fixed but why the "may" in the "COPY" note
+
+1.)
+
+
+It's fixed now, but why is the "the site’s own buttons may not respond here." in the "COPY" note still present, see [Image #10]
+
+2.)
+
+Same question for the URLs
+
+#+begin_example
+https://brucebase.wikidot.com/1985 - [Image #11]
+https://brucebase.wikidot.com/1985-list - [Image #12]
+#+end_example
+

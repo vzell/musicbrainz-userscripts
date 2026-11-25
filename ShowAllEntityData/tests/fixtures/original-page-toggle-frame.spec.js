@@ -237,3 +237,37 @@ test.describe('the original page on a Brucebase detail page: the live wiki page'
         expect(await shown(page, PARTS)).toEqual({ native: false, title: false, content: false, ours: true, toolbar: true, note: false });
     });
 });
+
+// The note names what does not work in that copy (vzell, 2026-11-25: the
+// fixed "the site's own buttons may not respond here" stood on every copy;
+// _origViewFrameDead(), measured by scripts/probe-orig-frame-controls.js).
+test.describe('the note of the copy names what does not work in it', () => {
+    const CASES = [
+        {
+            name: 'Brucebase songs: tabs work; search, sign-in and the page options do not',
+            load: async (p) => { await loadBbSongsPage(p); return BB_BUTTON; },
+            says: 'Links and tabs work; searching, signing in and the page’s own buttons (Edit, Tags, History …) do not.',
+        },
+        {
+            name: 'jungleland.it: only the Year menu does not',
+            load: async (p) => { await loadJlListPage(p); return JL_BUTTON; },
+            says: 'Links work; the jump menu does not.',
+        },
+        {
+            name: 'brucespringsteen.it: the filter form and the Section menu do not (one form wraps the page)',
+            load: async (p) => { await loadBsRecordsPage(p); return 'Unofficial'; },
+            says: 'Links work; the filter form and the jump menu do not.',
+        },
+    ];
+    for (const c of CASES) {
+        test(c.name, async ({ page }) => {
+            const label = await c.load(page);
+            await press(page, label);
+            await clickToolbarItem(page, ROW);
+            const note = page.frameLocator(FRAME).locator('#mb-orig-frame-note');
+            await expect(note).toContainText(c.says);
+            await expect(note).toContainText(`before you pressed “${label}”`);
+            await expect(note).not.toContainText('may not respond');
+        });
+    }
+});
