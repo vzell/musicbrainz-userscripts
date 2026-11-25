@@ -252,7 +252,11 @@ test.describe('bs-records: Official', () => {
     });
 });
 
-test('bs-records: a predefined-filter link (same path, other query) asks first', async ({ page }) => {
+// Since the original-page switch (2026-11-25) the site's filter form hides in
+// the table view, so its links are reached on the original page, a copy in a
+// frame whose clicks never reach the page: the frame's links get the same
+// guard (_origViewFrameKeys(), initNavigationGuard()'s decision).
+test('bs-records: a predefined-filter link (same path, other query) asks first, on the original page', async ({ page }) => {
     const errors = trackPageErrors(page);
     await loadBsRecordsPage(page);
     await show(page, 'Unofficial');
@@ -261,7 +265,9 @@ test('bs-records: a predefined-filter link (same path, other query) asks first',
         dialogs.push(d.message());
         d.dismiss();
     });
-    await page.locator('a[href^="records.aspx?tipe=-1,9"]').click();
+    await expect(page.locator('a[href^="records.aspx?tipe=-1,9"]'), 'hidden in the table view').toBeHidden();
+    await clickToolbarItem(page, '#mb-orig-view-btn');
+    await page.frameLocator('#mb-orig-frame').locator('a[href^="records.aspx?tipe=-1,9"]').click();
     await expect.poll(() => dialogs.length, { timeout: 10000, message: 'the leave-page guard asks' }).toBe(1);
     expect(dialogs[0]).toContain('You are about to leave this page');
     expect(await renderedBsRows(page)).toHaveLength(announced(BS_FIXTURES.unofficial));

@@ -31424,3 +31424,261 @@ rules: docs/claude/fetch-and-render-pipeline.md, "The gate's trace".
   (9 m 8 s). Mutations: `mb-gate-trace.json` 13/13 caught; two finds of
   `mb-shared-gate.json` moved with the code, both still caught. The full suite
   (`test:full`) has not run on this branch yet: due before any merge.
+
+## 2026-11-25 — The original page as a copy of `#page`, and two scroll/value traps in its spec (feat/original-page-toggle, WIP.1)
+
+Env: 2026-11-24T23:59:50+01:00 → 2026-11-25T00:12:14+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
+
+The org/majkinetor.org "shine through" item was misread as Event Horizon's
+`#eh-hide` (hide the page until the render); vzell corrected it on
+2026-11-24: a switch between our tables and the original page, as EH's V.
+EH swaps two bodies (`setOn1()`, EH:17835-17876 at `5d4d464`). SAED edits
+MusicBrainz's page in place and kept no copy anywhere (no `_origContent`, the
+only way back was the second press's reload), so the original is a clone of
+`#page` taken before the first change of a press (`_origViewCapture()`), and
+the switch hides the live `#page` instead of removing it, so the same `tbody`
+comes back. Design: docs/claude/toolbar-and-header-ui.md, "Switching to the
+original page".
+
+Two spec failures on the way, both in the test, not the code, and both worth
+knowing for any spec that switches views:
+
+- **Restored to 1251 px instead of 300.** A probe wrapping `scrollTo`,
+  `scrollBy`, `scrollIntoView` and `focus` saw one call only, ours. The
+  position saved for the table view was already 1251: `clickToolbarItem()`
+  opened ☰ SAED, and Playwright scrolled the sticky toolbar into view before
+  the click, so the switch faithfully kept the position Playwright made. The
+  spec switches with Ctrl+M P where the scroll is the subject.
+- **"🔍 2026‐11‐09:" for "2026‐11‐09:".** Not a focus leak: the global
+  filter's value ALWAYS starts with `sa_filter_focus_prefix` (the invariant
+  above `debouncedRunFilter`). Compare with the value read before the
+  switch. And the filter runs debounced: `expect.poll(rows).toBeLessThan(all)`,
+  not `toBeLessThanOrEqual`, or the count is taken before it narrowed.
+
+Found while updating seven older mutation finds that quoted the lines this
+change touched: the `replace_all` that put `_mbuTableVisible()` into the
+three `const want = …` lines lost the space after `&&`
+(`_mbuTableVisible() &&Lib.settings…`). It ran, but broke the finds. Fixed
+in the userscript, not in the finds. Mutations: 13 entries, all as expected
+(12 fail, the snapshot path recorded `"expect": "pass"`).
+
+## 2026-11-25 — "Back to the tables" takes no click under String Theory's open dock (feat/original-page-toggle, WIP.1)
+
+Env: 2026-11-25T00:38+01:00 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · vzell's browser (Chrome-based, version unknown), Tampermonkey 5.5.1, String Theory 2026.11.24.195159 · fix verified in Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs)
+
+Snapshot: `debug/mb-p-toggle-not-working.html` (vzell), the release group
+"Born to Run" (https://musicbrainz.org/release-group/39b22944-7503-3937-8bba-09b17281cc6a)
+after "Show all Releases for ReleaseGroup", the original page shown. Symptom:
+Ctrl+M P switched back, a click on "▦ Back to the tables" did nothing.
+
+Cause, from the snapshot: majkinetor's restack had taken our button into
+his corner as intended (`right: 78px`, `scale: 0.6` from his corner size
+`--mbu-cs: 0.6`), but his layout is a row (`<html data-mbu-flow="row">`) and
+his dock was open (`data-mbu-dock-open`). The open dock draws its frosted
+shelf over the row (`#mbu-dock-shelf`, fixed, z-index 2147482989, here
+263 × 32 px from x 1591), and our button sat below it at 2147482980, so the
+shelf took the click. His docked entries are at 2147482990, above it. Fix:
+ours at 2147482990 too. Regression test "the corner button takes the click
+over String Theory's open dock shelf" (a shelf at his z-index over the corner;
+`elementFromPoint` at the button's centre must be the button), failed before
+("mbu-dock-shelf"), passes after; mutation entry in
+`scripts/mutations/original-page-toggle.json`, caught.
+
+## 2026-11-25 — The original page on the live sites: what hides on discogs.com, archive.org, setlist.fm (feat/original-page-toggle, WIP.2)
+
+Env: 2026-11-25T00:58+01:00 → 01:11 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
+
+Phase 3 of the switch. The body children of the saved pages
+(tests/fixtures, read with a script, n/a browser):
+
+- Discogs, React (`dg-master.html`): `#__header_root_<n>`, then our
+  `#mb-dg-root` (`app.before()`), `#app`, `#esi-footer-root`.
+- Discogs search (`dg-search.html`): our section first, then the header
+  root, `<main>`, the footer. Older pages (`dg-submissions-flat.html`,
+  `dg-user-vzell.html`): our section, then `#main_wrapper` holding the
+  header root, a `<section>` and Discogs' own `#page` (an id that is ALSO
+  MusicBrainz's; the copy mode's `#page` rule is under `body.mb-orig-view`,
+  which only MusicBrainz sets), then the footer.
+- archive.org: search `<app-root>` only; item `#topnav` + `main#maincontent`.
+- setlist.fm (`sfm-page-venue-53d30b75.html`): `div.body` > `div.header` +
+  `div.container`.
+
+So only Discogs' React pages have the header above our section; vzell
+chose (2026-11-25) to keep it there only and hide header and footer
+elsewhere. The rules are CSS by host class (`_origViewStyle()`), the header
+"only after our section" a general sibling selector
+(`#mb-dg-root ~ [id^="__header_root_"]`), so no page walk and nothing to
+redo when React redraws. Two existing tests in `discogs-pages.spec.js`
+worked on `#app` after a press (previews in Discogs' content, the ▲ toggles
+on Discogs' section headings) and failed once `#app` hid; both features
+still work on Discogs' page, so the tests now switch first
+(`showDiscogsPage()`). The three sites' 33 spec files with the MusicBrainz
+switch spec: 308 passed, 2 failed (those two); after the change both files of
+`discogs-pages` passed, 18/18.
+Mutations: 14, all caught.
+
+## 2026-11-25 — Live pages are not the fixtures: the switch hid nothing on Discogs' search and an archive.org item; setlist.fm's black toolbar (feat/original-page-toggle, WIP.2 + WIP.3)
+
+Env: 2026-11-25T09:30+01:00 → 09:47 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · vzell's browser (version unknown), Tampermonkey 5.5.1 · fixes verified in Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs)
+
+vzell's browser check of phase 3, three snapshots:
+
+- `debug/d-search-ctrlmp-bug.html` (https://www.discogs.com/search?q=bruce+springsteen&type=all,
+  stopped after one page): `<body>` = our `#mb-dg-root`, `<div hidden>`,
+  `div.flex.flex-1.flex-col` (holding `#esi-header-container` with the header
+  root, and `<main>`), an iframe, `<next-route-announcer>`,
+  `#onetrust-consent-sdk`, then our hosts. The fixture `dg-search.html` has
+  header root and `<main>` straight in `<body>`, so the rule
+  `body > :is(#app, main, …)` matched there and nowhere live: nothing hid,
+  and the switch looked dead.
+- `debug/ia-release-ctrlmp-bug.html`
+  (https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16): our
+  `#mb-ia-root`, a skip link, `div#wrap` (banners, top bar, `#maincontent`),
+  an `<img>`, `<modal-manager>`, colorbox's two, `#fc-root`. The fixture has
+  `#topnav` and `main` straight in `<body>`. Same failure.
+- In both, after our named hosts come anonymous `<div>`s that are OURS (a
+  column-visibility menu: "Column Visibility: Disc 1 · Flac · 1:13:19"), so
+  "everything after our section but ours" cannot be told by markup after
+  the render.
+
+Fix: `_origViewTagSite()` marks every `<body>` child after our section
+(`data-mb-site`) when the three `_*PrepareLivePage()` insert it, at init,
+before any host of ours is in `<body>`; the table view hides the marked.
+No names, so a site's markup can change. Fixtures with the live shapes:
+`scripts/make-live-shape-fixtures.py` → `dg-search-next.html`,
+`ia-details-wrap.html`; two tests in `original-page-toggle-live.spec.js`.
+
+`debug/sfm-black-area-bug.html`
+(https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html?tour=53d7e759):
+the toolbar turned black once it stuck, on any page long enough to scroll
+(older than this branch). `#mb-vsb-mask` (`.mb-vsb-mask-on`) had
+`background: rgb(52, 49, 56)`: `_vsbEnsureStyle()` took `<body>`'s colour,
+and setlist.fm's body is dark; the white is our `#mb-sfm-root`'s. Fix: on
+discogs.com, archive.org and setlist.fm the colour of the first ancestor of
+the toolbar with one (`_vsbForeignMaskBg()`); MusicBrainz and the
+Springsteen sites unchanged. The first test set the dark body after the
+load and passed WITHOUT the fix (the mutation run showed it: the colour is
+fixed at init, where `initStickyFilterBars()` runs once); an init script's
+`<style>` on `<html>` did not survive the parser; at DOMContentLoaded it
+does, and the test fails without the fix.
+
+The three sites' specs with both switch specs: 313/313. Mutations: the
+phase-3 list rewritten for the marking (11; one `"expect": "pass"`), all as
+expected; `setlistfm-list.json`'s "our section is not first" find follows
+the new call.
+
+## 2026-11-25 — setlist.fm's bar was a stacking context, not a colour; archive.org hid its player while we held its page at 0 × 0 (feat/original-page-toggle, WIP.2 + WIP.3)
+
+Env: 2026-11-25T10:00+01:00 → 10:16 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · vzell's browser (version unknown), Tampermonkey 5.5.1 · fixes verified in Playwright 1.62.1, Chromium 151.0.7922.34, no Tampermonkey (GM stubs)
+
+vzell's second check, two findings:
+
+- `debug/sfm-white-area-bug.html`
+  (https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html?tour=53d7e759):
+  the bar is white now, the toolbar still gone. The colour fix of the entry
+  above was the lesser half: `#mb-sfm-root` has `position: relative;
+  z-index: 2` (since 2026-11-02, reason not recorded), a stacking context,
+  so the header block's 105 counts only inside it, and `#mb-vsb-mask` in
+  `<body>` at 103 lay over the whole section. Not removed (its reason is
+  unknown); the mask lives in our section on discogs.com, archive.org and
+  setlist.fm instead (`_vsbMaskHost()`), where it stacks between rows and
+  toolbar again. The new test hit-tests the stuck toolbar: `mb-vsb-mask`
+  on top without the fix, the toolbar with it. The colour test alone could
+  never have seen this: it asked the wrong question.
+- `debug/ia-IP-release-ctrlmp-bug.html` /
+  `debug/ia-IP-release-ctrlmp-2-bug.html`
+  (https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16): after
+  Ctrl+M P the item's player, pictures and tracklist header were gone;
+  `#theatre-ia` had an inline `display: none` it did not have on the
+  initial page. No code of ours names it (grep), so archive.org's own
+  script set it while we held its page at `display: none`, where everything
+  measures 0 × 0. The table view now hides the marked page laid out: off
+  screen left (no scrollbar), a window wide and high (no page height),
+  `visibility: hidden`, no pointer. The test stands in for archive.org's
+  script with a ResizeObserver that hides a block at width 0: it fires
+  under `display: none` (mutation run) and not under the laid-out hide.
+
+Mutations: two new entries in `original-page-toggle-live.json`, the hide
+rule's entry and `eh-body-swap.json`'s mask entry follow the code; all
+caught. The three sites' specs with both switch specs and
+`eh-body-swap-floating`: 319/319.
+
+## 2026-11-25 — Correction: archive.org's player was folded by makeH2sCollapsible(), not hidden by archive.org (feat/original-page-toggle, WIP.2)
+
+Env: 2026-11-25T10:26:43+01:00 → 10:38 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · probe: live archive.org in Playwright 1.62.1, Chromium 151.0.7922.34 headless, userscript in test mode (GM stubs, the item's metadata from the saved fixture), bypassCSP · vzell's browser (version unknown), Tampermonkey 5.5.1
+
+The entry above blamed archive.org's own script reacting to a page held at
+0 × 0, and an off-screen "laid out" hide shipped on that guess. vzell's next
+check (`debug/ia-IP-release-ctrlmp-3-bug.html`): the player still gone.
+`scripts/probe-ia-theatre-hide.js` loads the live item page
+(https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16) with
+the userscript and reads `#theatre-ia` at four moments (log:
+`debug/probe-ia-theatre-hide.log`): visible on the initial page,
+`display: none` after the press, and so after the switch. Setter wrappers
+on the style object caught nothing (Chromium 151 puts the accessors where
+the first version did not look, and a document-start script cannot reach
+`document.documentElement`); a MutationObserver placed the write in the
+press; a DOM breakpoint (`DOMDebugger.setDOMBreakpoint`,
+`attribute-modified`) gave the stack: `makeH2sCollapsible` ←
+`startFetchingProcess`. It gives every h2 of the document a fold toggle and
+folds the content after it; archive.org's `h2.sr-only` sits right before
+`#theatre-ia` (and a styled h2 further down got one too). Before this
+branch that happened under our tables too, unseen.
+
+Fix: `makeH2sCollapsible()` skips h2s inside `[data-mb-site]`, except on
+discogs.com, whose section folds are a feature (2026-10-24). The probe after
+the fix (`debug/probe-ia-theatre-hide-after.log`): 1600 × 546 throughout,
+no write at all. The laid-out hide is taken back (`display: none` again,
+as vzell had checked it on Discogs and setlist.fm), with its test and
+mutation entry; the new test puts archive.org's markup (an `h2.sr-only`
+before `#theatre-ia`) into the live-shape fixture: the player is hidden
+after the switch without the fix (mutation run), visible with it. 319/319.
+Lesson recorded where it bites: a "site script reacts" theory needs the
+writer's stack before a fix, and the probe is now there for the next one.
+
+## 2026-11-25 — The Springsteen sites: who is the site's by identity, the original page in a frame, a live Brucebase detail page (feat/original-page-toggle, WIP.4)
+
+Env: 2026-11-25T11:30+01:00 → 12:20 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs)
+
+Phase 4 of the switch. These sites remove their list when the table is
+built and put our section inside their own containers, differently per
+page; springsteenlyrics.com even closes `.project-detail` early. Three
+rounds of the live sites had taught that a list of the site's element names
+breaks on the first live page that differs, and that markup cannot tell
+ours from theirs (our id-less menus; their containers carrying our
+classes). So:
+
+- `_origSitePre`, a WeakSet of every `<body>` element taken at the script's
+  start on these four hosts: the site's by identity. The fold code's text
+  wrappers (`data-mb-text-wrap`) count as the site's: brucespringsteen.it's
+  "Last computed" line, a bare text node, came back wrapped and so "new".
+- What the table view still showed was measured on the saved pages first
+  (`scripts/probe-springsteen-table-view.js`; logs
+  `debug/probe-springsteen-table-view{,-after}.log`), then hidden by
+  `_origViewTagRest()` but for the kept headers.
+- The original view: the page's HTML from before the press in a sandboxed
+  frame (no scripts; `<base target="_top">`), so the site's own CSS draws
+  it; Ctrl+M P and the leave-page guard are wired into the frame's document
+  (neither a key nor a click there reaches the page).
+- Brucebase detail pages: the live wiki page in place (vzell's answer):
+  our blocks hide, the wiki's get back their press-time inline display, the
+  title shows, its own h2s are not folded.
+
+The Springsteen sites' 85 spec files: 979 passed, 11 failed. Seven were
+the decisions showing (bb-event's folded wiki page, bb-songs' breadcrumbs,
+sl-sticky-headers' walls and `.project-detail` without the compact bar,
+bs-records' filter link): updated. Two were layout-dependent and only
+showed because the table moved up: `bb-findings-batch1` read a cell's
+`title` while the pointer, left by an earlier click, now rested on that
+cell, where the card engine holds the title aside
+(`data-mb-dp-saved-title`): the pointer leaves first. And
+`dp-window-size.mobile`: a CDP touch on the info window's resize grip went
+to `.mb-dp-area` (logged: `doc-pointerdown:mb-dp-area`, then
+`pointercancel`) though `elementsFromPoint` named the grip on top;
+bisected to the leftover hiding (what lay under the window changed from a
+filter input to a table cell), so Chromium's touch adjustment, which moves a
+touch to a nearby element that answers taps, and the grip had pointer
+listeners only. It got a click listener: 3/3 then. That is a real-finger
+improvement as well. After the updates: 86/86 in those files, 164/164 in
+every spec of the leave-page guard, mutations 17/17 (+ the moved Event
+Horizon guard entry).

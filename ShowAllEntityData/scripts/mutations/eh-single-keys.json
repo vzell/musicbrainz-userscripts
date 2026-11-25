@@ -95,8 +95,8 @@
     "why": "Without the _saBody() check Guard 1 sees EH's in-place link clicks (its H key clicks one too) and asks 'You are about to leave this page' for a navigation that leaves nothing (vzell, 2026-11-08).",
     "edits": [
       {
-        "find": "            if (!_saBody().contains(e.target)) return;\n            // A click another handler already took",
-        "replace": "            // A click another handler already took"
+        "find": "            if (!_saBody().contains(e.target)) return;\n            guardAnchorClick(e);",
+        "replace": "            guardAnchorClick(e);"
       }
     ],
     "spec": "tests/fixtures/eh-single-keys.spec.js",

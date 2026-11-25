@@ -18,6 +18,22 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 
+/**
+ * After a render Discogs' own page hides under the table view (vzell,
+ * 2026-11-25: "I want only the table view and an option to display the
+ * original page again"); Ctrl+M P shows it, live. A test that works on
+ * Discogs' page (`#app`) after a press switches first.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function showDiscogsPage(page) {
+    await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+    await page.keyboard.press('Control+M');
+    await page.keyboard.press('p');
+    await expect(page.locator('#app')).toBeVisible();
+}
+
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 const FX = (name) => JSON.parse(fs.readFileSync(path.join(__dirname, `ext-${name}.json`), 'utf8'));
 const answers = (...names) => Object.fromEntries(names.map((n) => {
@@ -369,6 +385,7 @@ test.describe('discogs.com pages (2026-10-18)', () => {
         await expect(card.locator('.mb-tt-title')).toHaveText('Born To Run');
         await expect(card).toContainText('Discogs · release');
         await page.keyboard.press('Escape');
+        await showDiscogsPage(page);
         await ctrlHover(page, page.locator('#app a').first());
         await expect(card).toBeVisible();
         await page.keyboard.press('Escape');
@@ -448,6 +465,7 @@ test.describe('discogs.com: Discogs\' own section headings under our tables (202
         const { errors } = await openDg(page, 'release');
         await addDiscogsSections(page);
         await press(page, 'Show credits, companies and other versions');
+        await showDiscogsPage(page);
         const h2 = (id) => page.locator(`#${id} > header > h2`);
         const content = (id) => page.locator(`#${id} > div.content_ETGfR`);
         const button = (id) => page.locator(`#${id} > header > button`);

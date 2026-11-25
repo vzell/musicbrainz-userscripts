@@ -70,6 +70,10 @@ Other host-aware code:
 
 ## The toolbar anchor — `_jlPrepareLivePage()`
 
+(The original-page switch, 2026-11-25, WIP.4: the original view is the list's
+HTML from before the press in a frame. docs/claude/toolbar-and-header-ui.md,
+"Switching to the original page", "Springsteen sites".)
+
 Called from the init block's `else if (baseDefinition?.host === 'jungleland.it')`
 beside the SL branch. It:
 

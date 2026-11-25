@@ -342,10 +342,14 @@ test('the status line sits between the toolbar <h1> and the theme\'s rule, clear
             wrapTop: box(wrap).top,
             wrapBottom: box(wrap).bottom,
             crumbsTop: box(crumbs).top,
+            crumbsShown: crumbs.getClientRects().length > 0,
         };
     });
     expect(s).toEqual(expect.objectContaining({ follows: true, text: true, h1Rule: 'none', wrapRule: 'dotted' }));
     expect(s.wrapTop).toBeGreaterThanOrEqual(s.h1Bottom - 0.5);
-    expect(s.crumbsTop, 'the breadcrumbs start below the rule').toBeGreaterThanOrEqual(s.wrapBottom);
+    // Since the original-page switch (2026-11-25) the breadcrumbs hide in the
+    // table view (vzell: the wiki keeps its header and side bar), so nothing
+    // runs into the status line; were they shown, they would start below it.
+    expect(s.crumbsShown, 'the breadcrumbs hide in the table view').toBe(false);
     expect(errors).toEqual([]);
 });

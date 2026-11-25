@@ -1,0 +1,171 @@
+[
+  {
+    "name": "the render never switches the live site to the table view",
+    "why": "vzell: \"I want only the table view\" — after a render the site's page hides.",
+    "edits": [
+      {
+        "find": "            _origView.live = true;\n            _origViewStyle();\n            document.body.classList.add(_ORIG_TABLES_CLASS);\n",
+        "replace": "            _origView.live = true;\n            _origViewStyle();\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "nothing is marked as the site's",
+    "why": "The table view hides what _origViewTagSite() marked.",
+    "edits": [
+      {
+        "find": "            el.setAttribute('data-mb-site', '');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "the table view's rule hides nothing",
+    "why": "body.mb-orig-tables > [data-mb-site] is the one rule of the table view.",
+    "edits": [
+      {
+        "find": "            `body.${_ORIG_TABLES_CLASS} > [data-mb-site] { display: none !important; }`,\n",
+        "replace": "            `body.${_ORIG_TABLES_CLASS} > [data-mb-no-site] { display: none !important; }`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "what comes before our section is marked too",
+    "why": "vzell 2026-11-25: Discogs' header above our section (React pages) stays.",
+    "edits": [
+      {
+        "find": "        for (let el = root.nextElementSibling; el; el = el.nextElementSibling) {\n",
+        "replace": "        for (let el = document.body.firstElementChild; el; el = el.nextElementSibling) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "Discogs' page is never marked",
+    "why": "_dgPrepareLivePage() marks what follows our section right after inserting it.",
+    "edits": [
+      {
+        "find": "        // What follows our section now is Discogs' (the table view hides it).\n        _origViewTagSite(root);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "the live search page",
+    "expect": "fail"
+  },
+  {
+    "name": "our own hosts can be marked as the site's",
+    "why": "A host of ours in <body> at page init would hide with the site. No fixture has one there (our popups and menus come later), so no spec sees the guard; kept for the live pages.",
+    "edits": [
+      {
+        "find": "            if (/^(SCRIPT|STYLE|LINK|NOSCRIPT|TEMPLATE)$/.test(el.tagName) || ours(el)) continue;\n",
+        "replace": "            if (/^(SCRIPT|STYLE|LINK|NOSCRIPT|TEMPLATE)$/.test(el.tagName)) continue;\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "the live search page",
+    "expect": "pass"
+  },
+  {
+    "name": "our section stays over the site's page",
+    "why": "The switch shows the site's page INSTEAD of our section.",
+    "edits": [
+      {
+        "find": "            `body.${_ORIG_SITE_CLASS} > :is(#mb-dg-root, #mb-ia-root, #mb-sfm-root) { display: none !important; }`,\n",
+        "replace": "            `body.${_ORIG_SITE_CLASS} > :is(#mb-no-such-root) { display: none !important; }`,\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "the site's page comes without its note",
+    "why": "Approved mockup, the Discogs scene: the \"Live\" note above the site's page.",
+    "edits": [
+      {
+        "find": "            if (want) _origViewLiveNote();\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "the note says \"Discogs’s\"",
+    "why": "The approved wording is \"Discogs’ own page\".",
+    "edits": [
+      {
+        "find": "        const owner = site.name.endsWith('s') ?",
+        "replace": "        const owner = false ?"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a master page",
+    "expect": "fail"
+  },
+  {
+    "name": "setlist.fm has no switch",
+    "why": "Each live site is named in _origViewLiveSite().",
+    "edits": [
+      {
+        "find": "        if (_isSfmHost) return { name: 'setlist.fm', root: 'mb-sfm-root' };\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "a venue page",
+    "expect": "fail"
+  },
+  {
+    "name": "the stuck toolbar's mask takes setlist.fm's dark <body>",
+    "why": "vzell 2026-11-25 (debug/sfm-black-area-bug.html): the black bar.",
+    "edits": [
+      {
+        "find": "        const pageBg = ownSection ? _vsbForeignMaskBg() : getComputedStyle(document.body).backgroundColor;\n",
+        "replace": "        const pageBg = getComputedStyle(document.body).backgroundColor;\n"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "mask behind the stuck toolbar",
+    "expect": "fail"
+  },
+  {
+    "name": "the header block's mask lives in <body> on setlist.fm",
+    "why": "vzell 2026-11-25 (sfm-black/white-area-bug.html): #mb-sfm-root is a stacking context; a mask in <body> lay over our whole section, toolbar included.",
+    "edits": [
+      {
+        "find": "        return (site && document.getElementById(site.root)) || _saBody();\n",
+        "replace": "        return _saBody();\n"
+      }
+    ],
+    "spec": "tests/fixtures/sfm-list.spec.js",
+    "grep": "toolbar is on top",
+    "expect": "fail"
+  },
+  {
+    "name": "the live site's own headings fold again",
+    "why": "vzell 2026-11-25 (debug/ia-IP-release-ctrlmp-3-bug.html): makeH2sCollapsible() folded archive.org's h2.sr-only and the player after it.",
+    "edits": [
+      {
+        "find": "            .filter(h2 => _isDgHost || !h2.closest('[data-mb-site]'))\n",
+        "replace": "            .filter(h2 => h2)\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-live.spec.js",
+    "grep": "own headings get no fold",
+    "expect": "fail"
+  }
+]

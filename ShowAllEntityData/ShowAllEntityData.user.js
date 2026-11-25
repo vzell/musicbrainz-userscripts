@@ -7580,6 +7580,21 @@
     const _isBbHost = /(^|\.)brucebase\.wikidot\.com$/.test(window.location.hostname);
 
     /**
+     * Every element of a Springsteen site's page as the script found it, taken
+     * here, at the start, before anything of ours exists (the original-page
+     * switch, phase 4; vzell, 2026-11-25). Whatever is not in it was made by us
+     * (or by the site later). The table view hides what is the site's and holds
+     * nothing of ours (`_origViewTagRest()`), and a Brucebase detail page's live
+     * original view tells our blocks from the wiki's by it (`_origViewBbLive()`).
+     * By identity, never by markup: these sites carry classes of ours on their
+     * own containers (`mb-sl-wide`, `mb-bb-cw`, `mb-sph-target`), and some of
+     * our blocks have no id. One WeakSet, no DOM writes; only on these four
+     * hosts (null elsewhere, MusicBrainz included).
+     */
+    const _origSitePre = (_isSlHost || _isJlHost || _isBsHost || _isBbHost) && document.body
+        ? new WeakSet(document.body.querySelectorAll('*')) : null;
+
+    /**
      * True when this page is on discogs.com rather than MusicBrainz.
      *
      * The fifth non-MusicBrainz host (its `@include` line and
@@ -22283,6 +22298,8 @@
         const app = document.getElementById('app');
         if (app) app.before(root);
         else document.body.insertBefore(root, document.body.firstChild);
+        // What follows our section now is Discogs' (the table view hides it).
+        _origViewTagSite(root);
         // Users' pictures of a submissions list, as their rows come on screen;
         // a picture's hover card and viewer.
         _dgAvatarInit();
@@ -25053,6 +25070,8 @@
         h1.appendChild(bdi);
         root.appendChild(h1);
         document.body.insertBefore(root, document.body.firstChild);
+        // What follows our section now is the site's (the table view hides it).
+        _origViewTagSite(root);
         return h1;
     }
 
@@ -26534,6 +26553,8 @@
         h1.appendChild(bdi);
         root.appendChild(h1);
         document.body.insertBefore(root, document.body.firstChild);
+        // What follows our section now is the site's (the table view hides it).
+        _origViewTagSite(root);
         return h1;
     }
 
@@ -68451,7 +68472,7 @@
                         Lib.debug('shortcuts', `  ${key}: ${btn.textContent.trim()}`);
                     });
                 }
-                Lib.debug('shortcuts', 'Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=' + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + ', q=Unique Values Dropdown, a=CAA Toggle');
+                Lib.debug('shortcuts', 'Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, p=Original page, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=' + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + ', q=Unique Values Dropdown, a=CAA Toggle');
                 Lib.debug('shortcuts', 'Press any key or Escape to cancel');
             } else {
                 if (buttonKeys.length > 0) {
@@ -68461,7 +68482,7 @@
                         console.log(`[VZ-${SCRIPT_BASE_NAME}]   ${key}: ${btn.textContent.trim()}`);
                     });
                 }
-                console.log(`[VZ-${SCRIPT_BASE_NAME}] Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=` + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + `, q=Unique Values Dropdown, a=CAA Toggle`);
+                console.log(`[VZ-${SCRIPT_BASE_NAME}] Function shortcuts: r=Resize, i=Statistics, s=Save, d=Density, v=Visible, e=Export, l=Load, b=Barcode, k=Shortcuts Help, h=App Help, p=Original page, ,=Settings, g=Focus Global Filter, c=Focus Next Column Filter, o=` + (ctrlMFunctionMap['o'] && ctrlMFunctionMap['o'].description === 'Stop fetching' ? 'Stop' : 'Toggle Multi-Row Collapse') + `, q=Unique Values Dropdown, a=CAA Toggle`);
             }
 
             // Auto-exit after 5 seconds
@@ -73531,6 +73552,48 @@
     }
 
     /**
+     * The colour behind the toolbar on a non-MusicBrainz site, for the mask
+     * under the stuck header block: the first ancestor of the toolbar with a
+     * background of its own. On setlist.fm `<body>` is dark (#343138) and the
+     * white is our `#mb-sfm-root`'s, so `<body>`'s colour painted a black bar
+     * behind the toolbar as soon as it stuck (vzell, 2026-11-25,
+     * debug/sfm-black-area-bug.html). Used on the three sites whose section
+     * is a white block of our own over the site's body (discogs.com,
+     * archive.org, setlist.fm); MusicBrainz and the Springsteen sites keep
+     * `<body>`'s colour (the other branch in `_vsbEnsureStyle()`).
+     *
+     * @returns {string} A CSS colour, or '' when no ancestor has one.
+     */
+    function _vsbForeignMaskBg() {
+        const ctl = document.getElementById('mb-show-all-controls-container');
+        for (let el = ctl ? ctl.parentElement : document.body; el && el.nodeType === 1; el = el.parentElement) {
+            const bg = getComputedStyle(el).backgroundColor;
+            if (bg && bg !== 'transparent' && !/^rgba\([^)]*,\s*0\)$/.test(bg)) return bg;
+        }
+        return '';
+    }
+
+    /**
+     * Where the header block's mask (`#mb-vsb-mask`) lives. It is
+     * `position: fixed`, so its parent only decides what it stacks against:
+     * it must sit in the same stacking context as the header block, under it
+     * and over the rows. setlist.fm's `#mb-sfm-root` is a stacking context
+     * (`position: relative; z-index: 2`, since 2026-11-02, reason not
+     * recorded), so a mask in `<body>` at 103 lay over our WHOLE section,
+     * toolbar included: a bar of the mask's colour once the toolbar stuck,
+     * black, then white after its colour was fixed (vzell, 2026-11-25,
+     * debug/sfm-black-area-bug.html, debug/sfm-white-area-bug.html). On the
+     * three sites with a section of our own (discogs.com, archive.org,
+     * setlist.fm) it lives in that section; elsewhere in `_saBody()`.
+     *
+     * @returns {HTMLElement}
+     */
+    function _vsbMaskHost() {
+        const site = (_isDgHost || _isIaHost || _isSfmHost) ? _origViewLiveSite() : null;
+        return (site && document.getElementById(site.root)) || _saBody();
+    }
+
+    /**
      * Installs the static stylesheet of the sticky filter bars once. Every
      * rule is scoped under `html.mb-vsb-on`; the offsets are in the dynamic
      * sheet (`_vsbRefresh()`). No `!important`, and lower specificity than
@@ -73542,7 +73605,10 @@
      */
     function _vsbEnsureStyle() {
         if (document.getElementById('mb-vsb-style')) return;
-        const pageBg = getComputedStyle(document.body).backgroundColor;
+        // Our own white section over the site's body (discogs.com, archive.org,
+        // setlist.fm): the colour behind the toolbar is the section's, not <body>'s.
+        const ownSection = _isDgHost || _isIaHost || _isSfmHost;
+        const pageBg = ownSection ? _vsbForeignMaskBg() : getComputedStyle(document.body).backgroundColor;
         const mask = (!pageBg || pageBg === 'transparent' || pageBg === 'rgba(0, 0, 0, 0)') ? '#ffffff' : pageBg;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
@@ -73907,6 +73973,8 @@
         if (_isSlHost) _slPlaceHead();
         _vsbEnsureStyle();
         document.documentElement.classList.add('mb-vsb-on');
+        // The mask may have been made before our section existed.
+        if (_vsb.mask && _vsb.mask.parentElement !== _vsbMaskHost()) _vsbMaskHost().appendChild(_vsb.mask);
         if (!_vsb.initialized) {
             _vsb.initialized = true;
             if (typeof ResizeObserver === 'function') _vsb.observer = new ResizeObserver(_vsbScheduleRefresh);
@@ -73915,7 +73983,7 @@
             const mask = document.createElement('div');
             mask.id = 'mb-vsb-mask';
             mask.setAttribute('aria-hidden', 'true');
-            _saBody().appendChild(mask);
+            _vsbMaskHost().appendChild(mask);
             _vsb.mask = mask;
             window.addEventListener('scroll', () => {
                 if (_vsb.maskPending) return;
@@ -107872,7 +107940,7 @@
      */
     const _TOOLBAR_MENU_ROW_ORDER = {
         data: ['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn'],
-        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-mbu-quiet-btn', 'mb-shortcuts-help-btn'],
+        view: ['mb-density-btn', 'mb-stats-btn', 'mb-idbo-menu-btn', 'mb-gms-menu-btn', 'mb-mbu-quiet-btn', 'mb-orig-view-btn', 'mb-shortcuts-help-btn'],
         help: ['mb-settings-btn', 'mb-app-help-btn', 'mb-saed-log-btn', 'mb-shortcuts-help-btn'],
         disc: ['mb-disc-complete-btn', 'mb-disc-official-btn', 'mb-disc-nonofficial-btn', 'mb-disc-merged-btn'],
     };
@@ -113629,6 +113697,14 @@ ${sections.join('\n')}
                 background: linear-gradient(135deg, transparent 0 52%, #9a8c78 52% 58%, transparent 58% 68%, #9a8c78 68% 74%, transparent 74% 84%, #9a8c78 84% 90%, transparent 90%);
             `;
             grip.hidden = !!_maxRestore;
+            // A tap target of its own for the browser's touch adjustment, which
+            // moves a touch to a nearby element that answers taps (links,
+            // controls, click listeners): with pointer listeners only, a touch
+            // on the grip went to the window's scroll area under it and was
+            // cancelled as a scroll, depending on what lay under the window
+            // (2026-11-25, dp-window-size.mobile.spec.js after the table moved
+            // up on brucespringsteen.it).
+            grip.addEventListener('click', (e) => e.stopPropagation());
             dialog.appendChild(grip);
             const minW = parseFloat(opts.minWidth)  || 320;
             const minH = parseFloat(opts.minHeight) || 200;
@@ -113848,7 +113924,8 @@ ${sections.join('\n')}
                     { keys: getShortcutDisplay('sa_shortcut_open_statistics', 'Ctrl+I'), desc: 'Open "Statistics" panel (use prefix mode then I when direct Ctrl+letter shortcuts are disabled)' },
                     { keys: getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B'), desc: 'Toggle barcode row highlighting (use prefix mode then B when direct Ctrl+letter shortcuts are disabled)' },
                     { keys: getShortcutDisplay('sa_shortcut_toggle_h2', 'Ctrl+2'), desc: 'Toggle collapse all h2 headers' },
-                    { keys: getShortcutDisplay('sa_shortcut_toggle_h3', 'Ctrl+3'), desc: 'Toggle collapse all h3 headers (types)' }
+                    { keys: getShortcutDisplay('sa_shortcut_toggle_h3', 'Ctrl+3'), desc: 'Toggle collapse all h3 headers (types)' },
+                    { keys: `${getPrefixDisplay()}, then P`, desc: 'Switch between the tables and the original page (a copy of the page from before the press)' }
                 ]
             },
             {
@@ -114144,6 +114221,8 @@ ${sections.join('\n')}
      * "External menu items"), MusicBrainz only:
      *   - `tableShown`: a table was rendered or loaded from disk on this page
      *     (`_mbuTableShown()`);
+     *   - `origShown`: the original page shows instead of it
+     *     (`_origViewShow()`; both read through `_mbuTableVisible()`);
      *   - `quietUserShown`: the ☰ row asked for the corner launchers back for
      *     this page view (`_mbuQuietSync()`);
      *   - `menu`: the launchers registered for Event Horizon's More (⋯) menu,
@@ -114157,7 +114236,7 @@ ${sections.join('\n')}
      * Declared before the init code that first uses it (no TDZ).
      */
     const _mbuInterop = {
-        tableShown: false, quietUserShown: false, menu: new Map(), observing: false, keysKeepOurs: false,
+        tableShown: false, origShown: false, quietUserShown: false, menu: new Map(), observing: false, keysKeepOurs: false,
         // Event Horizon's player (_mbuPlayerSync()): the observers while it is kept quiet, the channel.
         playerHtmlObs: null, playerRootObs: null, playerBus: null,
     };
@@ -114185,7 +114264,7 @@ ${sections.join('\n')}
     function _ehInteropObserve() {
         if (_mbuInterop.observing || _foreignHost) return;
         _mbuInterop.observing = true;
-        new MutationObserver(() => { _ehMenuSync(); _mbuQuietSync(); _mbuKeysSync(); _mbuPlayerSync(); })
+        new MutationObserver(() => { _ehMenuSync(); _mbuQuietSync(); _mbuKeysSync(); _mbuPlayerSync(); _origViewCornerSync(); })
             .observe(document.documentElement, { attributes: true, attributeFilter: ['data-mbu-dock', 'data-mbu-page', 'data-mbu-st', 'data-mbu-eh'] });
     }
 
@@ -114217,6 +114296,741 @@ ${sections.join('\n')}
         _mbuQuietSync();
         _mbuKeysSync();
         _mbuPlayerSync();
+    }
+
+    /**
+     * Whether a table of ours is what the user SEES on MusicBrainz's page: one
+     * was rendered (`tableShown`) and the original page is not shown instead
+     * (`origShown`, `_origViewShow()`). The quiet, keys and player marks ask
+     * this, so while the original page shows they are down as on an
+     * unrendered page, and they come back with the tables.
+     *
+     * @returns {boolean}
+     */
+    function _mbuTableVisible() {
+        return _mbuInterop.tableShown && !_mbuInterop.origShown;
+    }
+
+    /**
+     * The switch between our tables and the original page, MusicBrainz
+     * (vzell, 2026-11-24; org/majkinetor.org, "Switch between SAED's view and
+     * the original page (EH's V)"; approved mockup
+     * https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf). The script edits
+     * the page in place and Event Horizon's way, a second body, is not open to
+     * it, so the original is a COPY of `#page` taken at the first press of
+     * the page view, before anything changes:
+     *   - `copy`: that clone, without this script's controls, with the note
+     *     on top (`_origViewCapture()`); detached while the tables show;
+     *   - `label`, `at`: the pressed action and the time, for the note;
+     *   - `showing`: the copy shows and the live `#page` is hidden (never
+     *     removed: every listener, cache and rewired clone stays as it was);
+     *   - `scroll`: `window.scrollY` of each view, restored on a switch;
+     *   - `live`: on a site whose own page stays live (`_origViewMode()`
+     *     `'live'`), a render happened, so the switch is there (no copy);
+     *   - `html`, `frame`: on a Springsteen site (`'frame'`), the page's HTML
+     *     taken at the press (`_origViewPageHtml()`) and the frame showing it
+     *     (`_origViewFrame()`).
+     * Not remembered (vzell): every render opens on the tables. Declared
+     * before the init code that first uses it (no TDZ).
+     */
+    const _origView = {
+        copy: null, label: '', at: '', showing: false, scroll: { table: 0, orig: 0 }, live: false, html: '', frame: null,
+        // initNavigationGuard()'s decision for one link click, for the frame's links.
+        navGuard: null,
+    };
+
+    /** `_saBody()` class while the original page shows: the CSS hides the live `#page`. */
+    const _ORIG_VIEW_CLASS = 'mb-orig-view';
+
+    /**
+     * `<body>` classes on a site whose own page stays LIVE below our section
+     * (`_origViewLiveSite()`): `_ORIG_TABLES_CLASS` while our tables show (the
+     * CSS hides the site's page), `_ORIG_SITE_CLASS` while the site's page
+     * shows (the CSS hides our section). Neither before a render.
+     */
+    const _ORIG_TABLES_CLASS = 'mb-orig-tables';
+    const _ORIG_SITE_CLASS = 'mb-orig-site';
+
+    /**
+     * The site of this page when its own page stays live below our section
+     * after a render, so the switch needs no copy (phase 3 of the item, vzell
+     * 2026-11-25): discogs.com, archive.org, setlist.fm. `name` is how the
+     * note names it, `root` our section's id. What the table view hides is
+     * what `_origViewTagSite()` marked, every `<body>` child after our
+     * section (`_origViewStyle()`), so the site's header stays only where it
+     * sits ABOVE our section (Discogs' React pages, `#mb-dg-root` after
+     * `#__header_root_<n>`); elsewhere our section is first in `<body>`
+     * (sticky headers, docs/claude/*.md) and the header would sit under our
+     * tables, so it hides with the page, as the footer does (vzell's two
+     * answers, 2026-11-25).
+     *
+     * @returns {?{name: string, root: string}}
+     */
+    function _origViewLiveSite() {
+        if (_isDgHost) return { name: 'Discogs', root: 'mb-dg-root' };
+        if (_isIaHost) return { name: 'archive.org', root: 'mb-ia-root' };
+        if (_isSfmHost) return { name: 'setlist.fm', root: 'mb-sfm-root' };
+        return null;
+    }
+
+    /**
+     * How the original page comes back on this host: `'copy'` on MusicBrainz
+     * (`_origViewCapture()`), `'live'` on a site of `_origViewLiveSite()`,
+     * null where there is no switch (yet).
+     *
+     * @returns {?string}
+     */
+    function _origViewMode() {
+        if (!_foreignHost) return 'copy';
+        if (_origViewLiveSite()) return 'live';
+        return (_isSlHost || _isJlHost || _isBsHost || _isBbHost) ? 'frame' : null;
+    }
+
+    /**
+     * The page as it is NOW, as one HTML document, for the original view of
+     * a Springsteen site (`_origViewMode()` `'frame'`, phase 4; vzell,
+     * 2026-11-25). These sites remove their own list when the table is built
+     * and put our section inside their own containers, differently per page
+     * (springsteenlyrics.com's markup even closes `.project-detail` early),
+     * so neither an in-place copy of one region (MusicBrainz) nor hiding
+     * what follows our section (the live sites) fits. Taken before the
+     * press changes anything (`_origViewCapture()`): a clone of
+     * `<html>` without scripts and without ours (every `mb-`/`mbu-` id, our
+     * toolbar `<h1>`s, our controls), every `mb-` class stripped (what
+     * `_*PrepareLivePage()` set at init: a hidden title, an arranged side
+     * bar, hidden category walls), with `<base href target="_top">` so its
+     * relative addresses resolve and its links open in the tab. Shown by
+     * `_origViewFrame()`.
+     *
+     * @returns {string}
+     */
+    function _origViewPageHtml() {
+        const root = document.documentElement.cloneNode(true);
+        root.querySelectorAll('script, noscript, [id^="mb-"], [id^="mbu-"], h1[class^="mb-"], h1[class*=" mb-"], '
+            + _ORIG_VIEW_STRIP_SEL).forEach(el => el.remove());
+        root.querySelectorAll('[class*="mb-"]').forEach((el) => {
+            Array.from(el.classList).filter(c => c.startsWith('mb-')).forEach(c => el.classList.remove(c));
+        });
+        Array.from(root.classList).filter(c => c.startsWith('mb-')).forEach(c => root.classList.remove(c));
+        let head = root.querySelector('head');
+        if (!head) { head = document.createElement('head'); root.prepend(head); }
+        const base = head.querySelector('base') || document.createElement('base');
+        if (!base.getAttribute('href')) base.setAttribute('href', location.href);
+        base.setAttribute('target', '_top');
+        head.prepend(base);
+        return '<!DOCTYPE html>\n' + root.outerHTML;
+    }
+
+    /**
+     * Shows (`want`) or hides the original page of a Springsteen site: a
+     * full-window frame over the page with the HTML of `_origViewPageHtml()`,
+     * made at its first showing and kept (hidden) afterwards, so its scroll
+     * position stays. Sandboxed without scripts: the site's own stylesheet
+     * draws it exactly, its own buttons do nothing (the note says so), its
+     * links open in the tab (`allow-top-navigation-by-user-activation`) or a
+     * new one (`allow-popups`). A key pressed inside the frame never reaches
+     * this page, so the frame's document gets its own prefix + P listener.
+     * The note goes first in its `<body>`, styled inline (none of our CSS is
+     * in there).
+     *
+     * @param {boolean} want - True to show it.
+     * @returns {void}
+     */
+    function _origViewFrame(want) {
+        let f = _origView.frame;
+        if (!f && want) {
+            const doc = new DOMParser().parseFromString(_origView.html, 'text/html');
+            const note = doc.createElement('p');
+            note.id = 'mb-orig-frame-note';
+            note.setAttribute('style', 'margin:0;padding:8px 12px;background:#fbf8f1;color:#2b2622;border-bottom:1px solid #d9cfbd;'
+                + 'border-left:3px solid #9a6a00;font:13px/1.45 Georgia,"Times New Roman",serif;position:relative;z-index:2147483000');
+            note.textContent = _origViewNoteText(null);
+            doc.body.prepend(note);
+            f = document.createElement('iframe');
+            f.id = 'mb-orig-frame';
+            f.title = 'The page before the press';
+            f.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation');
+            f.setAttribute('style', 'position:fixed;inset:0;width:100%;height:100%;border:0;margin:0;background:#fff;z-index:2147482900');
+            f.addEventListener('load', () => {
+                _origViewFrameKeys(f);
+                const d = f.contentDocument;
+                const n = d && d.getElementById('mb-orig-frame-note');
+                if (n) n.textContent = _origViewNoteText(_origViewFrameDead(d));
+            });
+            f.srcdoc = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+            _saBody().appendChild(f);
+            _origView.frame = f;
+        }
+        if (f) f.hidden = !want;
+    }
+
+    /**
+     * The headers each Springsteen site keeps in the table view (vzell's
+     * answer to the mockup's question 4: springsteenlyrics.com its navbar and
+     * breadcrumb, with the strip above them; Brucebase its wiki header and
+     * side bar; jungleland.it and brucespringsteen.it nothing).
+     */
+    const _ORIG_REST_KEEP = {
+        sl: '#header-top, .sticky-wrapper, .breadcrumb-wrap',
+        bb: '#header, #side-bar',
+    };
+
+    /**
+     * Marks what the table view hides on a Springsteen site: every visible
+     * block of the site's page (in `_origSitePre`) that holds nothing of ours
+     * and is not a kept header (`_ORIG_REST_KEEP`), found top-down from
+     * `<body>`, descending only into blocks that hold something of ours. Its
+     * mark, `data-mb-site-rest`, hides it under `mb-orig-tables`. Measured
+     * on the saved pages (scripts/probe-springsteen-table-view.js): a
+     * springsteenlyrics.com list's category walls, formats guide, item count
+     * and footer; brucespringsteen.it's filter form and "Data reloaded"
+     * lines; Brucebase's breadcrumbs, the rest of `#page-content`, page tags,
+     * options, footer and licence. Called from the render tail
+     * (`addOrigViewButton()`), so after the converters ran.
+     *
+     * @returns {void}
+     */
+    function _origViewTagRest() {
+        if (!_origSitePre || !document.body) return;
+        const t0 = performance.now();
+        const keepSel = (_isSlHost && _ORIG_REST_KEEP.sl) || (_isBbHost && _ORIG_REST_KEEP.bb) || '';
+        // The site's: found at the start, or its own text that the fold code
+        // only wrapped in a span (data-mb-text-wrap: brucespringsteen.it's
+        // "Last computed" line).
+        const isSite = (el) => _origSitePre.has(el) || el.hasAttribute('data-mb-text-wrap');
+        // Every ancestor of something of ours: the blocks to descend into.
+        const holders = new Set();
+        for (const el of document.body.querySelectorAll('*')) {
+            if (isSite(el)) continue;
+            for (let a = el.parentElement; a && a !== document.body && !holders.has(a); a = a.parentElement) holders.add(a);
+        }
+        const walk = (parent) => {
+            for (const el of parent.children) {
+                if (/^(SCRIPT|STYLE|LINK|NOSCRIPT|TEMPLATE|BR)$/.test(el.tagName) || !isSite(el)) continue;
+                if (holders.has(el)) { walk(el); continue; }
+                if (keepSel && el.matches(keepSel)) continue;
+                if (el.getClientRects().length) el.setAttribute('data-mb-site-rest', '');
+            }
+        };
+        walk(document.body);
+        Lib.debug('meta', `Original page: the site's leftovers marked (${document.querySelectorAll('[data-mb-site-rest]').length} blocks, ${document.body.getElementsByTagName('*').length} elements walked, ${(performance.now() - t0).toFixed(1)} ms).`);
+    }
+
+    /**
+     * A Brucebase detail page (an event, song, venue, person, release, story,
+     * tag page: our tables above the wiki's page, folded under our
+     * `h2.mb-bb-native-h2` "Brucebase page"): the original view is the LIVE
+     * wiki page there (vzell, 2026-11-25, the mockup's question 5 and his
+     * answer to the frame design). In `#main-content` our blocks (not in
+     * `_origSitePre`) hide, the wiki's come back with the inline display they
+     * had at the press (`_origView.bbDisp`; the fold had set `none` on them)
+     * and the title we hid (`mb-bb-hidden`) shows; going back restores the
+     * fold's values. The "Live" note goes before the title.
+     *
+     * @param {boolean} want - True for the wiki's page.
+     * @returns {void}
+     */
+    function _origViewBbLive(want) {
+        const main = document.getElementById('main-content');
+        if (!main) return;
+        const title = document.getElementById('page-title');
+        if (want) {
+            _origView.bbNow = new Map();
+            for (const el of main.children) {
+                if (el.id === 'mb-orig-live-note') continue;
+                if (!_origSitePre.has(el)) { el.setAttribute('data-mb-orig-ours', ''); continue; }
+                _origView.bbNow.set(el, el.style.display);
+                el.style.display = _origView.bbDisp.has(el) ? _origView.bbDisp.get(el) : '';
+            }
+            if (title && title.classList.contains('mb-bb-hidden')) { title.classList.remove('mb-bb-hidden'); _origView.bbTitleHidden = true; }
+            _origViewLiveNote();
+        } else {
+            for (const el of main.querySelectorAll(':scope > [data-mb-orig-ours]')) el.removeAttribute('data-mb-orig-ours');
+            for (const [el, d] of (_origView.bbNow || new Map())) el.style.display = d;
+            if (title && _origView.bbTitleHidden) { title.classList.add('mb-bb-hidden'); _origView.bbTitleHidden = false; }
+        }
+    }
+
+    /**
+     * The "COPY" note of the original-page frame: the press it predates, what
+     * works and, when `dead` is known, what does not (vzell, 2026-11-25:
+     * the fixed "the site's own buttons may not respond here" was there on
+     * every copy, also where it was vague; he chose to name what is dead).
+     * Until the frame has loaded (`dead` null) it names nothing dead.
+     *
+     * @param {?{works: string[], dead: string[]}} dead - `_origViewFrameDead()`'s answer.
+     * @returns {string}
+     */
+    function _origViewNoteText(dead) {
+        const what = _origView.label ? `pressed “${_origView.label}”` : 'pressed the button';
+        const list = (a) => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+        const works = ['Links'].concat(dead ? dead.works : []);
+        let t = `COPY · A copy of this page from before you ${what} (${_origView.at}). ${list(works)} work`;
+        if (dead && dead.dead.length) t += `; ${list(dead.dead)} do${dead.dead.length > 1 || /s\b/.test(dead.dead[0].split(' (')[0]) ? '' : 'es'} not`;
+        return t + '. Reload for the live page.';
+    }
+
+    /**
+     * What the original-page copy holds that cannot work there (no script
+     * runs in the frame, no form submits), from its laid-out document, so the
+     * note names it (`_origViewNoteText()`). Measured on the saved pages
+     * (scripts/probe-orig-frame-controls.js, 2026-11-25): Brucebase's search
+     * box, Sign in / Create account and the page options at its foot;
+     * springsteenlyrics.com's search boxes and log-in form;
+     * jungleland.it's Year menu; brucespringsteen.it's Section menu and
+     * filter form. Only what is visible counts. A `javascript:` link that is
+     * only a picture (the wiki's legend icons) does nothing on the live page
+     * either and is not named; the tabview tabs work (`_origViewFrameTab()`).
+     *
+     * @param {Document} d - The frame's document.
+     * @returns {{works: string[], dead: string[]}}
+     */
+    function _origViewFrameDead(d) {
+        const vis = (el) => el.getClientRects().length > 0 && d.defaultView.getComputedStyle(el).visibility !== 'hidden';
+        const out = { works: [], dead: [] };
+        const isTab = (a) => !!(a.parentElement && a.parentElement.parentElement
+            && a.parentElement.parentElement.classList.contains('yui-nav'));
+        const signInRe = /^(sign (in|out)|log ?(in|out)|create account|register)$/i;
+        const counted = new Set();
+        let search = false, signIn = false, filter = false;
+        for (const fm of Array.from(d.forms).filter(vis)) {
+            // A search box may come with tick boxes (springsteenlyrics.com's
+            // Song Title / Subtitle / Lyrics): its text field decides.
+            if (fm.querySelector('input[type="password"]')) signIn = true;
+            else if (fm.querySelector('input[type="text"], input[type="search"], input:not([type])')) search = true;
+            else if (fm.querySelector('input[type="radio"], input[type="checkbox"]')) filter = true;
+            else continue;
+            counted.add(fm);
+        }
+        const inCounted = (el) => Array.from(counted).some(fm => fm.contains(el));
+        // A jump menu counts on its own, also inside a counted form
+        // (brucespringsteen.it's whole page is one form).
+        const menus = Array.from(d.querySelectorAll('select[onchange]')).filter(vis);
+        const buttons = [];
+        for (const el of d.querySelectorAll('a[href^="javascript:" i], [onclick], button')) {
+            if (el.id === 'mb-orig-frame-note' || !vis(el) || inCounted(el) || (el.tagName === 'A' && isTab(el))) continue;
+            const text = (el.textContent || el.value || '').trim().replace(/\s+/g, ' ');
+            if (!text) continue;
+            if (signInRe.test(text)) { signIn = true; continue; }
+            // A long entry (Brucebase's "Stop watching site …" in the
+            // account menu) would crowd out the short ones the note names.
+            if (text.length > 24) continue;
+            if (/^[\u25bc\u25b2\u25be\u25b8+-]$/.test(text)) continue;
+            if (!buttons.includes(text)) buttons.push(text);
+        }
+        if (Array.from(d.querySelectorAll('.yui-nav > li > a')).some(vis)) out.works.push('tabs');
+        if (search) out.dead.push('searching');
+        if (signIn) out.dead.push('signing in');
+        if (filter) out.dead.push('the filter form');
+        if (menus.length) out.dead.push(menus.length > 1 ? 'the jump menus' : 'the jump menu');
+        if (buttons.length) out.dead.push(`the page’s own buttons (${buttons.slice(0, 3).join(', ')}${buttons.length > 3 ? ' …' : ''})`);
+        return out;
+    }
+
+    /**
+     * A tab of a wikidot tabview in the original-page frame (Brucebase's
+     * song list: the `=- A -=` letter tabs, and the side bar's
+     * News/Media/Released): switches it as the wiki's YUI script would, which
+     * the frame does not run (vzell, 2026-11-25: "the tabs do not react on
+     * clicks" on stats:songs). The tab's `<li>` becomes `selected` (with the
+     * wiki's `title="active"`), the panel at its index in the navset's
+     * `.yui-content` shows, the others hide.
+     *
+     * @param {HTMLAnchorElement} a - The link clicked in the frame.
+     * @returns {boolean} True when it was such a tab (the click is handled).
+     */
+    function _origViewFrameTab(a) {
+        const li = a.parentElement;
+        const nav = li && li.tagName === 'LI' ? li.parentElement : null;
+        const set = nav && nav.classList.contains('yui-nav') ? nav.closest('.yui-navset') : null;
+        if (!set) return false;
+        const tabs = Array.from(nav.children);
+        const i = tabs.indexOf(li);
+        const content = Array.from(set.children).find(el => el.classList.contains('yui-content'));
+        const panels = content ? Array.from(content.children) : [];
+        tabs.forEach((t, k) => {
+            t.classList.toggle('selected', k === i);
+            if (k === i) t.setAttribute('title', 'active'); else t.removeAttribute('title');
+        });
+        panels.forEach((p, k) => { p.style.display = k === i ? 'block' : 'none'; });
+        return true;
+    }
+
+    /**
+     * The prefix key, then P, inside the original-page frame: back to the
+     * tables, as `ctrlMFunctionMap.p` does outside it.
+     *
+     * @param {HTMLIFrameElement} f - The frame.
+     * @returns {void}
+     */
+    function _origViewFrameKeys(f) {
+        const d = f.contentDocument;
+        if (!d || d._mbOrigKeys) return;
+        d._mbOrigKeys = true;
+        // A link of the copy leaves the loaded table as one on the page does:
+        // the same "You are about to leave this page" (initNavigationGuard()'s
+        // decision). A link into a named frame or window of the site (its own
+        // frameset's targets) opens elsewhere and is not asked about.
+        d.addEventListener('click', (e) => {
+            const a = e.target && e.target.closest && e.target.closest('a[href]');
+            if (a && _origViewFrameTab(a)) { e.preventDefault(); return; }
+            if (!a || !_origView.navGuard) return;
+            const t = (a.getAttribute('target') || '').toLowerCase();
+            if (t && !['_self', '_top', '_parent'].includes(t)) return;
+            _origView.navGuard(e);
+        }, true);
+        let armed = 0;
+        d.addEventListener('keydown', (e) => {
+            const p = parsePrefixShortcut(getPrefixDisplay());
+            const isPrefix = e.key && e.key.toLowerCase() === p.key.toLowerCase() && e.ctrlKey === p.ctrl
+                && e.metaKey === p.meta && e.altKey === p.alt && e.shiftKey === p.shift;
+            if (isPrefix) { armed = Date.now(); e.preventDefault(); return; }
+            if (armed && Date.now() - armed < 3000 && (e.key === 'p' || e.key === 'P')) {
+                armed = 0;
+                e.preventDefault();
+                _origViewShow(false);
+            }
+        }, true);
+    }
+
+    /**
+     * Marks the site's own page on a live site (`_origViewLiveSite()`):
+     * every `<body>` child AFTER our section gets `data-mb-site`, which the
+     * table view hides (`_origViewStyle()`). Called by the three
+     * `_*PrepareLivePage()` right after they insert our section, at page
+     * init, before any popup or menu of ours exists in `<body>` (several of
+     * ours have no id, a column-visibility menu for one, so they could not be
+     * told apart later). Names nothing: the live pages' `<body>` differs from
+     * the saved fixtures (Discogs' search: `div.flex` around header and
+     * `<main>`; an archive.org item: `div#wrap`; vzell's snapshots
+     * debug/d-search-ctrlmp-bug.html, debug/ia-release-ctrlmp-bug.html,
+     * 2026-11-25), and a list of names hid nothing there. What comes BEFORE
+     * our section stays: Discogs' header on its React pages. An element
+     * the site adds after init (a consent banner) is not marked and stays.
+     * Our own (`mb-`) and majkinetor's (`mbu-`) are never marked.
+     *
+     * @param {HTMLElement} root - Our section, a `<body>` child.
+     * @returns {void}
+     */
+    function _origViewTagSite(root) {
+        if (!root || root.parentElement !== document.body) return;
+        const ours = (el) => /^mbu?-/.test(el.id) || Array.from(el.classList).some((c) => /^mbu?-/.test(c));
+        for (let el = root.nextElementSibling; el; el = el.nextElementSibling) {
+            if (/^(SCRIPT|STYLE|LINK|NOSCRIPT|TEMPLATE)$/.test(el.tagName) || ours(el)) continue;
+            el.setAttribute('data-mb-site', '');
+        }
+    }
+
+    /**
+     * This script's own controls inside `#page` before a press (the h1
+     * toolbar and its status lines, the Ctrl+M card): left out of the copy,
+     * which shows the page as MusicBrainz drew it (approved question 8: no
+     * second press from the copy).
+     */
+    const _ORIG_VIEW_STRIP_SEL = '#mb-show-all-controls-container, #mb-status-displays-container, #mb-ctrl-m-tooltip';
+
+    /**
+     * Takes the copy of the original page, once per page view: a deep clone
+     * of the live `#page` (content and sidebar) as it is NOW, so it must run
+     * before the first change of a press — at the top of
+     * `startFetchingProcess()` past its reload guard, at the start of a load
+     * from disk, and before a snapshot hydrate clears the native tables. A
+     * later call (a resume, a second disk load) keeps the first copy. A
+     * page without `#page` gets none, and then no switch. One `cloneNode()`
+     * of one native page: no request, nothing on the render or filter path.
+     *
+     * @param {string} label - The action pressed, for the note ("Show all release groups").
+     * @returns {void}
+     */
+    function _origViewCapture(label) {
+        if (_origViewMode() === 'frame') {
+            // A Springsteen site: the whole page's HTML (`_origViewPageHtml()`), once.
+            if (_origView.html) return;
+            const t1 = performance.now();
+            _origView.html = _origViewPageHtml();
+            // A Brucebase detail page's live original view brings the wiki's
+            // blocks back with the inline display they have now.
+            const main = _isBbHost ? document.getElementById('main-content') : null;
+            if (main) _origView.bbDisp = new Map(Array.from(main.children).map(el => [el, el.style.display]));
+            _origView.label = String(label || '').trim();
+            _origView.at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            Lib.debug('meta', `Original page: the page's HTML taken (${_origView.html.length} characters, ${(performance.now() - t1).toFixed(1)} ms) before "${_origView.label}".`);
+            return;
+        }
+        if (_foreignHost || _origView.copy) return;
+        const live = document.getElementById('page');
+        if (!live) return;
+        const t0 = performance.now();
+        const copy = live.cloneNode(true);
+        copy.querySelectorAll(_ORIG_VIEW_STRIP_SEL).forEach(el => el.remove());
+        copy.setAttribute('data-mb-orig-copy', '');
+        _origView.copy = copy;
+        _origView.label = String(label || '').trim();
+        _origView.at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        _origViewNote(copy);
+        Lib.debug('meta', `Original page: copy of #page taken (${copy.getElementsByTagName('*').length} elements, ${(performance.now() - t0).toFixed(1)} ms) before "${_origView.label}".`);
+    }
+
+    /**
+     * The one-line note at the top of the copy (approved question 2: always
+     * shown): it is a copy from before the press, its links work, and
+     * MusicBrainz's own controls in it (rating stars, "Load all tracks", the
+     * credits toggle) may not respond, since their handlers stay with the live
+     * page.
+     *
+     * @param {HTMLElement} copy - The copy of `#page`.
+     * @returns {void}
+     */
+    function _origViewNote(copy) {
+        const p = document.createElement('p');
+        p.className = 'mb-orig-note';
+        const pill = document.createElement('span');
+        pill.className = 'mb-orig-pill';
+        pill.textContent = 'Copy';
+        const text = document.createElement('span');
+        const what = _origView.label ? `pressed “${_origView.label}”` : 'pressed the button';
+        text.textContent = `A copy of this page from before you ${what} (${_origView.at}). ` +
+            'Links work; MusicBrainz’s own buttons may not respond here. Reload for the live page.';
+        p.append(pill, text);
+        const content = copy.querySelector('#content') || copy;
+        content.prepend(p);
+    }
+
+    /**
+     * The CSS of the switch, added once: the live `#page` hidden while the
+     * copy shows, the note, and the "Back to the tables" corner button, in
+     * the "Liner notes" look.
+     *
+     * @returns {void}
+     */
+    function _origViewStyle() {
+        if (document.getElementById('mb-orig-view-css')) return;
+        const s = document.createElement('style');
+        s.id = 'mb-orig-view-css';
+        // A live site's own page: what `_origViewTagSite()` marked, every
+        // <body> child after our section at page init. (A laid-out hide, off
+        // screen, was tried on 2026-11-25 against archive.org's vanished
+        // player and taken back: the player was folded by makeH2sCollapsible(),
+        // not hidden by archive.org's script; scripts/probe-ia-theatre-hide.js.)
+        s.textContent = [
+            `body.${_ORIG_VIEW_CLASS} #page:not([data-mb-orig-copy]) { display: none !important; }`,
+            `body.${_ORIG_TABLES_CLASS} > [data-mb-site] { display: none !important; }`,
+            // A Springsteen site's leftovers (_origViewTagRest()), a Brucebase
+            // detail page's folded "Brucebase page" in the table view, and our
+            // blocks while its live wiki page shows (_origViewBbLive()).
+            `body.${_ORIG_TABLES_CLASS} [data-mb-site-rest] { display: none !important; }`,
+            `body.${_ORIG_TABLES_CLASS} h2.mb-bb-native-h2 { display: none !important; }`,
+            'body.mb-orig-bblive #main-content > [data-mb-orig-ours] { display: none !important; }',
+            `body.${_ORIG_SITE_CLASS} > :is(#mb-dg-root, #mb-ia-root, #mb-sfm-root) { display: none !important; }`,
+            `body:not(.${_ORIG_SITE_CLASS}) #mb-orig-live-note { display: none !important; }`,
+            '#mb-orig-live-note { margin: 10px 12px; }',
+            '.mb-orig-note.mb-orig-note-live { border-left-color: #3f7a3a; }',
+            '.mb-orig-note-live .mb-orig-pill { color: #3f7a3a; }',
+            '.mb-orig-note { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin: 0 0 10px;',
+            '    padding: 6px 10px; background: #fbf8f1; color: #2b2622; border: 1px solid #d9cfbd;',
+            '    border-left: 3px solid #9a6a00; border-radius: 3px; font: 13px/1.45 Georgia, "Times New Roman", serif; }',
+            '.mb-orig-pill { font: 600 10px/1 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: .08em;',
+            '    text-transform: uppercase; color: #9a6a00; border: 1px solid currentColor; border-radius: 999px; padding: 3px 7px; }',
+            '#mb-orig-back-btn { position: fixed; right: calc(14px + env(safe-area-inset-right, 0px));',
+            // 2147482990: the tier of String Theory's dock entries, above its open
+            // dock's frosted shelf (#mbu-dock-shelf, 2147482989), which his restack
+            // can lay over our button's place in the row (vzell, 2026-11-25).
+            '    bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 2147482990; display: flex;',
+            '    flex-direction: column; align-items: flex-start; gap: 2px; padding: 7px 12px; cursor: pointer;',
+            '    background: #fbf8f1; color: #2f5f9e; border: 1px solid #2f5f9e; border-radius: 3px;',
+            '    box-shadow: 0 10px 24px -8px rgba(60,40,20,.35); font: 600 11px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;',
+            '    letter-spacing: .06em; text-transform: uppercase; }',
+            '#mb-orig-back-btn[hidden] { display: none !important; }',
+            '#mb-orig-back-btn:hover { background: #f3ede1; }',
+            '#mb-orig-back-btn:focus-visible { outline: 2px solid #2f5f9e; outline-offset: 2px; }',
+            '#mb-orig-back-btn small { font: 10px/1.2 ui-monospace, Menlo, Consolas, monospace; color: #7a6d5c;',
+            '    text-transform: none; letter-spacing: 0; }',
+        ].join('\n');
+        (document.head || document.documentElement).appendChild(s);
+    }
+
+    /**
+     * Shows the original page (`want` true) or our tables again. The live
+     * `#page` is hidden by `_ORIG_VIEW_CLASS` on `_saBody()` and the copy
+     * goes right AFTER it, so `getElementById('page')`, `#content` and
+     * `#sidebar` still find the live nodes first; going back removes the
+     * copy. Each view's scroll is kept; open menus close, windows and cards
+     * stay (approved question 6). The #938 marks follow (`_mbuTableVisible()`)
+     * and so does the corner button. Esc never comes here. On a live site
+     * (`_origViewMode()` `'live'`) there is no copy: the two `<body>` classes
+     * swap which shows, the site's page or our section, and the "Live" note
+     * comes with the site's page (`_origViewLiveNote()`).
+     *
+     * @param {boolean} want - True for the original page.
+     * @returns {void}
+     */
+    function _origViewShow(want) {
+        const mode = _origViewMode();
+        if (!mode || !isLoaded || want === _origView.showing) return;
+        if (!{ copy: _origView.copy, live: _origView.live, frame: _origView.html }[mode]) return;
+        const live = mode === 'copy' ? document.getElementById('page') : null;
+        if (mode === 'copy' && !live) return;
+        _origViewStyle();
+        _origView.scroll[_origView.showing ? 'orig' : 'table'] = window.scrollY;
+        _closeToolbarMenus();
+        const body = _saBody();
+        if (mode === 'frame' && _origView.bbLive) {
+            // A Brucebase detail page: the live wiki page in place.
+            body.classList.toggle(_ORIG_TABLES_CLASS, !want);
+            body.classList.toggle(_ORIG_SITE_CLASS, want);
+            body.classList.toggle('mb-orig-bblive', want);
+            _origViewBbLive(want);
+        } else if (mode === 'frame') {
+            // Over the page, which stays as it is underneath (its scroll too).
+            _origViewFrame(want);
+        } else if (mode === 'live') {
+            // The site's own page is still there: only which of the two shows.
+            body.classList.toggle(_ORIG_TABLES_CLASS, !want);
+            body.classList.toggle(_ORIG_SITE_CLASS, want);
+            if (want) _origViewLiveNote();
+        } else if (want) {
+            live.after(_origView.copy);
+            body.classList.add(_ORIG_VIEW_CLASS);
+        } else {
+            _origView.copy.remove();
+            body.classList.remove(_ORIG_VIEW_CLASS);
+        }
+        _origView.showing = want;
+        _mbuInterop.origShown = want;
+        _origViewCornerSync();
+        _mbuQuietSync();
+        _mbuKeysSync();
+        _mbuPlayerSync();
+        // The frame scrolls by itself; the page under it keeps its place.
+        if (mode !== 'frame' || _origView.bbLive) window.scrollTo(0, _origView.scroll[want ? 'orig' : 'table']);
+        Lib.debug('meta', want ? 'Original page shown (the copy).' : 'Back to the tables.');
+    }
+
+    /**
+     * Ctrl+M P, the ☰ row and the corner button: the other view.
+     *
+     * @returns {void}
+     */
+    function _origViewToggle() {
+        _origViewShow(!_origView.showing);
+    }
+
+    /**
+     * The note above a live site's own page while it shows (approved mockup,
+     * the Discogs scene: "Live", the site's page as it drew it, everything
+     * works). Added once, right after our section, so on Discogs' React
+     * pages it sits under the site's header and elsewhere first; the CSS
+     * shows it only under `_ORIG_SITE_CLASS`.
+     *
+     * @returns {void}
+     */
+    function _origViewLiveNote() {
+        // A Brucebase detail page's live wiki page (_origViewBbLive()): before its title.
+        const site = _origViewLiveSite() || (_isBbHost ? { name: 'Brucebase', root: 'page-title', before: true } : null);
+        const root = site && document.getElementById(site.root);
+        if (!root || document.getElementById('mb-orig-live-note')) return;
+        const p = document.createElement('p');
+        p.id = 'mb-orig-live-note';
+        p.className = 'mb-orig-note mb-orig-note-live';
+        const pill = document.createElement('span');
+        pill.className = 'mb-orig-pill';
+        pill.textContent = 'Live';
+        const text = document.createElement('span');
+        const owner = site.name.endsWith('s') ? `${site.name}’` : `${site.name}’s`;   // "Discogs’", "setlist.fm’s"
+        text.textContent = `${owner} own page, as the site drew it. Everything on it works.`;
+        p.append(pill, text);
+        if (site.before) root.before(p); else root.after(p);
+    }
+
+    /**
+     * The "Back to the tables" button while the original page shows
+     * (approved question 3): bottom right, in `_saBody()` (so it hides with
+     * MusicBrainz's page under Event Horizon's view, and is hidden then too,
+     * since EH's restack would count it). It carries majkinetor's corner
+     * marks (`data-mb-corner="br"`, order 50: above his launchers, which keep
+     * their places; `data-mb-corner-dock="no"`: never folded into String
+     * Theory's dock), so his `mbRestackCorner()` stacks it with his
+     * launchers; without his scripts our CSS puts it 14 px from the corner, as
+     * his restack would. Its z-index is his dock entries' (2147482990): in a
+     * row his restack can place it under the frosted shelf of his open dock
+     * (2147482989), which then took the click (vzell, 2026-11-25). His
+     * restack also scales it by his corner size (`--mbu-cs`), as his own
+     * launchers. His restack has no public entry point, so a change
+     * here nudges it through the one listener every copy of it shares, the
+     * visual viewport's `resize` (installed when `<html data-mb-corner-vv>`
+     * is there).
+     *
+     * @returns {void}
+     */
+    function _origViewCornerSync() {
+        const root = document.documentElement;
+        const want = _origView.showing && !root.hasAttribute('data-mbu-dock');
+        let btn = document.getElementById('mb-orig-back-btn');
+        if (!btn) {
+            if (!want) return;
+            btn = document.createElement('button');
+            btn.id = 'mb-orig-back-btn';
+            btn.type = 'button';
+            btn.setAttribute('data-mb-corner', 'br');
+            btn.setAttribute('data-mb-corner-order', '50');
+            btn.setAttribute('data-mb-corner-dock', 'no');
+            btn.setAttribute('data-mb-corner-label', SCRIPT_BASE_NAME);
+            const main = document.createElement('span');
+            main.textContent = '▦ Back to the tables';
+            const key = document.createElement('small');
+            key.textContent = `${getPrefixDisplay()} P`;
+            btn.append(main, key);
+            _setTip(btn, `Back to ${SCRIPT_BASE_NAME}'s tables, as you left them (${getPrefixDisplay()}, then P)`);
+            btn.addEventListener('click', () => _origViewShow(false));
+            _saBody().appendChild(btn);
+        }
+        if (btn.hidden === !want) return;
+        btn.hidden = !want;
+        if (root.hasAttribute('data-mb-corner-vv') && window.visualViewport) {
+            window.visualViewport.dispatchEvent(new Event('resize'));
+        }
+    }
+
+    /**
+     * Adds "Show the original page" to the SAED menu's View group (approved
+     * question 1), from both render tails, when a copy was taken. Its key
+     * hint is the prefix's P (`ctrlMFunctionMap`). Idempotent.
+     *
+     * @returns {void}
+     */
+    function addOrigViewButton() {
+        const mode = _origViewMode();
+        if (!mode || (mode === 'copy' && !_origView.copy) || (mode === 'frame' && !_origView.html)) return;
+        if (!document.getElementById('mb-show-all-controls-container')) return;
+        if (mode === 'live' && !_origView.live) {
+            // From now on the tables show and the site's own page hides
+            // (vzell: "I want only the table view").
+            _origView.live = true;
+            _origViewStyle();
+            document.body.classList.add(_ORIG_TABLES_CLASS);
+        }
+        if (mode === 'frame') {
+            // A Springsteen site: its leftovers hide (_origViewTagRest(), on
+            // every render, after the converters), and a Brucebase detail
+            // page gets the live original view (_origViewBbLive()).
+            _origViewStyle();
+            _origViewTagRest();
+            document.body.classList.add(_ORIG_TABLES_CLASS);
+            _origView.bbLive = _isBbHost && !!document.querySelector('h2.mb-bb-native-h2') && !!_origView.bbDisp;
+        }
+        if (document.getElementById('mb-orig-view-btn')) return;
+        const btn = document.createElement('button');
+        btn.id = 'mb-orig-view-btn';
+        btn.type = 'button';
+        btn.innerHTML = '<span>📄 Show the original page</span>';
+        const siteName = mode === 'live' ? _origViewLiveSite().name : '';
+        _setTip(btn, mode === 'live'
+            ? `${siteName}${siteName.endsWith('s') ? '’' : '’s'} own page instead of the tables, live; the tables stay as you left them`
+            : 'The page as it was before you pressed the button, instead of the tables; the tables stay as you left them');
+        btn.style.cssText = uiActionBtnBaseCSS();
+        btn.onclick = () => _origViewShow(true);
+        _ensureViewMenu().adopt(btn, `${getPrefixDisplay()} P`);
+        ensureSettingsButtonIsLast();
     }
 
     /** Event Horizon's player channel (EH `PLY_BUS`, 2026.11.23.095945): a separate player window and tab handover. */
@@ -114252,7 +115066,7 @@ ${sections.join('\n')}
     function _mbuPlayerSync() {
         if (_foreignHost) return;
         const root = document.documentElement;
-        const want = _mbuInterop.tableShown && Lib.settings.sa_eh_player_quiet !== false &&
+        const want = _mbuTableVisible() && Lib.settings.sa_eh_player_quiet !== false &&
             !root.hasAttribute('data-mbu-dock');
         if (want) {
             if (!root.hasAttribute('data-mbu-player-off')) root.setAttribute('data-mbu-player-off', 'saed');
@@ -114366,7 +115180,7 @@ ${sections.join('\n')}
     function _mbuKeysSync() {
         if (_foreignHost) return;
         const root = document.documentElement;
-        const want = _mbuInterop.tableShown && Lib.settings.sa_block_eh_single_keys !== false &&
+        const want = _mbuTableVisible() && Lib.settings.sa_block_eh_single_keys !== false &&
             !root.hasAttribute('data-mbu-dock') && _ehKeysKeepHonoured();
         if (want) {
             if (root.hasAttribute('data-mbu-keys-off')) return;
@@ -114403,7 +115217,7 @@ ${sections.join('\n')}
     function _mbuQuietSync() {
         if (_foreignHost) return;
         const root = document.documentElement;
-        const want = _mbuInterop.tableShown && Lib.settings.sa_mbu_quiet_corner !== false &&
+        const want = _mbuTableVisible() && Lib.settings.sa_mbu_quiet_corner !== false &&
             !_mbuInterop.quietUserShown && !root.hasAttribute('data-mbu-dock');
         if (want && !root.hasAttribute('data-mbu-quiet')) root.setAttribute('data-mbu-quiet', 'saed');
         else if (!want && root.getAttribute('data-mbu-quiet') === 'saed') root.removeAttribute('data-mbu-quiet');
@@ -127866,7 +128680,9 @@ a { color: #1565c0; }`;
                 // freshly-fabricated table, not just the first native one it
                 // happens to find. See _clearNativeTableSectionsForSnapshot's
                 // JSDoc for the full "multiple h3 based subtables still
-                // showing" bug this fixes.
+                // showing" bug this fixes. The original page is copied first
+                // (`_origViewCapture()`).
+                _origViewCapture('Show single-table');
                 _clearNativeTableSectionsForSnapshot();
                 // Start watching for late third-party injections (jesus2099's
                 // "mb. FUNKEY ILLUSTRATED RECORDS" cover-art icons and bigbox,
@@ -142700,6 +143516,10 @@ a { color: #1565c0; }`;
             return;
         }
 
+        // The original page, copied before this press changes anything
+        // (`_origViewCapture()`: once per page view, so a resume keeps it).
+        _origViewCapture(buttonConfig && buttonConfig.label);
+
         // brucebase.wikidot.com: a press reads the BruceParser feed when the
         // kept one is a day old (`_bbFeedKick()`); the render stamps from
         // the kept one, and a newer one is stamped when it comes in.
@@ -145893,6 +146713,8 @@ a { color: #1565c0; }`;
             addGmStoreButton();
             // The #938 quiet corner mark (data-mbu-quiet) may go up now.
             _mbuTableShown();
+            // 📄 Show the original page, when a copy was taken at the press
+            addOrigViewButton();
 
             // Initialize keyboard shortcuts
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -151633,12 +152455,28 @@ a { color: #1565c0; }`;
      * the header's own siblings; an h2 in a table cell (the release's info
      * table: "Label:", "Format:") is no section and gets no toggle
      * (org/TODO.org "some more BB and MB fixes/enhancements" 5c, 2026-10-24).
+     *
+     * Elsewhere a live site's own page (`[data-mb-site]`: archive.org,
+     * setlist.fm) is left alone: its h2s get no toggle and fold nothing
+     * (2026-11-25: archive.org's player hid under its `h2.sr-only`).
      */
     function makeH2sCollapsible() {
         Lib.debug('render', 'Initializing collapsible H2 headers...');
         const _h2PassT0 = performance.now();
-        // Capture all H2s currently in the document to allow peer filtering later
-        const allH2s = Array.from(document.querySelectorAll('h2'));
+        // Capture all H2s currently in the document to allow peer filtering later.
+        // A live site's own page (`data-mb-site`, `_origViewTagSite()`) is not
+        // ours to fold, but on discogs.com, whose section headings fold on
+        // purpose (2026-10-24, `_dgSectionHeader()`): archive.org's item page
+        // has an `h2.sr-only` right before its player, and folding it hid the
+        // player, which the switch then showed folded away (vzell, 2026-11-25,
+        // debug/ia-IP-release-ctrlmp-3-bug.html; scripts/probe-ia-theatre-hide.js
+        // stopped on the write in makeH2sCollapsible()).
+        // Brucebase likewise: the wiki's own h2s in #page-content (in
+        // _origSitePre) fold nothing, or a detail page's live original view
+        // (_origViewBbLive()) would show its sections folded.
+        const allH2s = Array.from(document.querySelectorAll('h2'))
+            .filter(h2 => _isDgHost || !h2.closest('[data-mb-site]'))
+            .filter(h2 => !(_isBbHost && _origSitePre && _origSitePre.has(h2) && h2.closest('#page-content')));
         const _sbSidebarEl = document.getElementById('sidebar');
         const _dgAppEl = _isDgHost ? document.getElementById('app') : null;
 
@@ -151689,6 +152527,8 @@ a { color: #1565c0; }`;
                 if (_cur.nodeType === Node.ELEMENT_NODE && _cur.classList.contains('mb-sb-inline-wrap')) break;
                 if (_cur.nodeType === Node.TEXT_NODE && _cur.textContent.trim()) {
                     const _wrap = document.createElement('span');
+                    // The site's own text, only wrapped: still the site's (_origViewTagRest()).
+                    _wrap.setAttribute('data-mb-text-wrap', '');
                     _cur.parentNode.insertBefore(_wrap, _cur);
                     _wrap.appendChild(_cur);
                     contentNodes.push(_wrap);
@@ -154766,6 +155606,8 @@ a { color: #1565c0; }`;
                 if (_cur.nodeType === Node.ELEMENT_NODE && _cur.tagName === 'H2') break;
                 if (_cur.nodeType === Node.TEXT_NODE && _cur.textContent.trim()) {
                     const _wrap = document.createElement('span');
+                    // The site's own text, only wrapped: still the site's (_origViewTagRest()).
+                    _wrap.setAttribute('data-mb-text-wrap', '');
                     _cur.parentNode.insertBefore(_wrap, _cur);
                     _wrap.appendChild(_cur);
                     contentNodes.push(_wrap);
@@ -164282,15 +165124,12 @@ a { color: #1565c0; }`;
         };
 
         // ── Guard 1: Anchor click guard ─────────────────────────────────────────
-        document.addEventListener('click', (e) => {
+        // The decision for one click, shared with the links of the
+        // original-page frame of a Springsteen site (`_origView.navGuard`,
+        // `_origViewFrameKeys()`): a click there never reaches this document,
+        // and following a link of that copy leaves the loaded table too.
+        const guardAnchorClick = (e) => {
             if (!isLoaded) return;
-            // Only clicks on MusicBrainz's page are asked about here. In another
-            // script's body (Event Horizon's view) a link may open in place
-            // (the table stays) or load a new page, which cannot be told at
-            // click time; asking asked for every link of EH's view. A real
-            // leave from there gets Guard 4's beforeunload prompt instead
-            // (vzell, 2026-11-08).
-            if (!_saBody().contains(e.target)) return;
             // A click another handler already took (the artwork viewer on a
             // cover icon or a strip image) navigates nowhere; nor does one
             // that opens a new tab or window (Ctrl, ⌘, Shift): no session
@@ -164341,6 +165180,17 @@ a { color: #1565c0; }`;
                 e.stopImmediatePropagation();
                 Lib.debug('navigation', 'Navigation cancelled by user (anchor).');
             }
+        };
+        _origView.navGuard = guardAnchorClick;
+        document.addEventListener('click', (e) => {
+            // Only clicks on MusicBrainz's page are asked about here. In another
+            // script's body (Event Horizon's view) a link may open in place
+            // (the table stays) or load a new page, which cannot be told at
+            // click time; asking asked for every link of EH's view. A real
+            // leave from there gets Guard 4's beforeunload prompt instead
+            // (vzell, 2026-11-08).
+            if (!_saBody().contains(e.target)) return;
+            guardAnchorClick(e);
         }, /* useCapture */ true);
 
         // ── Guard 2: Tab key focus-trap ─────────────────────────────────────────
@@ -164947,6 +165797,8 @@ a { color: #1565c0; }`;
                     if (_cur.nodeType === Node.ELEMENT_NODE && _bars.includes(_cur)) break;
                     if (_cur.nodeType === Node.TEXT_NODE && _cur.textContent.trim()) {
                         const _wrap = document.createElement('span');
+                        // The site's own text, only wrapped: still the site's (_origViewTagRest()).
+                        _wrap.setAttribute('data-mb-text-wrap', '');
                         _cur.parentNode.insertBefore(_wrap, _cur);
                         _wrap.appendChild(_cur);
                         _contentNodes.push(_wrap);
@@ -176481,6 +177333,8 @@ a { color: #1565c0; }`;
             addGmStoreButton();
             // The #938 quiet corner mark (data-mbu-quiet) may go up now.
             _mbuTableShown();
+            // 📄 Show the original page, when a copy was taken at the press
+            addOrigViewButton();
 
             // Initialize keyboard shortcuts (if not already initialized)
             if (Lib.settings.sa_enable_keyboard_shortcuts) {
@@ -176775,6 +177629,10 @@ a { color: #1565c0; }`;
         }
 
         Lib.debug('cache', `Loading data from file: ${file.name}. Prefilter active: ${!!filterQueryRaw}${filterQueryRaw ? `, exclude: ${isExclude}` : ''}`);
+
+        // The original page, copied before the load changes anything
+        // (`_origViewCapture()`; a page already rendered keeps its first copy).
+        _origViewCapture('Load from disk');
 
         const reader = new FileReader();
 
@@ -197161,6 +198019,7 @@ a { color: #1565c0; }`;
         // in-page help dialog this key used to open is gone, 2026-10-22). A key
         // press is a user gesture, so window.open() is not blocked.
         'h': { fn: openAppHelp, description: 'Open App Help on GitHub' },
+        'p': { fn: () => _origViewToggle(), description: 'Switch between the tables and the original page' },
         'g': {
             fn: () => {
                 const fi = document.getElementById('mb-global-filter-input');

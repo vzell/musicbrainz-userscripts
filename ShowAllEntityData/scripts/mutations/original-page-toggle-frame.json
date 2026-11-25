@@ -1,0 +1,276 @@
+[
+  {
+    "name": "no page HTML is taken at the press",
+    "why": "Without it there is no original view and no ☰ row.",
+    "edits": [
+      {
+        "find": "            _origView.html = _origViewPageHtml();\n",
+        "replace": "            _origView.html = '';\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "a collection list",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy keeps the site's scripts",
+    "why": "Sandboxed without scripts: the copy must hold none (and none of ours).",
+    "edits": [
+      {
+        "find": "root.querySelectorAll('script, noscript, [id^=\"mb-\"]",
+        "replace": "root.querySelectorAll('noscript, [id^=\"mb-\"]"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "a collection list",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy keeps our classes",
+    "why": "A Brucebase title we hid (mb-bb-hidden) and the arranged side bar must look as the wiki drew them.",
+    "edits": [
+      {
+        "find": "            Array.from(el.classList).filter(c => c.startsWith('mb-')).forEach(c => el.classList.remove(c));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "the letter tabview and the wiki's title",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy's links open inside the frame",
+    "why": "<base target=\"_top\">: a link in the copy opens in the tab.",
+    "edits": [
+      {
+        "find": "        base.setAttribute('target', '_top');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "a collection list",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl+M P does nothing inside the frame",
+    "why": "A key inside the frame never reaches the page; the frame needs its own listener.",
+    "edits": [
+      {
+        "find": "            f.addEventListener('load', () => _origViewFrameKeys(f));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "a collection list",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy has no note",
+    "why": "The note says it is a copy from before the press.",
+    "edits": [
+      {
+        "find": "            doc.body.prepend(note);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "a collection list",
+    "expect": "fail"
+  },
+  {
+    "name": "the site's leftovers are never marked",
+    "why": "vzell: only the table view; the leftovers hide.",
+    "edits": [
+      {
+        "find": "                if (el.getClientRects().length) el.setAttribute('data-mb-site-rest', '');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "springsteenlyrics.com: navbar",
+    "expect": "fail"
+  },
+  {
+    "name": "the kept headers hide too",
+    "why": "vzell (question 4): springsteenlyrics.com keeps its navbar and breadcrumb.",
+    "edits": [
+      {
+        "find": "                if (keepSel && el.matches(keepSel)) continue;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "springsteenlyrics.com: navbar",
+    "expect": "fail"
+  },
+  {
+    "name": "the site's wrapped text counts as ours",
+    "why": "The fold code wraps the site's loose text in a span; it is still the site's.",
+    "edits": [
+      {
+        "find": "        const isSite = (el) => _origSitePre.has(el) || el.hasAttribute('data-mb-text-wrap');\n",
+        "replace": "        const isSite = (el) => _origSitePre.has(el);\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "brucespringsteen.it: the filter form",
+    "expect": "fail"
+  },
+  {
+    "name": "the folded \"Brucebase page\" stays in the table view",
+    "why": "The mockup's question 5: it leaves the table view.",
+    "edits": [
+      {
+        "find": "            `body.${_ORIG_TABLES_CLASS} h2.mb-bb-native-h2 { display: none !important; }`,\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "an event page",
+    "expect": "fail"
+  },
+  {
+    "name": "a Brucebase detail page gets the frame",
+    "why": "vzell 2026-11-25: \"Live wiki page\".",
+    "edits": [
+      {
+        "find": "            _origView.bbLive = _isBbHost && !!document.querySelector('h2.mb-bb-native-h2') && !!_origView.bbDisp;\n",
+        "replace": "            _origView.bbLive = false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "an event page",
+    "expect": "fail"
+  },
+  {
+    "name": "the wiki's page stays folded in its live view",
+    "why": "The fold had set display:none; the live view brings back the press-time value.",
+    "edits": [
+      {
+        "find": "                el.style.display = _origView.bbDisp.has(el) ? _origView.bbDisp.get(el) : '';\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "an event page",
+    "expect": "fail"
+  },
+  {
+    "name": "our blocks stay over the live wiki page",
+    "why": "Our tables and toolbar hide while the wiki's page shows.",
+    "edits": [
+      {
+        "find": "                if (!_origSitePre.has(el)) { el.setAttribute('data-mb-orig-ours', ''); continue; }\n",
+        "replace": "                if (!_origSitePre.has(el)) continue;\n"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "an event page",
+    "expect": "fail"
+  },
+  {
+    "name": "the wiki's title stays hidden in its live view",
+    "why": "_bbPrepareLivePage() hid #page-title; the live view shows it.",
+    "edits": [
+      {
+        "find": "            if (title && title.classList.contains('mb-bb-hidden')) { title.classList.remove('mb-bb-hidden'); _origView.bbTitleHidden = true; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "an event page",
+    "expect": "fail"
+  },
+  {
+    "name": "the wiki's own headings fold again",
+    "why": "Its sections would show folded in the live view.",
+    "edits": [
+      {
+        "find": "            .filter(h2 => !(_isBbHost && _origSitePre && _origSitePre.has(h2) && h2.closest('#page-content')));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "an event page",
+    "expect": "fail"
+  },
+  {
+    "name": "the original-page frame's links leave without asking",
+    "why": "A link of the copy leaves the loaded table as one on the page does; its click never reaches the page's guard.",
+    "edits": [
+      {
+        "find": "            _origView.navGuard(e);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/bs-records.spec.js",
+    "grep": "asks first, on the original page",
+    "expect": "fail"
+  },
+  {
+    "name": "the window's resize grip is no tap target",
+    "why": "Touch adjustment moved a touch on the grip to the scroll area under it (2026-11-25), depending on what lay under the window.",
+    "edits": [
+      {
+        "find": "            grip.addEventListener('click', (e) => e.stopPropagation());\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/dp-window-size.mobile.spec.js",
+    "grep": "touch drag on the corner grip",
+    "project": "chromium-mobile",
+    "expect": "fail"
+  },
+  {
+    "name": "the copy's tabview tabs are not switched",
+    "why": "The frame runs no script, so the wiki's YUI tabs of stats:songs did nothing (vzell, 2026-11-25).",
+    "edits": [
+      {
+        "find": "            if (a && _origViewFrameTab(a)) { e.preventDefault(); return; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "a letter tab of the copy switches its panel",
+    "expect": "fail"
+  },
+  {
+    "name": "the note is never worked out from the copy",
+    "why": "The fixed sentence stood on every copy, vague where nothing or something specific was dead (vzell, 2026-11-25).",
+    "edits": [
+      {
+        "find": "                if (n) n.textContent = _origViewNoteText(_origViewFrameDead(d));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "jungleland.it: only the Year menu does not",
+    "expect": "fail"
+  },
+  {
+    "name": "a jump menu inside a counted form is not named",
+    "why": "brucespringsteen.it wraps its whole page in one form; its Section menu went unnamed.",
+    "edits": [
+      {
+        "find": "select[onchange]')).filter(vis);",
+        "replace": "select[onchange]')).filter(el => vis(el) && !inCounted(el));"
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "the Section menu do not",
+    "expect": "fail"
+  },
+  {
+    "name": "long account-menu entries crowd the button list",
+    "why": "Brucebase's 'Stop watching site …' pushed Edit, Tags, History out of the three named.",
+    "edits": [
+      {
+        "find": "            if (text.length > 24) continue;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "Brucebase songs: tabs work",
+    "expect": "fail"
+  }
+]

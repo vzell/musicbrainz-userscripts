@@ -131,6 +131,9 @@ const geometry = (page, sels) => page.evaluate((sels) => {
                 sel,
                 found: !!el,
                 marked: !!(el && el.closest('.mb-sph-target')),
+                // Hidden in the table view since the original-page switch
+                // (2026-11-25): the site's walls, when the compact bar is off.
+                shown: !!(el && el.getClientRects().length),
                 left: el ? el.getBoundingClientRect().left : NaN,
                 right: el ? el.getBoundingClientRect().right : NaN,
             };
@@ -184,13 +187,16 @@ for (const [kind, sels, settings, tag] of [
         expect(before.lastCellLeft - after.lastCellLeft, 'premise: a table cell moves with the scroll')
             .toBeGreaterThan(after.scrollX * 0.9);
 
-        expect(after.items.filter((it) => !it.marked).map((it) => it.sel), 'not pinned').toEqual([]);
+        // What shows above the table stays put; the site's leftovers hide in the
+        // table view (vzell, 2026-11-25), the walls among them without the compact bar.
+        expect(after.items.filter((it) => it.shown && !it.marked).map((it) => it.sel), 'not pinned').toEqual([]);
         const moved = after.items
-            .map((it, i) => ({ sel: it.sel, from: before.items[i].left, to: it.left }))
+            .map((it, i) => ({ sel: it.sel, shown: it.shown, from: before.items[i].left, to: it.left }))
+            .filter((m) => m.shown)
             .filter((m) => Math.abs(m.to - m.from) > 1);
         expect(moved, 'elements whose left edge moved while scrolling').toEqual([]);
         const outside = after.items
-            .filter((it) => it.left < -1 || it.right > VIEWPORT.width + 1)
+            .filter((it) => it.shown && (it.left < -1 || it.right > VIEWPORT.width + 1))
             .map((it) => ({ sel: it.sel, left: it.left, right: it.right }));
         expect(outside, 'pinned elements not inside the window').toEqual([]);
 
@@ -429,6 +435,8 @@ async function readDeep(page) {
             projectDetailBottom: document.querySelector('.project-detail').getBoundingClientRect().bottom,
             statusInHead: !!(status && head.contains(status)),
             maskOn: document.getElementById('mb-vsb-mask').classList.contains('mb-vsb-mask-on'),
+            scrollY: Math.round(window.scrollY), scrollHeight: document.documentElement.scrollHeight,
+            pdHeight: Math.round(document.querySelector('.project-detail').getBoundingClientRect().height),
         };
     });
 }
@@ -438,7 +446,11 @@ for (const kind of EARLY_CLOSE) {
         test(`${kind} (${press ? 'after the press' : 'initial page'}): the header block stays docked past the end of .project-detail`, async ({ page }) => {
             await openWithHeadCss(page, kind, press);
             const g = await readDeep(page);
-            expect(g.projectDetailBottom, 'premise: .project-detail has scrolled out of the window').toBeLessThan(0);
+            // After the press .project-detail holds only the site's walls here (the h1
+            // moved out of it), so the table view hides it (2026-11-25): out of the
+            // window either way.
+            expect(g.projectDetailBottom < 0 || (press && g.pdHeight === 0),
+                `premise: .project-detail is out of the window ${JSON.stringify(g)}`).toBe(true);
             expect(Math.abs(g.headTop - g.dock), 'the header block is at its dock').toBeLessThanOrEqual(1);
             expect(g.statusInHead, 'the status line docks with the h1').toBe(true);
             expect(g.maskOn, 'the backdrop is behind it').toBe(true);

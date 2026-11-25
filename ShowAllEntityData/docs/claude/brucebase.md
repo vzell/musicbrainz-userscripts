@@ -100,6 +100,13 @@ the LAST Brucebase definition (`match: () => true`, no button,
 
 ## The toolbar anchor — `_bbPrepareLivePage()`
 
+(The original-page switch, 2026-11-25, WIP.4: after a render the wiki's
+leftovers hide but its header and side bar; the original view is the page's
+HTML from before the press in a frame, on a detail page the LIVE wiki page in
+place (`_origViewBbLive()`), and the wiki's own h2s in `#page-content` get no
+fold toggle. docs/claude/toolbar-and-header-ui.md, "Switching to the original
+page", "Springsteen sites".)
+
 The page HAS an `<h1>`, the wiki's name in `#header`, and the generic header
 lookup's last fallback (`document.querySelector('h1')`) would put the toolbar
 there. So the init block's `else if (baseDefinition?.host ===

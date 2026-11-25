@@ -389,3 +389,56 @@ test.describe('setlist.fm list pages (sfm-venue, sfm-artist)', () => {
         expect(served).toEqual([]);
     });
 });
+
+// vzell, 2026-11-25 (debug/sfm-black-area-bug.html): on a page long enough
+// to scroll, the toolbar turned into a black bar as soon as it stuck. The
+// sticky header block's mask took <body>'s colour, and setlist.fm's <body>
+// is dark (#343138); the white is our #mb-sfm-root's own. The mask now takes
+// the colour of the first ancestor of the toolbar with one
+// (_vsbForeignMaskBg()). The fixture loads none of setlist.fm's CSS, so the
+// dark body is set by an init script: the mask's colour is fixed when the
+// sticky bars' style is installed, at page init (initStickyFilterBars() runs
+// there once), before any press. A style added after the load would come too
+// late and the test would pass without the fix (the mutation run showed it).
+test.describe('setlist.fm: the sticky header block over setlist.fm\'s dark <body>', () => {
+    test('the mask behind the stuck toolbar is our section\'s white, not the body\'s dark grey', async ({ page }) => {
+        // At DOMContentLoaded, before the userscript (document-idle): a node put
+        // on <html> at document start does not survive the parser.
+        await page.context().addInitScript(() => {
+            document.addEventListener('DOMContentLoaded', () => {
+                const s = document.createElement('style');
+                s.textContent = 'body { background-color: rgb(52, 49, 56) !important; }';
+                document.head.appendChild(s);
+            });
+        });
+        await open(page, '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html');
+        expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(52, 49, 56)');
+        await show(page, 'Show all setlists of this venue');
+        const colours = await page.evaluate(() => ({
+            mask: getComputedStyle(document.getElementById('mb-vsb-mask')).backgroundColor,
+            section: getComputedStyle(document.getElementById('mb-sfm-root')).backgroundColor,
+        }));
+        expect(colours.section).toBe('rgb(255, 255, 255)');
+        expect(colours.mask).toBe(colours.section);
+    });
+
+    // The colour was the lesser half (vzell, 2026-11-25, sfm-white-area-bug.html:
+    // white instead of black): #mb-sfm-root is a stacking context (z-index 2),
+    // so a mask in <body> lay over the whole section, toolbar included. The
+    // mask now lives in our section (_vsbMaskHost()). Pinned by what the
+    // reader sees: once stuck, the toolbar is on top at its own place.
+    test('once stuck, the toolbar is on top: the mask lies under it, not over our section', async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 600 });
+        await open(page, '/venue/state-farm-arena-atlanta-ga-usa-73d20e81.html');
+        await show(page, 'Show all setlists of this venue');
+        await page.evaluate(() => window.scrollTo(0, 1200));
+        await expect(page.locator('#mb-vsb-mask')).toHaveClass(/\bmb-vsb-mask-on\b/);
+        const hit = await page.evaluate(() => {
+            const r = document.querySelector('h1.mb-sfm-h1').getBoundingClientRect();
+            const el = document.elementFromPoint(r.left + 40, r.top + r.height / 2);
+            return { top: Math.round(r.top), hit: el && (el.closest('h1.mb-sfm-h1') ? 'toolbar' : (el.id || el.tagName)) };
+        });
+        expect(hit.top, 'the toolbar is stuck at the top').toBeLessThan(5);
+        expect(hit.hit).toBe('toolbar');
+    });
+});

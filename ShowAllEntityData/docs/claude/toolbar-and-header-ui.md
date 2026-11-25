@@ -895,8 +895,10 @@ init code (no TDZ). One `MutationObserver` on `<html>` attributes
   (`_mbuQuietRowPaint()`, in `_TOOLBAR_MENU_ROW_ORDER.view` before Keyboard
   Shortcuts), created only when one of majkinetor's scripts is there
   (`[data-mb-corner]` or `<html data-mbu-st>`), toggles
-  `_mbuInterop.quietUserShown` for the page view. No SAED element carries
-  `data-mb-corner`; giving one that attribute would hide it under the mark.
+  `_mbuInterop.quietUserShown` for the page view. Only one SAED element
+  carries `data-mb-corner`: "Back to the tables" (`#mb-orig-back-btn`), which
+  exists only while the original page shows, when our mark is down (next
+  section). Any other would hide under the mark.
 - **Keys marks** (`_mbuKeysSync()`, `sa_block_eh_single_keys`):
   `<html data-mbu-keys-off="saed" data-mbu-keys-keep="toggle">` while a table
   shows, under the same observer and render-tail call as the quiet mark, but
@@ -954,6 +956,197 @@ Simulator: `eh-body-swap.js` (`data-mbu-page`, the launcher's click,
 `scripts/mutations/eh-interop-markers.json`. The `data-mbu-foreign` table
 mark is `_markForeignTable()` (docs/claude/release-tracks-and-length.md, "ISRC
 Scout's ISRC and Links columns").
+
+## Switching to the original page (`_origView*`, Ctrl+M P)
+
+vzell, 2026-11-24 (org/majkinetor.org, "Switch between SAED's view and the
+original page (EH's V)"); approved mockup, all eight recommendations taken:
+https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf. MusicBrainz (WIP.1, a
+copy, below) and the sites whose own page stays live (WIP.2, "Live sites",
+further down) and the Springsteen sites, which remove their list (WIP.4,
+"Springsteen sites", at the end). `_origViewMode()` says which: `'copy'`,
+`'live'`, `'frame'` or none.
+
+Event Horizon switches by swapping two bodies. This script cannot: it edits
+MusicBrainz's page in place and keeps no copy. So the original page is a
+COPY, taken before the first change of the page view:
+
+- **`_origViewCapture(label)`**: a deep clone of the live `#page` (content
+  and sidebar), once per page view. Called at the top of
+  `startFetchingProcess()` right after the second-press reload guard (a
+  resume keeps the first copy), at the start of `loadTableDataFromDisk()`,
+  and before `_clearNativeTableSectionsForSnapshot()` on the
+  `#mb-sa-snapshot=` path. Our controls are removed from it
+  (`_ORIG_VIEW_STRIP_SEL`: the h1 toolbar container, the status lines, the
+  Ctrl+M card), so no second press can start from the copy (question 8). It
+  is marked `data-mb-orig-copy` and gets the note (`_origViewNote()`: "A copy
+  of this page from before you pressed …; MusicBrainz's own buttons may not
+  respond here", question 2). Their handlers stay with the live nodes, so
+  rating stars, "Load all tracks" and the credits toggle in the copy are
+  inert; links, pictures and our delegated hover cards work. A page without
+  `#page` gets no copy, and then no ☰ row (most trimmed fixtures have none).
+- **`_origViewShow(want)`**: the live `#page` is HIDDEN, never removed
+  (`mb-orig-view` on `_saBody()`, CSS `#page:not([data-mb-orig-copy])`), so
+  every listener, cache and rewired clone of the render stays as it was and
+  the same `tbody` comes back. The copy goes right AFTER the live `#page`:
+  `getElementById('page')`, `#content` and `#sidebar` keep finding the live
+  nodes first. Each view's `scrollY` is kept; open menus close, windows and
+  cards stay (question 6). Esc never switches. Not remembered: every render
+  opens on the tables.
+- **Entry points** (question 1): the ☰ View row `#mb-orig-view-btn` "📄 Show
+  the original page" (`addOrigViewButton()`, from both render tails beside
+  `_mbuTableShown()`, only when a copy exists; in
+  `_TOOLBAR_MENU_ROW_ORDER.view` before Keyboard Shortcuts; hint
+  `${getPrefixDisplay()} P`), the prefix key `p` in `ctrlMFunctionMap`
+  (`_origViewToggle()`), and on the original page the corner button. No
+  single key (question 7: Event Horizon's V and its letters).
+- **"▦ Back to the tables"** (`#mb-orig-back-btn`, `_origViewCornerSync()`,
+  question 3): bottom right, in `_saBody()`, shown only while the copy shows
+  and Event Horizon's view does not (the `<html>` observer resyncs it on
+  `data-mbu-dock`). It carries majkinetor's corner marks: `data-mb-corner="br"`,
+  order 50 (above his launchers, theirs keep their places),
+  `data-mb-corner-dock="no"` (never folded into String Theory's dock). His
+  `mbRestackCorner()` has no public entry point, so a change nudges it
+  through the visual viewport's `resize`, the one listener all copies of his
+  corner code share (only when `<html data-mb-corner-vv>` says it is
+  installed). Without his scripts our CSS places it where his restack would.
+  Its z-index is his dock entries' tier, 2147482990: in a row
+  (`data-mbu-flow="row"`) his restack puts it inside his dock's row, and the
+  frosted shelf of his OPEN dock (`#mbu-dock-shelf`, 2147482989, visible
+  under `data-mbu-dock-open`) lay over it at 2147482980, so the key worked
+  and the click went to the shelf (vzell, 2026-11-25,
+  `debug/mb-p-toggle-not-working.html`). His restack also scales it by his
+  corner size (`--mbu-cs`, 0.6 there), like his own launchers.
+- **The #938 marks** read `_mbuTableVisible()` (`tableShown && !origShown`):
+  while the original page shows, quiet, keys and player marks are down as on
+  an unrendered page, and they come back with the tables.
+
+Cost: one `cloneNode` of the native page per press, at most 3.2 ms on the
+largest saved release page (5,327 elements; tests/MEASUREMENTS.org,
+2026-11-25, `scripts/measure-orig-copy.js`). Nothing on the filter, sort or
+render path.
+
+**Live sites** (WIP.2, 2026-11-25: discogs.com, archive.org, setlist.fm;
+`_origViewLiveSite()`). Their own page was never touched, only shown below
+our section (org/TODO.org: "the doubling of the IP information"), so no
+copy: the render tail's `addOrigViewButton()` sets `_origView.live` and
+puts `mb-orig-tables` on `<body>`, and the switch swaps it for
+`mb-orig-site`. What hides is what `_origViewTagSite()` marked: the three
+`_*PrepareLivePage()` call it right after inserting our section, at page
+init, and it puts `data-mb-site` on every `<body>` child AFTER our section
+(never an `mb-`/`mbu-` one); `_origViewStyle()` hides
+`body.mb-orig-tables > [data-mb-site]` (`display: none`). The site's page is
+also not ours to fold: `makeH2sCollapsible()` leaves every h2 inside it
+alone, but on discogs.com (its section folds are a feature, 2026-10-24).
+It had folded archive.org's `h2.sr-only` and with it the player right
+after it, which the switch then showed folded away (vzell, 2026-11-25,
+`debug/ia-IP-release-ctrlmp-3-bug.html`). Found with a DOM breakpoint on
+the live page (`scripts/probe-ia-theatre-hide.js`); a first guess, that
+archive.org's own script hid it at 0 × 0, led to an off-screen hide that
+was taken back. It names nothing on purpose: the
+first rules named elements per host from the saved fixtures (`#app`,
+`<main>`, `#topnav`, …) and hid nothing on the live pages, whose `<body>`
+is built differently (Discogs' search: `div.flex` around header and
+`<main>`, an iframe, Next's route announcer, the cookie banner; an
+archive.org item: `div#wrap` among overlays; vzell's snapshots
+`debug/d-search-ctrlmp-bug.html`, `debug/ia-release-ctrlmp-bug.html`).
+At init, because later several of our own hosts sit in `<body>` with no
+id (a column-visibility menu), and could not be told from the site's. An
+element the site adds after init (a consent banner) is not marked and
+stays. `tests/fixtures/dg-search-next.html` and `ia-details-wrap.html` have
+the live shapes (`scripts/make-live-shape-fixtures.py`).
+
+The site's header stays only where it sits ABOVE our section (Discogs'
+React pages: `#__header_root_<n>`, then `#mb-dg-root`, then `#app`);
+elsewhere our section is first in `<body>` (sticky headers, the sites'
+docs) and a header there would sit under our tables, so it hides with the
+page, as the footer does (vzell's two answers, 2026-11-25; the mockup had
+shown the Discogs case only). The site's page comes back live, with
+everything of ours that works on it (link previews, the ▲ toggles on
+Discogs' section headings), and the "Live" note (`#mb-orig-live-note`,
+`_origViewLiveNote()`, right after our section). Before a press nothing
+changes. A spec that works on the site's page after a press switches first
+(`showDiscogsPage()` in `discogs-pages.spec.js`). Spec:
+`tests/fixtures/original-page-toggle-live.spec.js` (8); mutations:
+`scripts/mutations/original-page-toggle-live.json` (11; the guard against
+marking our own hosts is `"expect": "pass"`: no fixture has one in `<body>`
+at init).
+
+**Springsteen sites** (WIP.4, 2026-11-25: springsteenlyrics.com,
+jungleland.it, brucespringsteen.it, brucebase.wikidot.com; `'frame'`). They
+remove their own list when the table is built and put our section inside
+their own containers, differently per page (springsteenlyrics.com's markup
+even closes `.project-detail` early), so neither the MusicBrainz copy of one
+region nor the live sites' "what follows our section" fits.
+
+- **Who is the site's**: `_origSitePre`, a WeakSet of every element in
+  `<body>` taken at the very start of the script (beside the host flags),
+  before anything of ours exists; only on these four hosts. By identity,
+  never by markup: these sites carry classes of ours (`mb-sl-wide`,
+  `mb-bb-cw`, `mb-sph-target`) and several of our blocks have no id. The
+  fold code's text wrappers (`data-mb-text-wrap`) count as the site's.
+- **Table view**: `_origViewTagRest()` (render tail) marks every visible
+  block of the site's that holds nothing of ours, but the kept headers
+  (`_ORIG_REST_KEEP`: springsteenlyrics.com's strip, navbar and breadcrumb;
+  Brucebase's header and side bar; vzell's answer to question 4),
+  `data-mb-site-rest`, hidden under `mb-orig-tables`. Measured first on the
+  saved pages (`scripts/probe-springsteen-table-view.js`, before/after logs
+  in `debug/`). A Brucebase detail page's folded "Brucebase page"
+  (`h2.mb-bb-native-h2`) hides there too.
+- **Original view**: the page's HTML taken at the press
+  (`_origViewPageHtml()`: no scripts, none of ours, every `mb-` class
+  stripped, `<base href target="_top">`), in a sandboxed full-window frame
+  (`#mb-orig-frame`, `_origViewFrame()`: `allow-same-origin`, popups,
+  top navigation by user activation; no scripts). The site's own stylesheet
+  draws it exactly; its buttons are inert (the note says so); its links open
+  in the tab. The page underneath keeps its scroll; the frame keeps its own.
+  A key inside the frame never reaches the page, so its document gets its
+  own prefix + P listener (`_origViewFrameKeys()`), and a click on one of its
+  links its own leave-page guard: `initNavigationGuard()`'s decision for one
+  click is `guardAnchorClick()`, shared as `_origView.navGuard` (a link into
+  one of the site's named frames is not asked about). The site's filter
+  links (brucespringsteen.it) are only there now, since the table view hides
+  the form. The one script behaviour the copy gets back: a wikidot tabview's
+  tabs (Brucebase's song list letters, the side bar's News/Media/Released)
+  switch their panels, `_origViewFrameTab()` from the same click listener
+  (vzell, 2026-11-25: "the tabs do not react on clicks" on stats:songs).
+  The note names what does NOT work in that copy (vzell, 2026-11-25, his
+  choice over making more of it work, which `org/majkinetor.org` keeps for
+  later): `_origViewFrameDead()` reads the laid-out copy at its load
+  (visible forms: a password field → signing in, a text field → searching,
+  tick boxes only → the filter form; a `select[onchange]` → the jump menu;
+  other `javascript:`/`onclick` controls with a short text → the page's own
+  buttons, three named; picture-only links, tabs and sign-in links aside),
+  `_origViewNoteText()` words it. Measured with
+  `scripts/probe-orig-frame-controls.js`.
+- **Brucebase detail pages** (an event, song, venue, person, release,
+  story, tag page: `h2.mb-bb-native-h2` after the render): the LIVE wiki page
+  in place instead (vzell, 2026-11-25, "Live wiki page"; the mockup's
+  question 5), `_origViewBbLive()`: our blocks in `#main-content` (not in
+  `_origSitePre`) hide (`data-mb-orig-ours` under `mb-orig-bblive`), the
+  wiki's get back the inline display they had at the press
+  (`_origView.bbDisp`: our fold had set `none`), the title we hid
+  (`mb-bb-hidden`) shows, the "Live" note goes before it; back restores the
+  fold's values. The wiki's own h2s in `#page-content` get no fold toggle
+  (`makeH2sCollapsible()`), or the live view would show them folded.
+
+Spec: `tests/fixtures/original-page-toggle-frame.spec.js`; mutations:
+`scripts/mutations/original-page-toggle-frame.json` (21). Specs that worked
+on the site's page under our tables now switch first or ignore what the
+table view hides (`bb-event`, `bb-songs`, `sl-sticky-headers`,
+`bs-records`), and two layout-dependent tests were made robust where the
+table moved up: the pointer leaves the table before a tooltip is read
+(`bb-findings-batch1`), and the info windows' resize grip is a tap target of
+its own (`dp-window-size.mobile`: Chromium's touch adjustment had moved a
+touch on it to the scroll area under it).
+
+Two traps for a spec: open the ☰ menu and Playwright scrolls the sticky
+toolbar into view first, so the scroll position the switch saves is not the
+one the test set (switch with Ctrl+M P instead); and the global filter's
+value always starts with its 🔍 prefix (compare with the value read before).
+Spec: `tests/fixtures/original-page-toggle.spec.js`; mutations:
+`scripts/mutations/original-page-toggle.json` (the snapshot path is
+`"expect": "pass"`: no fixture opens a snapshot tab).
 
 ## Hover tooltips must ignore a tap (`_isTouchCompatMouseEvent()`)
 
@@ -1219,6 +1412,23 @@ h3 and thead offsets start below them), z-index 105 (`VSB_Z_HEAD`).
   block 105, under MB's sticky sidebar 105, over everything that scrolls).
   It also covers the `VSB_HEAD_GAP` (6 px) the h2 docks below the block,
   asked for so the bar does not sit glued to the stats line.
+  Its colour is fixed when the style is installed (`_vsbEnsureStyle()`, at
+  page init): `<body>`'s background on MusicBrainz and the Springsteen
+  sites, but on discogs.com, archive.org and setlist.fm, where our section
+  is a white block of its own over the site's body, the first ancestor of
+  the toolbar with a background (`_vsbForeignMaskBg()`). setlist.fm's body
+  is dark (#343138), and the mask painted a black bar behind the toolbar as
+  soon as it stuck (vzell, 2026-11-25, `debug/sfm-black-area-bug.html`; it
+  was there before the original-page switch). The colour was the lesser
+  half: `#mb-sfm-root` is a stacking context (`position: relative;
+  z-index: 2`), so a mask in `<body>` lay over our WHOLE section, toolbar
+  included (white, after the colour fix: `debug/sfm-white-area-bug.html`).
+  On those three sites the mask lives in our section (`_vsbMaskHost()`;
+  elsewhere `_saBody()`), moved there on every `initStickyFilterBars()`
+  in case it was made first. Spec: "once stuck, the toolbar is on top"
+  (`elementFromPoint` at the stuck toolbar). Spec: `sfm-list.spec.js`, "the
+  mask behind the stuck toolbar" (the dark body set at DOMContentLoaded:
+  later is too late, and the test would pass without the fix).
   Shown (`.mb-vsb-mask-on`) only while the block is STUCK
   (`_vsbUpdateMask()`: scrolled, and the first part at its sticky top; one
   rectangle read, at most once per frame on scroll): in its natural place

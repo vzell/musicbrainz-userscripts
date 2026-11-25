@@ -213,7 +213,11 @@ test.describe('bb-event: the 1978-07-07 Roxy gig', () => {
         expect(chips).toContain('Ticket');
     });
 
-    test('the wiki\'s page is below, folded, and as it was (answer 5)', async ({ page }) => {
+    // Answer 5 as it stands since the original-page switch (vzell, 2026-11-25,
+    // org/majkinetor.org "Switch between SAED's view and the original page"):
+    // the folded wiki page leaves the table view, and the switch shows it
+    // live, unfolded, as it was; its own h2s no longer get our fold toggle.
+    test('the wiki\'s page leaves the table view and comes back live, as it was, with the switch (answer 5)', async ({ page }) => {
         await loadBbEventPage(page, 'gig-1978-07-07');
         const text = (el) => el.textContent.replace(/[▲▼]/g, '').replace(/\s+/g, ' ').trim();
         const before = await page.locator('#page-content').evaluate(text);
@@ -226,14 +230,14 @@ test.describe('bb-event: the 1978-07-07 Roxy gig', () => {
             const ours = document.querySelector('h2.mb-bb-event-heading');
             return !!(ours.compareDocumentPosition(document.querySelector('h2.mb-bb-native-h2')) & Node.DOCUMENT_POSITION_FOLLOWING);
         })).toBe(true);
-        await native.click();
+        await expect(native, 'the folded "Brucebase page" leaves the table view').toBeHidden();
+        await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+        await page.keyboard.press('Control+M');
+        await page.keyboard.press('p');
         await expect(page.locator('#page-content')).toBeVisible();
-        // As it was, in words: the wiki's own h2s (an article's title in
-        // News/Memorabilia) fold like ours — a toggle icon each, their text
-        // wrapped — which is the only change.
+        // As it was, in words, and none of its own h2s folded by us.
         expect(await page.locator('#page-content').evaluate(text)).toBe(before);
-        const own = page.locator('#page-content h2.mb-toggle-h2');
-        expect(await own.count()).toBeGreaterThan(0);
+        expect(await page.locator('#page-content h2.mb-toggle-h2').count()).toBe(0);
     });
 });
 

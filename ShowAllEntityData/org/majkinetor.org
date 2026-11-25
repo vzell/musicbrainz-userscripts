@@ -32,6 +32,11 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   at eight a second"), 3. the browser check on SAED's page fetches (measure first). *Waiting on majkinetor*: the two
   posts of 2026-11-23 (player, pace), unanswered.
 
+- *Now (2026-11-24, latest):* the "shine through" item is *corrected* (vzell): it means a switch between SAED's view
+  and the original page, as EH's V does, not EH's =#eh-hide=. Renamed "Switch between SAED's view and the original
+  page (EH's V)"; branch =feat/original-page-toggle=. Mockup approved (all eight recommendations); the MB part is
+  built and checked live (WIP.1), the live sites built (WIP.2, dg/ia/sfm), waiting for vzell's browser check; the
+  Springsteen sites next.
 - *Now (2026-11-24, later):* item 1 of the "what next" list *shipped* in 9.99.1692: the EH launcher
   icon and the idle-mode HELP paragraph ("String Theory's idle mode" DONE); the scrollbar gutter was dropped
   (26 tests 15 px off, see "Smaller adoptions"). vzell's browser check OK.
@@ -117,7 +122,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Stale-while-revalidate: popup engine done, =rel-ws2= left      | PART  | 9.99.1643     | Adoptions     |
 | In-page log window (=mbuLog=)                                  | DONE  | 9.99.1689     | Adoptions     |
 | In-page log: past sessions (mbuLog's history)                  | TODO  | —             | Adoptions     |
-| Hide the native page until the render ("shine through")        | TODO  | —             | Adoptions     |
+| Switch between SAED's view and the original page (EH's V)      | TODO  | —             | Adoptions     |
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
@@ -894,18 +899,68 @@ CLOSED: [2026-11-20 Fri]
   (=history.auto=), flushed on =pagehide=, a session picker and Clear history in the window. A log that survives a
   reload or a crashed tab. Deferred by vzell (2026-11-23: "later phase"); needs its own mockup step.
 
-** TODO Hide the native page until our render is ready ("shine through", =#eh-hide=) (moved from org/TODO.org)
+** TODO Switch between SAED's view and the original page (EH's V) (moved from org/TODO.org)
 
 - *Who fixes it*: *ours*.
-
-- From the same item. EH injects =body{visibility:hidden!important}= at document-start, prefetches the page's data
-  and draws a skeleton (EH:12542, =prefetch= 12248, =skeleton= 12232).
-- *Ours*: SAED is =@run-at document-idle= and renders after a button press, so this applies only where native
-  content shows and then is replaced. Collect those pageTypes first from the org/TODO.org "shine through" notes
-  (under "on 'release-tracks' PTs render the front image …" and "make the doubling of the IP information on non-MB
-  PTs shine through …").
-- An =@run-at= change is a big step (TDZ, library load order). Prefer a narrowly scoped CSS hide injected as early
-  as possible.
+- *Corrected 2026-11-24 (vzell)*: this item first read "shine through" as hiding the native page until our render
+  is ready (EH's =#eh-hide=). That was wrong; the old text is in git history. What is meant: majkinetor's scripts
+  replace the original MB page with an enhanced version, and the user can switch back to the original page at any
+  time. SAED should do the same:
+  1. *MB pages*: after a "Show all …" press has rendered the table view, switch back to the original page and
+     forth again, any time, without a reload.
+  2. *Non-MB pages*: most of them still show the site's own page below our table (org/TODO.org: "make the doubling
+     of the IP information on non-MB PTs shine through …"). Show only the table view, with a way to show the
+     original page again (back and forth).
+- *Decisions (vzell, 2026-11-24)*:
+  - MB's original is a *copy of the page taken at the press*, before anything changes. It switches instantly and
+    costs no request; MusicBrainz's own controls in it (rating stars, "Load all tracks", the credits toggle) may not
+    respond.
+  - On non-MB sites the table view keeps the *site's header/navigation* and hides its content.
+  - The choice is *not remembered*: every render opens in the table view.
+- *Today*: on MB the pipeline edits =#content= and the sidebar in place and keeps no copy; the only way back is a
+  reload (=startFetchingProcess='s second press). Discogs, archive.org and setlist.fm put our section
+  (=#mb-dg-root=, =#mb-ia-root=, =#mb-sfm-root=) above the site, which stays fully visible below. SL, JL, BS and BB
+  remove the native list in their converters (some live parts stay, e.g. BB detail's folded "Brucebase page").
+- *Plan*: branch =feat/original-page-toggle=, plan file
+  =~/.claude/plans/a-correction-to-the-enchanted-seahorse.md=. Mockup (2026-11-24; vzell took all eight
+  recommendations): https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf. Then MB (a copy of =#page=, the live
+  root hidden, never removed), then the live non-MB originals (dg, ia, sfm: hide the site's content roots), then the
+  removed ones (sl, jl, bs, bb: the same copy as MB). How EH does it: "Switching to the original page: EH's body
+  swap" in the analysis below.
+- *Phase 2, MB: built* (2026-11-25, WIP.1, =a68d43dc=): ☰ View "📄 Show the original page", Ctrl+M P, "▦ Back to the
+  tables" bottom right (majkinetor's corner marks, out of his dock); the #938 marks down while the original shows.
+  Spec =original-page-toggle.spec.js= (7), mutations 13/13 as expected, neighbouring specs 105/105. The copy costs
+  at most 3.2 ms (tests/MEASUREMENTS.org). Design: docs/claude/toolbar-and-header-ui.md, "Switching to the original
+  page". vzell's browser check OK (2026-11-25, after the dock-shelf fix =e4aabbfe=). Possible post to majkinetor (not
+  drafted): a public restack entry point (=MBU.restackCorner=), since ours nudges his through the visual viewport's
+  =resize=.
+- *Phase 3, live sites: built* (2026-11-25, WIP.2): discogs.com, archive.org, setlist.fm hide their own page after a
+  render (CSS by host class); the header stays only where it sits above our section (Discogs' React pages), header
+  and footer hide elsewhere (vzell's two answers). Spec =original-page-toggle-live.spec.js= (6), mutations 14/14,
+  the three sites' specs 310/310 after two tests in =discogs-pages.spec.js= switch first. vzell's browser check
+  (2026-11-25): Discogs' React pages and archive.org's search OK; Discogs' search and an archive.org item hid
+  nothing (the live =<body>= is built differently from the fixtures) → the site's page is now what follows our
+  section, marked at init (=_origViewTagSite()=); and setlist.fm's toolbar turned black once stuck (older, fixed
+  as WIP.3). 313/313. vzell's later checks: setlist.fm's bar (a stacking context) and archive.org's player
+  (folded by our makeH2sCollapsible()) fixed; all OK.
+- *Phase 4, Springsteen sites: built* (2026-11-25, WIP.4): the table view hides the site's leftovers (by identity:
+  =_origSitePre=, taken at the script's start), springsteenlyrics.com keeps its navbar and breadcrumb, Brucebase its
+  header and side bar; the original view is the page's HTML from before the press in a sandboxed frame
+  (=_origViewPageHtml()=, =_origViewFrame()=), on a Brucebase detail page the LIVE wiki page (vzell: "Live wiki
+  page"; =_origViewBbLive()=). Spec =original-page-toggle-frame.spec.js= (8), mutations 17/17; the Springsteen
+  sites' 85 spec files and the guard's specs pass after the updates. vzell's browser check (2026-11-25): all
+  sites OK except Brucebase's song list, whose letter tabs did not switch in the copy (no script runs there) →
+  =_origViewFrameTab()= switches a wikidot tabview. Then: "why is 'the site's own buttons may not respond here'
+  still present" → the note now names what is dead in that copy (=_origViewFrameDead()=, measured by
+  =scripts/probe-orig-frame-controls.js=), e.g. on Brucebase "Links work; searching, signing in and the page's
+  own buttons (Report a bug, Flag as objectionable) do not". Spec (12), mutations 21/21. *Waiting*: =test:full=
+  and the merge question.
+- *Later, maybe* (vzell, 2026-11-25: "add 2. in the org notes for maybe later"): make more of the copy work
+  instead of only naming it. Doable: the search boxes of springsteenlyrics.com (=search.php=, GET; the frame
+  would need =allow-forms= and the leave-page guard on submit) and Brucebase (=action="dummy"=, run by the
+  wiki's script: rebuild it as a link to the wiki's search page); jungleland.it's Year menu (=goThere()=, a
+  jump within the list). Not sensible in a copy: signing in, the wiki's page options (Edit, Tags, History …),
+  brucespringsteen.it's filter form (posts back to the server). The note would then name only what is left.
 
 ** PART Entity pictures: more providers, area map with flag badge (moved from org/TODO.org)
 
@@ -1290,19 +1345,30 @@ majkinetor" means.
   the log (*measured* 2026-11-25, see "Coexistence"): only its effect shows, as longer waits in the
   others' rows and as holds after a 503 it drew. TODO "SAED in String Theory's Network log".
 
-*** "Orig page shine through" (the same org/TODO.org item)
+*** Switching to the original page: EH's body swap (the same org/TODO.org item)
 
-Most likely EH's technique for a native page that must not flash:
+Corrected 2026-11-24: the org/TODO.org item means EH's switch between its view and MusicBrainz's page (V), not the
+=#eh-hide= anti-flash style. Read at =5d4d464= (EH 2026.11.23.095945, =event_horizon.user.js=; petri,
+2026-11-24, code reading, n/a browser):
 
-- At document-start it injects =<style id=eh-hide>body{visibility:hidden!important}</style>= (EH:12542) and starts
-  the page's own requests before DOMContentLoaded (=prefetch= EH:12248).
-- It draws a skeleton matching the final layout (=skeleton= EH:12232).
-- It removes the hide in =setOn=, and disables MB's stylesheets while EH shows (=mbSheets=).
+- *One body each*: =build()= (17699) creates =ehBody= once; =setOn1(on)= (17835-17876) swaps it in front of MB's
+  body (=insertBefore(ehBody, mbBody); mbBody.hidden = true=) or removes it (=ehBody.remove(); mbBody.hidden =
+  false=). MB's body is never detached (other scripts still read it, #853); EH's view is reused, not re-rendered,
+  so its filters and folds survive a switch.
+- *Stylesheets*: =mbSheets(!on)= (17668) disables MB's =link[rel~=stylesheet]= while EH shows; =<style>= elements
+  are left alone.
+- *Navigated inside EH*: switching off reloads with sessionStorage =eh-off= (17839), because MB's body belongs to
+  the page the tab loaded.
+- *Switch*: key V (=KEY_CMDS=, 18989; kept under =data-mbu-keys-off= by =data-mbu-keys-keep="toggle"=), the
+  =#eh-launch= corner launcher (18667), "Show MusicBrainz's page" buttons (=[data-mbpage]=).
+- *Remembered*: =S.on= in GM storage (one global setting: the next page opens the same way).
+- *No event on a switch*; other scripts watch =data-mbu-dock= / =data-mbu-page= on =<html>=. Scroll is not saved
+  per view.
+- (=#eh-hide= itself, 19158-19167: a document-start =body{visibility:hidden}= until the first switch-on, so MB's page
+  never flashes. Not what this item is about.)
 
-SAED runs at document-idle and renders after a button press, so the equivalent would be: hide the native table
-until our render replaces it, for the pageTypes that auto-render. That needs checking against the org/TODO.org notes on the "shine through" effect (under "on 'release-tracks'
-PTs render the front image from the sidebar …" and "make the doubling of the IP information on non-MB PTs shine
-through …").
+SAED's equivalent (vzell's decisions in the item): a copy of the page taken at the press stands in for MB's body,
+since SAED edits the page in place; the live root is hidden, never removed; the choice is not remembered.
 
 *** Theme detection — =mbuTheme= (UI:1991)
 
@@ -2906,4 +2972,103 @@ On e.g. https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 whe
 
 I dont want to see and hear any artifacts of his player, as we currently have our own player implementation
 
+** DONE shine through bugs
+
+1.)
+
+Discogs PTs work except it seems search pages like e.g.
+
+#+begin_example
+@debug/d-search-ctrlmp-bug.html - https://www.discogs.com/search?q=bruce+springsteen&type=all - stopped after downloading 1 paginated page
+#+end_example
+
+2.)
+
+IA PTs work e.g. https://archive.org/search?query=subject%3A%22Bruce+Springsteen%22&page=2&sort=title&and%5B%5D=year%3A%221975%22 but NOT the following e.g.
+
+#+begin_example
+@debug/ia-release-ctrlmp-bug.html - https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16
+#+end_example
+
+3.)
+
+A bug on SFM pages (which has been there before it seems). Initially on the FRP the header line with our action button
+and SAED menu is visible, but turns black as soon as we start to scroll downwards. On pages where there is no scrollbar
+and everything fits on one page the header line stays visible e.g. on
+https://www.setlist.fm/setlist/bruce-springsteen/1976/the-stone-pony-asbury-park-nj-bddedb6.html
+
+#+begin_example
+@debug/sfm-black-area-bug.html - FRP - https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html?tour=53d7e759 - [Image #2] - after scrolling down and the header line turns black
+#+end_example
+
+** DONE bugs
+
+1.)
+
+SFM: Now it's white instead of black - @debug/sfm-white-area-bug.html - [Image #4]
+
+2.)
+
+IA release pages now do NOT show the IP after our table, but when switching back to the original page the header area with images, player and tracklist is vanished
+
+#+begin_example
+@debug/ia-IP-release-ctrlmp-bug.html - IP - https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16 - header area with images, player and tracklist present
+@debug/ia-IP-release-ctrlmp-2-bug.html - IP - https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16 - header area with images, player and tracklist vanished after pressing "Ctrl-M P" - [Image #5]
+#+end_example
+
+** DONE fixed except
+
+Everything is fixed except the IA release pages when switching back to the original page the header area with images, player and tracklist are still vanished
+
+#+begin_example
+@debug/ia-IP-release-ctrlmp-3-bug.html
+#+end_example
+
+** DONE BB bugs
+
+1.)
+
+On e.g.
+
+#+begin_example
+https://brucebase.wikidot.com/gig:1978-07-07-roxy-theatre-west-hollywood-ca
+https://brucebase.wikidot.com/song:the-promise
+https://brucebase.wikidot.com/stats:discography-album
+https://brucebase.wikidot.com/stats:on-the-tracks-songs
+https://brucebase.wikidot.com/stats:lyrics-by-album
+https://brucebase.wikidot.com/stats:born-in-the-usa-studio-sessions
+https://brucebase.wikidot.com/stats:discography-playlist
+#+end_example
+
+"Ctrl-M P" works and all tabs are functioning when clicking them.
+
+2.)
+
+On e.g.
+
+#+begin_example
+https://brucebase.wikidot.com/stats:songs
+#+end_example
+
+the tabs do not react on clicks
+
+3.)
+
+All other sites work as noted
+
+** fixed but why the "may" in the "COPY" note
+
+1.)
+
+
+It's fixed now, but why is the "the site’s own buttons may not respond here." in the "COPY" note still present, see [Image #10]
+
+2.)
+
+Same question for the URLs
+
+#+begin_example
+https://brucebase.wikidot.com/1985 - [Image #11]
+https://brucebase.wikidot.com/1985-list - [Image #12]
+#+end_example
 

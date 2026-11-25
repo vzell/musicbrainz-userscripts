@@ -130,6 +130,16 @@ the shared `_ensureForeignTableStyle()` (its `:is()` lists name the host).
 At the press (and on Load from Disk) `applyDgToTable()` adds the `<h2>` and
 an empty `table.tbl` with the columns; the rows come from the fetched pages.
 
+**After the render Discogs' page hides** (2026-11-25, WIP.2): every
+`<body>` child after our section, marked at init (`_origViewTagSite()`,
+called here right after `app.before(root)`), so the header root stays only
+on the React pages, where it comes before our section. The live search
+page's `<body>` is not the fixture's (`div.flex` around header and
+`<main>`); `dg-search-next.html` has its shape. Ctrl+M P / ☰ View "Show the original page"
+shows Discogs' page again, live. docs/claude/toolbar-and-header-ui.md,
+"Switching to the original page" ("Live sites"). A spec that works on
+`#app` after a press switches first.
+
 A toolbar button may now open a group of its own (`groupLabel`: "| Newest:"),
 the same look as a pageType's `buttonGroupLabel`; its hover text says what it
 costs (`_dgCost()`, `_dgCostPer()`).
