@@ -319,6 +319,11 @@
 //   Horizon's areaChain(): the website's /ws/js/entity/<id> containment, the Web Service
 //   climb kept as the fallback; and off musicbrainz.org a country's flag is its flagcdn.com
 //   image (w40), every X? code but XK keeping its box, as his flagI() does.
+//   Added 2026-11-25: the gate's trace (_mbGateTrace(), _mbGateTraceFlush(), _mbGateTabCheck(),
+//   _mbGateRid(), _mbGateHideUrl(), _mbGateLogFetch()) is PORTED from his mbnTrace(),
+//   mbnTabCheck(), mbnRid()/mbnTabId(), mbnHideUrl() and mbnLog() at 9f8aa0c: the same
+//   localStorage key ("mbu:mb-gate-trace:<tab>"), tab id and row fields, so this script's
+//   requests show in String Theory's Network log.
 // ============================================================================================================================================
 
 (function() {
@@ -1586,7 +1591,7 @@
             label: "Share MusicBrainz's request budget with other userscripts (mbu:mb-gate)",
             type: 'checkbox',
             default: true,
-            description: "MusicBrainz allows about one Web Service request a second per computer, for all scripts together. majkinetor's scripts (String Theory, Event Horizon, ISRC Scout, …) share one schedule for it across all tabs, and when MusicBrainz refuses one of them (HTTP 503 or 429) they all pause. On, this script's own Web Service requests (the Relationships column, link previews, entity pictures, millisecond lengths, release events, the release-group ▶ expand) book their place in that same schedule and pause with the others, so they no longer crowd them out. It never makes this script faster: its own pacing of one request per 1.1 s stays. Only on musicbrainz.org; other sites are not affected. Off: this script paces its requests on its own, as before."
+            description: "MusicBrainz allows about one Web Service request a second per computer, for all scripts together. majkinetor's scripts (String Theory, Event Horizon, ISRC Scout, …) share one schedule for it across all tabs, and when MusicBrainz refuses one of them (HTTP 503 or 429) they all pause. On, this script's own Web Service requests (the Relationships column, link previews, entity pictures, millisecond lengths, release events, the release-group ▶ expand) book their place in that same schedule and pause with the others, so they no longer crowd them out. It never makes this script faster: its own pacing of one request per 1.1 s stays. On, these requests and the pages a list or a card loads also show in String Theory's Network log (Ctrl+Alt+N), under ShowAllEntityData. Only on musicbrainz.org; other sites are not affected. Off: this script paces its requests on its own, as before, and leaves the Network log alone."
         },
 
         // ============================================================
@@ -14803,7 +14808,7 @@
                 let res = null;
                 for (let t = 0; t < 3; t++) {
                     if (t) await new Promise(r => setTimeout(r, 2000 * t));
-                    res = await _rgWsGet(url, `sl works offset ${offset}`);
+                    res = await _rgWsGet(url, `sl works offset ${offset}`, null, { reason: 'works' });
                     if (res.ok && res.data) break;
                 }
                 if (!res || !res.ok || !res.data) throw new Error(`works offset ${offset}: ${(res && res.detail) || 'failed'}`);
@@ -14857,7 +14862,7 @@
     async function _slMbRelFetch(id) {
         if (_slMbRel.loading) return _slMbRel.loading;
         _slMbRel.loading = (async () => {
-            const res = await _rgWsGet(`/ws/2/release/${id}?inc=recordings+recording-level-rels+work-rels&fmt=json`, 'sl release works');
+            const res = await _rgWsGet(`/ws/2/release/${id}?inc=recordings+recording-level-rels+work-rels&fmt=json`, 'sl release works', null, { reason: 'works' });
             if (!res.ok || !res.data) return false;
             const byKey = new Map();
             const names = new Map();
@@ -46365,7 +46370,8 @@
         for (let attempt = 1; ; attempt++) {
             let res;
             try {
-                res = await fetch(url, { credentials: 'same-origin' });
+                // Logged in the shared gate's trace on musicbrainz.org (a page for a card), never paced by it.
+                res = await _mbGateLogFetch(url, { credentials: 'same-origin' }, { reason: 'preview' });
             } catch (netErr) {
                 if (netErr && netErr.status === undefined) netErr.status = 0;
                 throw netErr;
@@ -70830,7 +70836,7 @@
             // One attempt, as before; booked in the shared request gate as a
             // foreground request (a ⏱ press), so a hold another script saw applies.
             const resp = await _mbGateFetch(url, { headers: { Accept: 'application/json' } },
-                { background: false, label: '_msFetchWs2RecordingLengths' });
+                { background: false, label: '_msFetchWs2RecordingLengths', reason: 'length' });
             if (!resp.ok) {
                 // NOT cached: a transport failure says nothing about the data.
                 _msDbg(`_msFetchWs2RecordingLengths: HTTP ${resp.status} — transient, not cached, retryable`);
@@ -70935,7 +70941,7 @@
             // One attempt, as before; booked in the shared request gate as a
             // foreground request (a ⏱ press), so a hold another script saw applies.
             const resp = await _mbGateFetch(url, { headers: { Accept: 'application/json' } },
-                { background: false, label: '_msFetchFullReleaseTrackLengths' });
+                { background: false, label: '_msFetchFullReleaseTrackLengths', reason: 'length' });
             if (!resp.ok) {
                 _msDbg(`_msFetchFullReleaseTrackLengths: HTTP ${resp.status} — transient, not cached, retryable`);
                 return { outcome: 'error', maps: null, detail: `HTTP ${resp.status}` };
@@ -71172,6 +71178,7 @@
             },
             dbg: _msDbg,
             label: '_msFetchOneBatch',
+            reason: 'length',
         });
         _ajLog('ms', null, res.ok ? `batch of ${ids.length}: ${((res.data && res.data.recordings) || []).length} recordings` : `batch of ${ids.length}: ${res.detail}`,
             res.ok ? 'good' : 'bad');
@@ -71829,6 +71836,283 @@
         }
     }
 
+    // ── The gate's trace: SAED's requests in String Theory's Network log ──
+    //
+    // String Theory's Network log (#1093/#1103/#1115, Ctrl+Alt+N) is built
+    // from one source only: each tab's last events in localStorage
+    // `mbu:mb-gate-trace:<tab>`, written by upstream's `mbnTrace()`
+    // (dev/net/mb-gate.mjs) and read by String Theory's `stGateEvents()`.
+    // Booking in `mbu:mb-gate` alone leaves this script out of it (measured,
+    // probe case 0, 2026-11-25). PORTED from `mbnTrace()`, `mbnTabCheck()`,
+    // `mbnRid()`, `mbnHideUrl()` and `mbnLog()` at `9f8aa0c` (GPL-3.0,
+    // credited in this script's header), in the same shape: the same key, the
+    // same tab id (sessionStorage `mbu:mb-gate-tab`, shared with his copies in
+    // the page), the same row fields, a buffer written once a second. The
+    // format is not in his DEVELOP.md protocol; asked on #938 (2026-11-25)
+    // whether it is a contract. Only where the gate itself is active (this
+    // origin's storage, `sa_mb_shared_gate`). Design:
+    // docs/claude/fetch-and-render-pipeline.md, "The gate's trace".
+
+    /** localStorage key prefix of each tab's trace (upstream's `MBN_KEY + '-trace:'`). */
+    const _MBG_TRACE_PRE = _MBG_KEY + '-trace:';
+    /** localStorage key prefix of each tab's page title, for the log's tooltip. */
+    const _MBG_TITLE_PRE = _MBG_KEY + '-title:';
+    /** sessionStorage key of this tab's id (upstream's `MBN_KEY + '-tab'`). */
+    const _MBG_TAB_KEY = _MBG_KEY + '-tab';
+    /** Events a tab keeps (upstream's `MBN_TRACE_MAX`). */
+    const _MBG_TRACE_MAX = 400;
+    /** How long a buffered event waits before the buffer is written, ms. */
+    const _MBG_TRACE_FLUSH_MS = 1000;
+    /** Another tab's trace with no event for this long is dropped, ms. */
+    const _MBG_TRACE_IDLE_MS = 600000;
+    /** The sweep of idle traces runs at most this often, ms. */
+    const _MBG_TRACE_SWEEP_MS = 60000;
+    /**
+     * The script name on every row (`s`). Upstream takes `GM_info.script.name`;
+     * this script's is over a hundred characters, and the log's Script column
+     * and filter show it whole, so the short base name is used.
+     */
+    const _MBG_TRACE_NAME = SCRIPT_BASE_NAME;
+
+    /**
+     * This page's trace buffer: the tab id, the events not yet written, the
+     * pending write and the last sweep. This script's own, never upstream's
+     * `globalThis.__mbnTrace` (another sandbox under Tampermonkey).
+     * @type {{tab: string, buf: Object[], timer: number, swept: number, hooked: boolean, writes: number}}
+     */
+    const _mbgTrace = { tab: '', buf: [], timer: 0, swept: 0, hooked: false, writes: 0 };
+
+    /**
+     * A short random id (upstream's `mbnRid()`/`mbnTabId()`): a request's,
+     * kept over its retries so the log shows them as one row, or a tab's.
+     *
+     * @param {number} [n] - Random characters after the time part (4 for a request, 3 for a tab).
+     * @returns {string}
+     */
+    function _mbGateRid(n = 4) {
+        return Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 2 + n);
+    }
+
+    /**
+     * A duplicated tab, or one a page opened, starts with a copy of its
+     * opener's sessionStorage, so two tabs would share one id and one lane in
+     * the log. A new top page asks the other tabs over the BroadcastChannel
+     * `mbu:mb-gate-tab` whether its id is taken, and takes a new one when a tab
+     * answers (port of upstream's `mbnTabCheck()`). Every copy of the gate in
+     * one document shares the document's mark `<html data-mbn-doc>`, so they do
+     * not answer each other. A frame never asks: it belongs to its tab.
+     *
+     * @returns {void}
+     */
+    function _mbGateTabCheck() {
+        try {
+            if (window.top !== window || typeof BroadcastChannel === 'undefined') return;
+            const root = document.documentElement;
+            const at = 'data-mbn-doc';
+            if (!root.getAttribute(at)) root.setAttribute(at, _mbGateRid(3));
+            const doc = root.getAttribute(at);
+            const asked = _mbgTrace.tab;
+            const bc = new BroadcastChannel(_MBG_TAB_KEY);
+            bc.onmessage = (m) => {
+                const d = m.data || {};
+                if (d.doc === doc) return;
+                let now = '';
+                try { now = sessionStorage.getItem(_MBG_TAB_KEY) || ''; } catch (_) { /* no storage */ }
+                if (d.q) {
+                    if (d.tab === (now || _mbgTrace.tab)) bc.postMessage({ tab: d.tab, doc });
+                    return;
+                }
+                if (d.tab !== asked || _mbgTrace.tab !== asked) return;
+                if (!now || now === asked) {
+                    now = _mbGateRid(3);
+                    try { sessionStorage.setItem(_MBG_TAB_KEY, now); } catch (_) { /* no storage */ }
+                }
+                _mbgTrace.tab = now;
+            };
+            bc.postMessage({ q: 1, tab: asked, doc });
+        } catch (_) { /* no channel: the id stays shared */ }
+    }
+
+    /**
+     * A URL or path for the log, with the value of each query key a secret
+     * could be in shown as `•••` (upstream's `mbnHideUrl()`; the key is matched
+     * as a word, so `?barcode=` and `?keyword=` stay).
+     *
+     * @param {string} s
+     * @returns {string}
+     */
+    function _mbGateHideUrl(s) {
+        return String(s).replace(/([?&;])([^=&#\s]*)=([^&#\s]*)/g, (m, sep, k, v) => {
+            let n = k;
+            try { n = decodeURIComponent(k.replace(/\+/g, ' ')); } catch (_) { /* as it is */ }
+            const secret = /(^|[_.-])(token|secret|pass|passwd|password|auth|session|sid|csrf|code|key|apikey|sig|signature)$/i.test(n)
+                || /[a-z](Token|Secret|Key|Password)$/.test(n);
+            return v && secret ? `${sep}${k}=•••` : m;
+        });
+    }
+
+    /**
+     * Writes the buffered events to this tab's trace now: one read and one
+     * write of `mbu:mb-gate-trace:<tab>`, the newest `_MBG_TRACE_MAX` kept,
+     * plus the page title for the log's tooltip; at most once a minute the
+     * traces of tabs idle for ten minutes are dropped, reading the key names
+     * in one pass (`Object.keys`; in Firefox each `localStorage.key(i)` walks
+     * the store from its start, #1095). Synchronous, so another script's flush
+     * in the same tab cannot interleave with it.
+     *
+     * @returns {void}
+     */
+    function _mbGateTraceFlush() {
+        clearTimeout(_mbgTrace.timer);
+        _mbgTrace.timer = 0;
+        if (!_mbgTrace.buf.length) return;
+        const add = _mbgTrace.buf;
+        _mbgTrace.buf = [];
+        try {
+            // The tab's id as it is now: a copy of the gate in this tab may have renamed it.
+            try { _mbgTrace.tab = sessionStorage.getItem(_MBG_TAB_KEY) || _mbgTrace.tab; } catch (_) { /* as it is */ }
+            const key = _MBG_TRACE_PRE + _mbgTrace.tab;
+            const now = Date.now();
+            let list = [];
+            try { list = JSON.parse(localStorage.getItem(key) || '[]'); } catch (_) { /* broken: start again */ }
+            if (!Array.isArray(list)) list = [];
+            list = list.concat(add);
+            if (list.length > _MBG_TRACE_MAX) list = list.slice(-_MBG_TRACE_MAX);
+            localStorage.setItem(key, JSON.stringify(list));
+            _mbgTrace.writes++;
+            try {
+                if (window === window.top && document.title) {
+                    localStorage.setItem(_MBG_TITLE_PRE + _mbgTrace.tab, String(document.title).slice(0, 200));
+                }
+            } catch (_) { /* no title */ }
+            if (now - _mbgTrace.swept > _MBG_TRACE_SWEEP_MS) {
+                _mbgTrace.swept = now;
+                for (const k of Object.keys(localStorage)) {
+                    if (k.indexOf(_MBG_TRACE_PRE) !== 0 || k === key) continue;
+                    let last = 0;
+                    try {
+                        const l = JSON.parse(localStorage.getItem(k) || '[]');
+                        last = (l[l.length - 1] || {}).t || 0;
+                    } catch (_) { /* unreadable: dropped */ }
+                    if (now - last > _MBG_TRACE_IDLE_MS) {
+                        localStorage.removeItem(k);
+                        localStorage.removeItem(_MBG_TITLE_PRE + k.slice(_MBG_TRACE_PRE.length));
+                    }
+                }
+            }
+        } catch (_) { /* no storage: no trace */ }
+    }
+
+    /**
+     * Notes one event for the log (upstream's `mbnTrace()`): `{t, s, …ev}`
+     * goes into this page's buffer, which is written a second after its first
+     * event, and at once when the page is left or hidden (a phone may never
+     * come back). The top page notes that it left (`e: 'left'`), so the log
+     * ends its open requests as "page left", not "no answer". Nothing is noted
+     * where the gate is not active. Kinds this script writes: `lead`, `book`,
+     * `cancel`, `start`, `answer`, `error`, `giveup` (paced) and `start`,
+     * `answer`, `error` with `x: 1` (logged only: page fetches).
+     *
+     * @param {Object} ev - The event: `e` (its kind), `l` (label), `u` (path),
+     *   `r` (reason), `id`, `m` (verb), `b` (1 background), and per kind
+     *   `w` (wait), `why`, `st` (status), `ra`, `hold`, `lim`/`rem`/`rst`/`who`, `rs`, `err`, `n`.
+     * @returns {void}
+     */
+    function _mbGateTrace(ev) {
+        if (!_mbGateActive()) return;
+        try {
+            if (!_mbgTrace.tab) {
+                try { _mbgTrace.tab = sessionStorage.getItem(_MBG_TAB_KEY) || ''; } catch (_) { /* no storage */ }
+                if (!_mbgTrace.tab) {
+                    _mbgTrace.tab = _mbGateRid(3);
+                    try { sessionStorage.setItem(_MBG_TAB_KEY, _mbgTrace.tab); } catch (_) { /* no storage */ }
+                }
+                _mbGateTabCheck();
+            }
+            if (!_mbgTrace.hooked) {
+                _mbgTrace.hooked = true;
+                window.addEventListener('pagehide', () => {
+                    if (window === window.top) _mbgTrace.buf.push({ t: Date.now(), s: '', e: 'left' });
+                    _mbGateTraceFlush();
+                });
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'hidden') _mbGateTraceFlush();
+                });
+            }
+            const row = { t: Date.now(), s: _MBG_TRACE_NAME, ...ev };
+            for (const k of Object.keys(row)) if (row[k] === undefined) delete row[k];
+            if (row.l) row.l = _mbGateHideUrl(row.l);
+            if (row.u) row.u = _mbGateHideUrl(row.u);
+            _mbgTrace.buf.push(row);
+            if (_mbgTrace.buf.length > _MBG_TRACE_MAX) _mbgTrace.buf = _mbgTrace.buf.slice(-_MBG_TRACE_MAX);
+            if (!_mbgTrace.timer) _mbgTrace.timer = setTimeout(_mbGateTraceFlush, _MBG_TRACE_FLUSH_MS);
+        } catch (_) { /* no storage: no trace */ }
+    }
+
+    /**
+     * The fields every event of one request carries, for the log's row: an
+     * `id` kept over its retries, the label the log names it by (a `/ws/2`
+     * path without `/ws/2/` and `fmt=json`, as upstream's `mbnFetch()` does),
+     * the verb, the reason word, background or not.
+     *
+     * @param {string} url
+     * @param {{id?: string, reason?: string, background?: boolean, method?: string}} [o]
+     * @returns {{id: string, l: string, m: string, r: (string|undefined), b: number}}
+     */
+    function _mbGateTraceCtx(url, o = {}) {
+        let p = String(url);
+        try {
+            const x = new URL(p, location.href);
+            p = x.pathname.replace(/^\/ws\/2\//, '') + x.search.replace(/[?&]fmt=json\b/, '').replace(/^&/, '?');
+        } catch (_) { /* as it is */ }
+        return {
+            id: o.id || _mbGateRid(),
+            l: p.slice(0, 120),
+            m: String(o.method || 'GET').toUpperCase(),
+            r: o.reason || undefined,
+            b: o.background === false ? 0 : 1,
+        };
+    }
+
+    /**
+     * Sends a request the gate does not pace and notes it in the log anyway
+     * (upstream's `mbnLog()`): `start`, then `answer` with its status and size,
+     * or `error`, all with `x: 1` (logged only) and `h` (the host) for a host
+     * that is not MusicBrainz. This script's HTML page fetches go through it
+     * (`fetchHtml()`, `_dpFetchText()`), so a list's 31 pages show in the log
+     * beside its /ws/2 requests. Where the gate is not active it is the plain
+     * `fetch()`.
+     *
+     * @param {string} url
+     * @param {RequestInit} init
+     * @param {{reason?: string}} [o]
+     * @returns {Promise<Response>} As `fetch()`; rejects as it does.
+     */
+    async function _mbGateLogFetch(url, init, o = {}) {
+        if (!_mbGateActive() || /^(blob|data):/i.test(String(url))) return fetch(url, init);
+        let p = String(url);
+        let h;
+        try {
+            const x = new URL(p, location.href);
+            p = x.pathname + x.search;
+            if (!/(^|\.)musicbrainz\.(org|eu)$/i.test(x.hostname)) h = x.host;
+        } catch (_) { /* as it is */ }
+        const ev = {
+            r: o.reason || undefined, l: p.slice(0, 120), b: 1, id: _mbGateRid(),
+            m: String((init && init.method) || 'GET').toUpperCase(), h, x: 1,
+        };
+        _mbGateTrace({ e: 'start', ...ev });
+        try {
+            const r = await fetch(url, init);
+            const len = r.headers && r.headers.get('Content-Length');
+            _mbGateTrace({ e: 'answer', st: r.status, rs: len && /^\d+$/.test(len) ? +len : undefined, ...ev });
+            return r;
+        } catch (e) {
+            _mbGateTrace({ e: 'error', err: String((e && (e.name === 'AbortError' ? 'aborted' : e.message)) || e).slice(0, 80), ...ev });
+            throw e;
+        }
+    }
+
     /**
      * Waits for, and books, this request's start slot in the shared schedule
      * (upstream's `mbnSlot()`). Resolves at once, booking nothing, when the
@@ -71868,8 +72152,13 @@
      * `cancelled()` is asked between slices; true resolves `{ok: false}` and
      * the request is not made (the booked slot is spent, as upstream).
      *
+     * With `o.trace` (`_mbGateTraceCtx()`), the steps go to the log as
+     * upstream's `mbnSlot()` writes them: `lead` (waits for another script's
+     * page), `book` (only when the slot is not now: its wait and why),
+     * `cancel`, and `start` with the whole wait.
+     *
      * @param {{background?: boolean, cancelled?: ?function(): boolean, label?: string,
-     *          onWait?: ?function(string): void}} [o]
+     *          onWait?: ?function(string): void, trace?: Object}} [o]
      * @returns {Promise<{ok: boolean, waited: number, shared: boolean}>}
      */
     async function _mbGateSlot(o = {}) {
@@ -71881,6 +72170,12 @@
             Lib.debug('mbgate', msg);
             if (o.onWait) o.onWait(msg);
         };
+        const tr = (e, x) => { if (o.trace) _mbGateTrace({ e, ...o.trace, ...x }); };
+        const cancel = () => {
+            _mbgStats.cancelled++;
+            tr('cancel', { w: Math.round(_steadyNow() - t0) });
+            return { ok: false, waited: _steadyNow() - t0, shared: true };
+        };
         for (let told = false; background;) {
             const s = _mbGateRead();
             // A schedule of an unknown version is not read at all: the booking
@@ -71888,8 +72183,12 @@
             if (s.version != null && s.version !== _MBG_VERSION) break;
             const left = _mbGateLeadLeft(s, Date.now(), _steadyNow());
             if (left <= 0) break;
-            if (o.cancelled && o.cancelled()) { _mbgStats.cancelled++; return { ok: false, waited: _steadyNow() - t0, shared: true }; }
-            if (!told) { told = true; tell(`${label}: waits for a page another script is drawing`); }
+            if (o.cancelled && o.cancelled()) return cancel();
+            if (!told) {
+                told = true;
+                tell(`${label}: waits for a page another script is drawing`);
+                tr('lead', { w: Math.round(left), by: String(s.lead || '').slice(0, 12) });
+            }
             await _mbGateSleep(Math.min(left, _MBG_SLICE_MS), o.cancelled);
         }
         const HOLD = 'MusicBrainz asked every script to wait';
@@ -71904,14 +72203,20 @@
             s.tat = Math.max(tat, at) + _MBG_GAP;
             return {
                 atMono: mono + (at - now),
+                wait: at - now,
+                held: cool > now && cool >= at,
                 why: cool > now && cool >= at ? HOLD : 'shared pacing, one request a second',
             };
         });
-        if (!booked.ok) return { ok: true, waited: _steadyNow() - t0, shared: false };
+        if (!booked.ok) {
+            tr('start', { w: Math.round(_steadyNow() - t0) });
+            return { ok: true, waited: _steadyNow() - t0, shared: false };
+        }
         _mbgStats.booked++;
+        if (booked.value.wait > 0) tr('book', { w: Math.round(booked.value.wait), why: booked.value.held ? 'hold' : 'pace' });
         const secs = (ms) => Math.round(ms / 100) / 10;
         for (let toldUntil = 0, toldAt = 0; ;) {
-            if (o.cancelled && o.cancelled()) { _mbgStats.cancelled++; return { ok: false, waited: _steadyNow() - t0, shared: true }; }
+            if (o.cancelled && o.cancelled()) return cancel();
             const now = _steadyNow();
             const cool = _mbGateHoldEnd(_mbGateRead().cool, Date.now(), now);
             const until = Math.max(booked.value.atMono, cool);
@@ -71942,6 +72247,7 @@
         }
         const waited = _steadyNow() - t0;
         _mbgStats.waitedMs += waited;
+        tr('start', { w: Math.round(waited) });
         return { ok: true, waited, shared: true };
     }
 
@@ -71971,12 +72277,47 @@
      * `Retry-After` forms rest on the protocol text and on the
      * 2026-09-15 Relationships probe (org/503-handling.org).
      *
+     * With `o.trace`, the answer goes to the log (`e: 'answer'`): the status,
+     * `Retry-After`, the hold it set, and, from `o.header`, MusicBrainz's
+     * `X-RateLimit-*` headers and the size, as upstream's `mbnAnswer()`
+     * writes them. The log shows them (whose budget ran out); the pacing
+     * still ignores them (above).
+     *
      * @param {number} status
      * @param {?string} retryAfterRaw - The raw `Retry-After` header, or null.
+     * @param {{trace?: Object, header?: function(string): ?string}} [o]
      * @returns {Promise<number>} How long everyone now holds, ms (0 when not throttled).
      */
-    async function _mbGateAnswer(status, retryAfterRaw) {
+    async function _mbGateAnswer(status, retryAfterRaw, o = {}) {
         if (!_mbGateActive()) return 0;
+        const held = await _mbGateAnswerState(status, retryAfterRaw);
+        if (o.trace) {
+            const rl = {};
+            const hdr = (n) => { try { const v = o.header ? o.header(n) : null; return v == null || v === '' ? undefined : String(v); } catch (_) { return undefined; } };
+            for (const [k, n] of [['lim', 'X-RateLimit-Limit'], ['rem', 'X-RateLimit-Remaining'], ['rst', 'X-RateLimit-Reset'], ['who', 'X-RateLimit-Who']]) {
+                const v = hdr(n);
+                if (v !== undefined) rl[k] = v.slice(0, 40);
+            }
+            const len = hdr('Content-Length');
+            _mbGateTrace({
+                e: 'answer', st: status, ...o.trace, ...rl,
+                rs: len && /^\d+$/.test(len.trim()) ? +len : undefined,
+                ra: retryAfterRaw == null ? undefined : String(retryAfterRaw).slice(0, 40),
+                hold: held > 0 ? Math.round(held) : undefined,
+            });
+        }
+        return held;
+    }
+
+    /**
+     * `_mbGateAnswer()`'s schedule half: the hold for a 429/503, a step of
+     * `hot` back for a clean answer.
+     *
+     * @param {number} status
+     * @param {?string} retryAfterRaw
+     * @returns {Promise<number>} How long everyone now holds, ms (0 when not throttled).
+     */
+    async function _mbGateAnswerState(status, retryAfterRaw) {
         _mbgStats.answers++;
         if (status === 429 || status === 503) {
             const raw = retryAfterRaw == null ? null : String(retryAfterRaw);
@@ -72015,19 +72356,31 @@
      * the caller's (`_ws2GetJson()`). A URL the gate does not pace, or a page
      * where it is not active, is fetched as it is.
      *
+     * Every step goes to the log (`_mbGateTrace()`) under one request id:
+     * `o.id` when the caller keeps one over its retries (`_ws2GetJson()`),
+     * else a new one; `o.reason` is the word the log's Reason column shows.
+     * A thrown request is noted as `error` and rethrown.
+     *
      * @param {string} url
      * @param {RequestInit} init
      * @param {{background?: boolean, cancelled?: ?function(): boolean, label?: string,
-     *          onWait?: ?function(string): void}} [o]
+     *          onWait?: ?function(string): void, id?: string, reason?: string}} [o]
      * @returns {Promise<?Response>} `null` when `cancelled()` stopped it before it was sent.
      *          Rejects as `fetch()` does.
      */
     async function _mbGateFetch(url, init, o = {}) {
         if (!_mbGateGated(url)) return fetch(url, init);
-        const slot = await _mbGateSlot(o);
+        const trace = _mbGateTraceCtx(url, { id: o.id, reason: o.reason, background: o.background, method: init && init.method });
+        const slot = await _mbGateSlot({ ...o, trace });
         if (!slot.ok) return null;
-        const resp = await fetch(url, init);
-        await _mbGateAnswer(resp.status, resp.headers.get('Retry-After'));
+        let resp;
+        try {
+            resp = await fetch(url, init);
+        } catch (e) {
+            _mbGateTrace({ e: 'error', ...trace, err: String((e && (e.name === 'AbortError' ? 'aborted' : e.message)) || e).slice(0, 80) });
+            throw e;
+        }
+        await _mbGateAnswer(resp.status, resp.headers.get('Retry-After'), { trace, header: (n) => resp.headers.get(n) });
         return resp;
     }
 
@@ -72066,24 +72419,33 @@
      * resolves `{skipped: true}` as `_rgWsGet()`'s own "not wanted" does;
      * `onWait(msg)` hears a shared wait over a second.
      *
+     * In the gate's log (`_mbGateTrace()`) every attempt carries ONE request
+     * id, so the log shows the request and its retries as one row, with
+     * `reason` as its Reason; when the last attempt still got a transient
+     * answer or no answer, a `giveup` row says after how many.
+     *
      * Never rejects.
      *
      * @param   {string} url  Same-origin `/ws/2/...` URL.
      * @param   {{tries: number, beforeRetry: function(number, number): Promise<void>,
      *            dbg: function(...*): void, label: string, background?: boolean,
-     *            cancelled?: ?function(): boolean, onWait?: ?function(string): void}} opts
+     *            cancelled?: ?function(): boolean, onWait?: ?function(string): void,
+     *            reason?: string}} opts
      * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string, skipped?: boolean}>}
      *          `status` is the last HTTP status seen, or 0 when no response arrived.
      */
-    async function _ws2GetJson(url, { tries, beforeRetry, dbg, label, background = true, cancelled = null, onWait = null }) {
+    async function _ws2GetJson(url, { tries, beforeRetry, dbg, label, background = true, cancelled = null, onWait = null, reason = undefined }) {
         let detail = '';
         let status = 0;
+        const id = _mbGateRid();
+        let gaveUp = false;
         for (let attempt = 1; attempt <= tries; attempt++) {
             // Per attempt: a thrown request carries no response and so no header.
             let retryAfterMs = 0;
+            gaveUp = false;
             try {
                 const resp = await _mbGateFetch(url, { headers: { Accept: 'application/json' } },
-                    { background, cancelled, label, onWait });
+                    { background, cancelled, label, onWait, id, reason });
                 if (!resp) {
                     dbg(`${label}: no longer wanted while waiting for the shared request gate — not asked`);
                     return { ok: false, status: 0, data: null, detail: 'skipped', skipped: true };
@@ -72095,14 +72457,19 @@
                 }
                 detail = `HTTP ${resp.status}`;
                 if (!_isTransientHttp(resp.status)) break;
+                gaveUp = true;
                 retryAfterMs = _parseRetryAfterMs(resp.headers.get('Retry-After'));
                 dbg(`${label}: ${detail} on attempt ${attempt}/${tries}` +
                     (retryAfterMs ? ` (Retry-After → ${retryAfterMs} ms)` : ''));
             } catch (err) {
                 detail = 'the request failed';
+                gaveUp = true;
                 dbg(`${label}: ${err.message || String(err)} on attempt ${attempt}`);
             }
             if (attempt < tries) await beforeRetry(attempt, retryAfterMs);
+        }
+        if (gaveUp && _mbGateGated(url)) {
+            _mbGateTrace({ e: 'giveup', ..._mbGateTraceCtx(url, { id, reason, background }), st: status || undefined, n: tries });
         }
         return { ok: false, status, data: null, detail };
     }
@@ -81600,7 +81967,8 @@
      * @param {string} url - Same-origin `/ws/2/...`.
      * @param {string} label - For the `rg` debug channel.
      * @param {?function(): boolean} [wanted] - Whether anyone still wants it.
-     * @param {{foreground?: boolean}} [opts]
+     * @param {{foreground?: boolean, reason?: string}} [opts] - `reason`: the word the gate's
+     *   log shows for it (`_mbGateTrace()`); 'preview' when none.
      * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string, skipped?: boolean}>}
      */
     async function _rgWsGet(url, label, wanted = null, opts = {}) {
@@ -81620,6 +81988,7 @@
             label,
             background: !opts.foreground,
             cancelled: wanted ? () => !wanted() : null,
+            reason: opts.reason || 'preview',
         });
     }
 
@@ -166037,7 +166406,9 @@ a { color: #1565c0; }`;
         for (let attempt = 1; attempt <= _HTML_FETCH_TRIES; attempt++) {
             let retryAfterMs = 0;
             try {
-                const res = await fetch(url, init ? { credentials: 'same-origin', ...init } : { credentials: 'same-origin' });
+                // Logged in the shared gate's trace (String Theory's Network log), never paced by it.
+                const res = await _mbGateLogFetch(url, init ? { credentials: 'same-origin', ...init } : { credentials: 'same-origin' },
+                    { reason: 'pages' });
                 if (res.ok) return await res.text();
                 const err = new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
                 err.status = res.status;
@@ -168371,7 +168742,8 @@ a { color: #1565c0; }`;
                 job.requests++;
             },
             dbg: (...a) => Lib.debug('recording-of', ...a),
-            label
+            label,
+            reason: 'recording of'
         });
         if (res.ok) _ajLog(ajKey, null, `${label}: ok`, 'good');
         else _ajLog(ajKey, null, `${label}: ${res.detail || 'failed'}`, 'bad');
@@ -170135,6 +170507,7 @@ a { color: #1565c0; }`;
                 },
                 dbg: _dbg,
                 label: `_relFetchWs2 ${ckey}`,
+                reason: 'relationships',
                 background: !(opts && opts.foreground),
                 onWait: (msg) => _ajLog('rel', null, msg),
             });
@@ -170624,6 +170997,7 @@ a { color: #1565c0; }`;
             },
             dbg: _dbg,
             label: `_relBrowseFetchPage ${src.entity}?${src.by}`,
+            reason: 'relationships',
         });
         const items = res.ok && res.data ? res.data[`${src.entity}s`] : null;
         if (!Array.isArray(items)) {
@@ -171059,6 +171433,7 @@ a { color: #1565c0; }`;
                 r => setTimeout(r, Math.max(_RE_WS2_BACKOFF_MS * attempt, retryAfterMs))),
             dbg: _dbg,
             label: 'initReleaseEventsColumn',
+            reason: 'release events',
         });
         if (!_res.ok) {
             // Nothing is marked `reDone`, so the cells stay unpopulated and a
@@ -177067,10 +177442,13 @@ a { color: #1565c0; }`;
         function loadOnce() {
             button.removeEventListener('mousedown', loadOnce, false);
             const req = new XMLHttpRequest();
+            // One row in the gate's log for the slot and the answer.
+            const trace = _mbGateGated(url) ? _mbGateTraceCtx(url, { reason: 'expand', background: false }) : null;
             req.onreadystatechange = () => {
                 if (req.readyState !== 4) return;
                 // Reported to the shared request gate: a 503 here holds every script.
-                if (_mbGateGated(url)) _mbGateAnswer(req.status, req.getResponseHeader('Retry-After'));
+                if (trace && !req.status) _mbGateTrace({ e: 'error', ...trace, err: 'the request failed' });
+                else if (trace) _mbGateAnswer(req.status, req.getResponseHeader('Retry-After'), { trace, header: (n) => req.getResponseHeader(n) });
                 if (req.status === 200 && req.responseText) {
                     successCallback(JSON.parse(req.responseText));
                 } else {
@@ -177091,7 +177469,7 @@ a { color: #1565c0; }`;
             // A click: booked as a foreground request in the shared request gate
             // (no-op when it is not active); it waits only for a hold, never
             // behind the schedule's background work.
-            _mbGateSlot({ background: false, label: 'ergCreateButton' }).then(() => req.send(null));
+            _mbGateSlot({ background: false, label: 'ergCreateButton', trace }).then(() => req.send(null));
         }
 
         button.addEventListener('mousedown', loadOnce, false);
@@ -197317,6 +197695,31 @@ a { color: #1565c0; }`;
                  * @returns {Promise<number>} The hold, ms.
                  */
                 answer: (status, retryAfter) => _mbGateAnswer(status, retryAfter == null ? null : retryAfter),
+                /**
+                 * The gate's trace (`_mbGateTrace()`, String Theory's Network log).
+                 */
+                trace: {
+                    /** @returns {void} Writes the buffered events now (`_mbGateTraceFlush()`). */
+                    flush: () => _mbGateTraceFlush(),
+                    /** @returns {Object[]} Copies of the events not yet written. */
+                    buffered: () => _mbgTrace.buf.map((r) => ({ ...r })),
+                    /** @returns {number} How often the buffer was written. */
+                    writes: () => _mbgTrace.writes,
+                    /** @returns {string} This tab's id, '' before the first event. */
+                    tab: () => _mbgTrace.tab,
+                    /**
+                     * @param {string} s
+                     * @returns {string} `_mbGateHideUrl()`.
+                     */
+                    hideUrl: (s) => _mbGateHideUrl(s),
+                    /**
+                     * The shipping `fetchHtml()` (logged only, through `_mbGateLogFetch()`): a
+                     * one-page list never fetches (it reads the live page), so a spec needs this.
+                     * @param {string} url
+                     * @returns {Promise<number>} The page's length.
+                     */
+                    pageFetch: (url) => fetchHtml(url).then((t) => t.length),
+                },
             },
             /**
              * The title rules of the batch-2 findings (`remix-no-remixer`,

@@ -16,6 +16,11 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 
 * PICKUP HERE (2026-11-25)
 
+- *Now (2026-11-25, later):* vzell posted the answer on #938 (10:34 CET,
+  [[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7158522166][comment]]: trace format
+  a contract?, SAED's icon, the HUD under =data-mbu-quiet=), no answer yet. Adoption 1 is *built* on
+  =feat/saed-gate-trace= (WIP.1, off the refresh branch): SAED's requests in the Network log. Waiting on vzell's
+  browser check ([[#saed-network-log][the item]]), then the merge question.
 - *Now (2026-11-25):* refreshed to =9f8aa0c= on NB-3641 (=chore/refresh-majkinetor-9f8aa0c=). majkinetor asked vzell
   personally "How do u like network log? Does it show your script requests?" *No*, measured: SAED books in the gate
   but writes no trace, which String Theory's Network log reads. vzell's own check is the Pre-test of [[#saed-network-log][SAED in String
@@ -95,7 +100,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Standalone EH: use =data-mbu-eh= for the keys marks            | DONE  | 9.99.1676     | Interop       |
 | Event Horizon's player plays on under our page                 | DONE  | 9.99.1680     | Interop       |
 | The shared gate at eight a second (2026.11.23)                 | PART  | 9.99.1681     | Interop       |
-| SAED in String Theory's Network log (=mbnTrace=)               | NEXT  | —             | Interop       |
+| SAED in String Theory's Network log (=mbnTrace=)               | NEXT  | WIP.1         | Interop       |
 | C7 =mbLastWrite=, C8 =MBU.artistImage=                         | DONE  | 9.99.1643, 46 | Adoptions     |
 | Release checks (Mission Control / Platform Check / ISRC Scout) | DONE  | 9.99.1654     | Adoptions     |
 | Apollo findings, batch 1: credit ends with a join phrase       | DONE  | 9.99.1657     | Adoptions     |
@@ -116,7 +121,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
 | Browser check on SAED's page fetches (=mbnIsCheck=)            | TODO  | —             | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
-| Posts to majkinetor: thirteen posted                           | DONE  | —             | On the record |
+| Posts to majkinetor: fourteen posted                           | DONE  | —             | On the record |
 
 * Working with majkinetor
 
@@ -572,6 +577,17 @@ CLOSED: [2026-11-21 Sat]
   page fetches log-only, a secret parameter hidden, nothing written with the switch off or off musicbrainz.org),
   mutations in =mb-shared-gate.json=; the probe's =trace= field then shows =saWs2Traced= equal to =saWs2=; flip
   anchor =saed-no-trace=.
+- *Built* (2026-11-25, =feat/saed-gate-trace=, WIP.1; vzell: "start with adoption 1"): =_mbGateTrace()= and its
+  helpers beside the gate port, events from =_mbGateSlot()=/=_mbGateAnswer()=/=_mbGateFetch()=, one id per request
+  in =_ws2GetJson()= (+ =giveup=), the ▶ expand's XHR, page fetches through =_mbGateLogFetch()= (=fetchHtml()=,
+  =_dpFetchText()=), a reason word at every call site. Name on the rows: =ShowAllEntityData= (=SCRIPT_BASE_NAME=;
+  the =@name= is 100+ characters). Design: docs/claude/fetch-and-render-pipeline.md, "The gate's trace". Spec
+  =mb-shared-gate.spec.js= T1–T7, mutations =scripts/mutations/mb-gate-trace.json= (13/13 caught; T6 first let
+  the trace's own switch check survive, since slot and answer stop early when off: T6 now also runs a request out of
+  tries). Anchor =saed-no-trace= flipped to =saed-trace=. *Waiting*: vzell's browser check (the Pre-test above,
+  expecting the opposite now: a ShowAllEntityData entry in the Script filter). *Measured* (2026-11-25T10:59+01:00,
+  NB-3641, probe case 0, GM stubs): 64 rows named ShowAllEntityData (31 pages + 1 ws/2, each =start= + =answer=),
+  =saWs2Traced= 1/1 (0/1 before).
 
 * Adoptions: what SAED takes from his scripts
 
@@ -2459,10 +2475,16 @@ I read the reasoning in the comment above `MBN_GAP`: the 503s you see come from 
 SAED stays at one a second in the shared schedule (its slot moves `tat` by 1000 ms, yours by 125 ms), and since 9.99.1681 it keeps the lock 30 ms after a booking, as yours does. If one a second from SAED gets in your scripts' way in the same schedule, tell me.
 #+end_src
 
-** TODO 2026-11-25 · Post: SAED in your Network log (answer to "Does it show your script requests?")
+** DONE 2026-11-25 10:34 · Post: SAED in your Network log (answer to "Does it show your script requests?")
 :PROPERTIES:
 :CUSTOM_ID: post-network-log
 :END:
+
+- *Posted* by vzell 2026-11-25T10:34:50+01:00 on #938:
+  https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7158522166 (checked through the
+  GitHub API: the block below word for word, after one opening line of his own: "Regarding your personal question
+  from yesterday evening: "How do u like network log? Does it show your script requests? :)""). No answer yet
+  (checked 2026-11-25 10:3x CET). Building the trace started the same day (=feat/saed-gate-trace=).
 
 - *Draft* (NB-3641, 2026-11-25; vzell: majkinetor asked him personally "How do u like network log? Does it show your
   script requests? :)"). For vzell to send, on #1115 ("Network log improvements"), on #938, or personally (then as

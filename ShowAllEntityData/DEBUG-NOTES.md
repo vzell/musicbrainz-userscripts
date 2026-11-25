@@ -31386,3 +31386,41 @@ drafted post).
   bottom bar that pads MusicBrainz's body; EH marks every failed `<img>`
   `eh-nimg` (ours too). Validation: one failure that predates this refresh,
   `lotheric-instrument-icons`, whose file is not on NB-3641.
+
+## 2026-11-25 — SAED's requests in String Theory's Network log: the gate's trace (feat/saed-gate-trace, WIP.1)
+
+Env: 2026-11-25T10:41–10:59+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · SAED 9.99.1693 + WIP.1 · ST/EH 2026.11.25.095751 (harness copies at `9f8aa0c`)
+
+Adoption 1 of the 2026-11-25 refresh (vzell: "start with adoption 1"); the
+answer to majkinetor's "Does it show your script requests?", posted on #938 by
+vzell the same morning. `_mbGateTrace()` and its helpers port upstream's
+`mbnTrace()`/`mbnTabCheck()`/`mbnRid()`/`mbnHideUrl()`/`mbnLog()`: the same key
+`mbu:mb-gate-trace:<tab>`, tab id, row fields, one write a second. Design and
+rules: docs/claude/fetch-and-render-pipeline.md, "The gate's trace".
+
+- **Which events, from where**: `lead`/`book`/`cancel`/`start` from
+  `_mbGateSlot()`, `answer` (status, `Retry-After`, hold, `X-RateLimit-*`,
+  size) from `_mbGateAnswer()`, `error` from `_mbGateFetch()`, `giveup` from
+  `_ws2GetJson()`, which keeps ONE id over a request's retries. The ▶ expand's
+  XHR writes the same. Page fetches (`fetchHtml()`, `_dpFetchText()`) go through
+  `_mbGateLogFetch()`: logged with `x: 1`, never paced.
+- **Rows are named `ShowAllEntityData`** (`SCRIPT_BASE_NAME`), not the 100+
+  character `@name`. In the harness this also tells our rows from the GM
+  stub's "ShowAllEntityData (test)" that every other injected script carries.
+- **A mutation survivor, fixed in the spec**: "the trace ignores the switch"
+  first passed T6. With `sa_mb_shared_gate` off, `_mbGateSlot()` and
+  `_mbGateAnswer()` return before any trace call, so an answered request never
+  reaches `_mbGateTrace()`'s own switch check; only `_ws2GetJson()`'s give-up
+  does. T6 now also runs a request out of its three tries, and waits on the
+  cell's `data-rel-error` instead of a fixed timeout (lint: no new
+  `waitForTimeout`).
+- **Measured live** (probe, `gateTrace()`; its matcher now compares paths in
+  the label form, without `/ws/2/` and `fmt=json`): case 0 (SAED alone, the
+  31-page artist fetch) 64 rows, all ShowAllEntityData: 32 `start` + 32
+  `answer` (31 pages + 1 ws/2), `saWs2Traced` 1/1 (was 0/1 at 10:12). Case D
+  beside EH: 67 of 140 rows ours.
+- Tests: `mb-shared-gate.spec.js` T1–T7 (new) and the whole file, plus
+  `ws2-transient-classifier.spec.js` and `popup-mb.spec.js`: 195 passed
+  (9 m 8 s). Mutations: `mb-gate-trace.json` 13/13 caught; two finds of
+  `mb-shared-gate.json` moved with the code, both still caught. The full suite
+  (`test:full`) has not run on this branch yet: due before any merge.

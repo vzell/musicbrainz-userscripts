@@ -1,0 +1,171 @@
+[
+  {
+    "name": "the trace notes nothing",
+    "why": "The whole feature: without _mbGateTrace() this script is absent from String Theory's Network log again.",
+    "edits": [
+      {
+        "find": "    function _mbGateTrace(ev) {\n        if (!_mbGateActive()) return;",
+        "replace": "    function _mbGateTrace(ev) {\n        return;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T1: a clicked cell is one request",
+    "expect": "fail"
+  },
+  {
+    "name": "the label keeps /ws/2/ and fmt=json",
+    "why": "The log names a request as upstream's mbnFetch() labels it; a raw path is a different label than his scripts write for the same request.",
+    "edits": [
+      {
+        "find": "            p = x.pathname.replace(/^\\/ws\\/2\\//, '') + x.search.replace(/[?&]fmt=json\\b/, '').replace(/^&/, '?');",
+        "replace": "            p = x.pathname + x.search;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T1: a clicked cell is one request",
+    "expect": "fail"
+  },
+  {
+    "name": "every request is background in the log",
+    "why": "A click is foreground (b: 0), as the gate books it; the log's lanes tell them apart.",
+    "edits": [
+      {
+        "find": "            b: o.background === false ? 0 : 1,\n        };",
+        "replace": "            b: 1,\n        };"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T1: a clicked cell is one request",
+    "expect": "fail"
+  },
+  {
+    "name": "the Relationships column gives no reason",
+    "why": "The log's Reason column is how a reader tells the column's requests from a preview's.",
+    "edits": [
+      {
+        "find": "                label: `_relFetchWs2 ${ckey}`,\n                reason: 'relationships',",
+        "replace": "                label: `_relFetchWs2 ${ckey}`,"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T1: a clicked cell is one request",
+    "expect": "fail"
+  },
+  {
+    "name": "each retry gets a new id",
+    "why": "The log pairs events by id: without one id per request, a 503 and its retry show as two requests.",
+    "edits": [
+      {
+        "find": "        const id = _mbGateRid();\n        let gaveUp = false;",
+        "replace": "        const id = undefined;\n        let gaveUp = false;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T2: a 503 and its retry stay one request",
+    "expect": "fail"
+  },
+  {
+    "name": "the answer drops MusicBrainz's rate-limit headers",
+    "why": "X-RateLimit-Who says whose budget ran out; the log shows it, upstream writes it.",
+    "edits": [
+      {
+        "find": "                if (v !== undefined) rl[k] = v.slice(0, 40);",
+        "replace": "                if (v === null) rl[k] = v;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T2: a 503 and its retry stay one request",
+    "expect": "fail"
+  },
+  {
+    "name": "the answer does not say the hold it set",
+    "why": "The hold a 503 set is what the log draws as a band across the lanes.",
+    "edits": [
+      {
+        "find": "                hold: held > 0 ? Math.round(held) : undefined,",
+        "replace": "                hold: undefined,"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T2: a 503 and its retry stay one request",
+    "expect": "fail"
+  },
+  {
+    "name": "one storage write per event",
+    "why": "#1095: a write per event re-parsed the whole trace and fired a storage event in every other MusicBrainz tab each time; events wait a second and go in one write.",
+    "edits": [
+      {
+        "find": "            if (!_mbgTrace.timer) _mbgTrace.timer = setTimeout(_mbGateTraceFlush, _MBG_TRACE_FLUSH_MS);",
+        "replace": "            _mbGateTraceFlush();"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T3: events wait in memory",
+    "expect": "fail"
+  },
+  {
+    "name": "page fetches are not logged",
+    "why": "A list's pages are most of this script's traffic; logged only, never paced (upstream's mbnLog()).",
+    "edits": [
+      {
+        "find": "                const res = await _mbGateLogFetch(url, init ? { credentials: 'same-origin', ...init } : { credentials: 'same-origin' },\n                    { reason: 'pages' });",
+        "replace": "                const res = await fetch(url, init ? { credentials: 'same-origin', ...init } : { credentials: 'same-origin' });"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T4: a page fetch",
+    "expect": "fail"
+  },
+  {
+    "name": "the flush replaces the tab's trace",
+    "why": "Several writers share one tab's key (his copies of the gate and this one): the flush appends, never replaces.",
+    "edits": [
+      {
+        "find": "            list = list.concat(add);\n            if (list.length > _MBG_TRACE_MAX)",
+        "replace": "            list = add;\n            if (list.length > _MBG_TRACE_MAX)"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T5: another writer",
+    "expect": "fail"
+  },
+  {
+    "name": "idle tabs are never swept",
+    "why": "Without the sweep every closed tab's trace stays in localStorage for good.",
+    "edits": [
+      {
+        "find": "                    if (now - last > _MBG_TRACE_IDLE_MS) {",
+        "replace": "                    if (now - last > _MBG_TRACE_IDLE_MS * 1000) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T5: another writer",
+    "expect": "fail"
+  },
+  {
+    "name": "the trace ignores the switch",
+    "why": "sa_mb_shared_gate off means this script leaves the shared schedule alone, its trace included.",
+    "edits": [
+      {
+        "find": "    function _mbGateTrace(ev) {\n        if (!_mbGateActive()) return;",
+        "replace": "    function _mbGateTrace(ev) {"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T6: switched off",
+    "expect": "fail"
+  },
+  {
+    "name": "secrets are not hidden",
+    "why": "A copied log is posted in issues; a token in a URL must show as •••.",
+    "edits": [
+      {
+        "find": "            return v && secret ? `${sep}${k}=•••` : m;",
+        "replace": "            return m;"
+      }
+    ],
+    "spec": "tests/fixtures/mb-shared-gate.spec.js",
+    "grep": "T7: a secret in a URL is hidden",
+    "expect": "fail"
+  }
+]

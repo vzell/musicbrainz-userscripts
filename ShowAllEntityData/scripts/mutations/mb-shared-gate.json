@@ -4,7 +4,7 @@
     "why": "The wrapper is the whole feature: every retrying /ws/2 request goes through _mbGateFetch(). Back to a bare fetch(), a hold another script wrote no longer delays our click.",
     "edits": [
       {
-        "find": "                const resp = await _mbGateFetch(url, { headers: { Accept: 'application/json' } },\n                    { background, cancelled, label, onWait });",
+        "find": "                const resp = await _mbGateFetch(url, { headers: { Accept: 'application/json' } },\n                    { background, cancelled, label, onWait, id, reason });",
         "replace": "                const resp = await fetch(url, { headers: { Accept: 'application/json' } });"
       }
     ],
@@ -17,8 +17,8 @@
     "why": "Without _mbGateAnswer() our 503 holds nobody: no version/hot/cool is written.",
     "edits": [
       {
-        "find": "        const resp = await fetch(url, init);\n        await _mbGateAnswer(resp.status, resp.headers.get('Retry-After'));\n        return resp;",
-        "replace": "        const resp = await fetch(url, init);\n        return resp;"
+        "find": "        await _mbGateAnswer(resp.status, resp.headers.get('Retry-After'), { trace, header: (n) => resp.headers.get(n) });\n        return resp;",
+        "replace": "        return resp;"
       }
     ],
     "spec": "tests/fixtures/mb-shared-gate.spec.js",

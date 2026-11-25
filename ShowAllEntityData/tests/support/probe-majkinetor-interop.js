@@ -506,10 +506,13 @@ async function gateTrace(page, responses) {
         return out;
     }).catch(() => null);
     if (!out) return null;
-    const traced = new Set(out.paths.map((p) => p.slice(0, 100)));
+    // A trace label is the path as upstream's mbnFetch() writes it: no '/ws/2/', no 'fmt=json'
+    // (SAED's _mbGateTraceCtx() does the same), so both sides are compared in that form.
+    const norm = (p) => String(p).replace(/^\/ws\/2\//, '').replace(/[?&]fmt=json\b/, '').replace(/^([^?]*)&/, '$1?').slice(0, 60);
+    const traced = new Set(out.paths.map(norm));
     const sa = (responses || []).filter((r) => r.type === 'fetch' && r.url.startsWith('/ws/2'));
     out.saWs2 = sa.length;
-    out.saWs2Traced = sa.filter((r) => traced.has(r.url.slice(0, 100)) || out.paths.some((p) => p.startsWith(r.url.slice(0, 60)))).length;
+    out.saWs2Traced = sa.filter((r) => traced.has(norm(r.url))).length;
     delete out.paths;
     return out;
 }
