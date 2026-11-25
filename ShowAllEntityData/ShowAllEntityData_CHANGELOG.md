@@ -4,9 +4,41 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1865 versions; the month pages hold all of them.
+This page shows the newest 100 of 1869 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1698 — 2026-11-25
+
+**🚀 Feature**
+
+- springsteenlyrics.com, jungleland.it, brucespringsteen.it and Brucebase: after a press only the table view shows (springsteenlyrics.com keeps its navbar and breadcrumb, Brucebase its header and side bar); the rest of the site's page hides, and on a Brucebase event, song, venue, person, release, story or tag page so does the folded "Brucebase page". The switch (☰ SAED → View → "📄 Show the original page", Ctrl+M P, "▦ Back to the tables") shows the page as it was before the press, drawn by the site's own stylesheet in a frame over the page, with a note on top that says what does not work in that copy (on Brucebase, for example: searching, signing in and the page's own buttons): links work and open in the tab, Brucebase's letter tabs switch; Ctrl+M P works inside it too. On a Brucebase detail page the original view is the live wiki page instead: our tables hide, the wiki's title and page come back unfolded, everything on them works, and its own headings are no longer folded by us. A link followed on the copy asks first, as one on the page does ("You are about to leave this page").
+
+**🐛 Fix**
+
+- On a phone or tablet, the corner grip of a detail window (the one opened on a link) takes the finger more reliably: a drag on it could be taken for a scroll of the window's content and do nothing, depending on what lay under the window.
+
+
+## 9.99.1697 — 2026-11-25
+
+**🐛 Fix**
+
+- setlist.fm: on a page long enough to scroll, the toolbar above our table (the action button and ☰ SAED) no longer disappears under a dark bar as soon as it sticks to the top. The backdrop meant to sit behind it lay over our whole section, in the colour of setlist.fm's dark page. Discogs and archive.org use the same rule now; MusicBrainz and the Springsteen sites are unchanged.
+
+
+## 9.99.1696 — 2026-11-25
+
+**🚀 Feature**
+
+- discogs.com, archive.org and setlist.fm: after a press only the table view shows; the site's own page no longer sits under our tables. The switch of 9.99.1695 (☰ SAED → View → "📄 Show the original page", Ctrl+M P, "▦ Back to the tables") shows the site's own page again, live and fully working, with a "Live" note on top, and hides our section; back again, the tables are as you left them. The site's header stays only where it sits above our section (a Discogs master, release, artist or label page); where our section comes first (archive.org, setlist.fm, Discogs' search, submissions and user pages) the header hides with the page, and so does the footer. Before a press nothing changes. The site's page is shown as the site drew it: its own headings are not folded by us (archive.org's player and pictures are there after the switch); only Discogs' section headings keep their fold toggles.
+
+
+## 9.99.1695 — 2026-11-25
+
+**🚀 Feature**
+
+- MusicBrainz pages: switch between the tables and the original page, and back, as often as you like, without a reload. After a "Show all …" press, ☰ SAED → View → "📄 Show the original page" (or Ctrl+M, then P) shows the page as it was just before the press: MusicBrainz's own list with its pages, its tracklist, its sidebar. A "▦ Back to the tables" button bottom right (or Ctrl+M P again) brings the tables back as you left them: the same rows, the filter you typed, the sort, and where you had scrolled. The original page is a copy taken at the press, so it switches at once and costs no request; a note on it says so, since MusicBrainz's own buttons in it (rating stars, "Load all tracks", the credits toggle) may not respond. Esc never switches. A load from disk takes the copy too. Every render opens on the tables; the choice is not remembered. With majkinetor's scripts, the button stacks with his corner launchers, and while the original page shows his launchers, keys and player behave as on a page without our tables. Like Event Horizon's V (org/majkinetor.org, "Switch between SAED's view and the original page (EH's V)"; approved mockup https://claude.ai/artifact/9wsKwn3kSr7LvhBkJVcijf).
+
 
 ## 9.99.1694 — 2026-11-25
 
@@ -831,36 +863,6 @@ This page shows the newest 100 of 1865 versions; the month pages hold all of the
 **✨ Improve**
 
 - Brucebase: the side bar's show/hide handle now sits at the top of the side bar, as the MusicBrainz sidebar's does, instead of halfway down the window. Scrolled down, it stays near the top of the window; with the side bar hidden, it sits at the top of the page content.
-
-
-## 9.99.1598 — 2026-11-11
-
-**🚀 Feature**
-
-- A Discogs release's or master's Tracks view now shows the headings Discogs puts inside a disc ("Cologne 13/02/1981", "Paris 05/02/1981" on a box of live shows) as bands above their tracks, the way Discogs' own page does. Each band says how many tracks it holds and how long they run, and a click folds or shows them; a fold stays through sorting and filtering. On a computer a band stays under the column headers while its tracks scroll past; on a phone or tablet only with the new setting "Tracks view: sticky section bands on touch devices". With a filter on, a band says "2 of 8 tracks", and a section with nothing left loses its band. Sorted by any other column the sections no longer run together, so the bands step aside and each title shows its section as a small tag. The Section column is now hidden by default (it would say the same twice); it is still in 👁️ Visible and the 📊 menu. Mockup: https://claude.ai/artifact/JHuxeos1Yvu7DFwtBftHzg
-- The Discogs link preview's window shows a release's or master's tracklist as an outline: a shaded bar per disc ("Disc 1 · Volume 1: Live In Europe, 1981 · 13 tracks · 1:16:38") and an indented row per section, each with its tracks and running time, both folding on a click. Chips above the list jump to a disc or a section. Up to about 40 tracks everything starts open; on a bigger release only Disc 1. The card's summary line says how the tracks split: "57 tracks on 5 CDs · 6 sections". Previews already cached are asked from Discogs once more.
-
-
-## 9.99.1597 — 2026-11-10
-
-**🚀 Feature**
-
-- A Discogs Marketplace listing (/shop/item/…, where a /sell/item/… link takes you) gets a button: "Show all tracks". It shows the listed release the way a release page's Tracks button does: a sub-table per disc or record with the credits as columns, and the release's notes, facts and images above. A "For sale" card comes first in the facts: the media and sleeve condition, the price as listed, the page's own shipping and total, the seller (their shop) with their rating, where it ships from, the seller's comments and when it was listed. Two requests: the listing and its release.
-- Links to a listing (the Item column of a seller's shop and of a release's Marketplace table, and Discogs' own pages) now have link previews. The card shows the release, the price as listed, the conditions and the seller with their rating, from one request. The window adds where it ships from, the comments and when it was listed, and the release's tracklist, credits and images (one more request). The release and the seller's shop open in the same window.
-
-
-## 9.99.1596 — 2026-11-10
-
-**🚀 Feature**
-
-- Links to a Discogs user's submissions, contributions, collection or wantlist, and to a seller's shop, now have link previews, on Discogs, MusicBrainz and the other supported sites. The card shows how many entries there are and the newest three (for a shop also the seller's rating and where it ships from), from one request. The window shows 25 rows in a table you can filter and sort, with "Load 25 more", and links to the user's other lists. The links in a Discogs user's window (Contributions, Submissions, Collection, Wantlist, and the new For sale) now open in the same window. Mockup: https://claude.ai/artifact/2gnX1gagFEHTCC2LsFEn6n
-
-
-## 9.99.1595 — 2026-11-10
-
-**🚀 Feature**
-
-- Discogs searches by the page's filters, without a search text (for example /search?style\_exact=Rock+%26+Roll, ?format\_exact=Vinyl or ?decade=1970&year=1975), now get the "Show all results" button too. The style, genre, format, country, year and decade are sent to Discogs' API; a decade without a year is asked as its ten years. The sort by title, year or Have is kept. Anything the API cannot ask (another sort, a second style) is left out, and the button's hover text and a note above the table say what was left out. Links to such searches get the search card and window too.
 
 
 ---

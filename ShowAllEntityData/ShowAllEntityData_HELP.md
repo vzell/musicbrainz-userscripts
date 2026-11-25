@@ -141,7 +141,7 @@ The **☰ SAED menu** has these groups, with a line between them:
 |---------------------|-------------------------------------------------------------------------------|
 | **Needs attention** | the same lists as the 🔄, ❌ and ⚠️ parts on the bar                           |
 | **Data**            | 💾 Save to Disk · 📂 Load from Disk · 📤 Export ▸ (CSV, JSON, Org-Mode, HTML) |
-| **View**            | 📏 Density · 📊 Statistics · 💾 Browser cache · 🗄️ Script storage · 🎹 Keyboard Shortcuts |
+| **View**            | 📏 Density · 📊 Statistics · 💾 Browser cache · 🗄️ Script storage · 📄 Show the original page · 🎹 Keyboard Shortcuts |
 | **Editing history** | ✎ Entity history ▸ · 📝 Annotation history (on a page about one entity, e.g. an artist); on discogs.com ✎ Edit history (a release, master, artist or label page) |
 | **Help**            | ⚙️ Settings · ❓ Help ↗ (this page, on GitHub)                                 |
 | **Changelog**       | 📜 What's new ↗ · 🗒 Full development log ↗ (both on GitHub)                   |
@@ -194,6 +194,29 @@ before the global filter box:
 
 Multi-table pages have carried exactly this pair on every sub-heading for a long
 time. The page-level pair now reads identically.
+
+### Switching to the original page
+
+After a press, ☰ SAED → View → **📄 Show the original page** (or `Ctrl+M`
+then `P`) shows the page as it was before the press. **▦ Back to the tables**
+in the lower-right corner, or `Ctrl+M` then `P` again, brings the tables back
+as you left them: filters, sorting, open sections and scroll position. Nothing
+is fetched again, and every new render opens on the tables.
+
+- **MusicBrainz**: a copy of the page from the moment of the press. The note on
+  top says so: links work, MusicBrainz's own buttons may not; reload for the
+  live page.
+- **discogs.com, archive.org, setlist.fm**: the tables take the place of the
+  site's page, which no longer shows under them (Discogs keeps its header).
+  The switch shows the live page itself.
+- **springsteenlyrics.com, jungleland.it, brucespringsteen.it, Brucebase**:
+  the table view keeps only the site's header (springsteenlyrics.com its navbar
+  and breadcrumb, Brucebase its header and side bar). The original is a copy
+  from before the press, drawn in the site's own style: links work (and ask
+  before leaving, as on the page), Brucebase's tabs switch, and the note on
+  top names what does not work in that copy, such as searching or signing in.
+  On a Brucebase event, song, venue, person, release, story or tag page it is
+  the live wiki page instead, with everything on it working.
 
 ### Hover texts
 
@@ -1849,7 +1872,7 @@ Press the prefix (default `Ctrl+M`), release it, then press a letter:
 | `r`     | Resize columns                                 | `k` | Keyboard shortcuts reference                            |
 | `i`     | Statistics panel                               | `h` | This help, in the page                                  |
 | `b`     | Barcode highlighting                           | `,` | Settings                                                |
-| `1`–`9` | Action button by index (the `🧮N` superscript) |     |                                                         |
+| `1`–`9` | Action button by index (the `🧮N` superscript) | `p` | The original page, and back                             |
 
 `o`, `q` and `a` act on the column filter that was last focused, so they still
 work after the prefix key has taken focus away.

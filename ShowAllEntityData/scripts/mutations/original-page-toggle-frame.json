@@ -56,7 +56,7 @@
     "why": "A key inside the frame never reaches the page; the frame needs its own listener.",
     "edits": [
       {
-        "find": "            f.addEventListener('load', () => _origViewFrameKeys(f));\n",
+        "find": "                _origViewFrameKeys(f);\n",
         "replace": ""
       }
     ],
