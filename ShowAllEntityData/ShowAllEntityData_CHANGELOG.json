@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1694",
+    "date": "2026-11-25",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "With majkinetor's String Theory installed, this script's requests to MusicBrainz now show in its Network log (Ctrl+Alt+N), under the name ShowAllEntityData, beside his scripts' requests. Each Web Service request is one row with its reason (relationships, preview, length, recording of, release events, works, expand), its wait in the shared request gate, its answer, the hold a 503 set and MusicBrainz's rate-limit headers; a retry stays in its row. The pages of a list (\"Show all\") and the pages behind a card are listed too, marked as not paced. Nothing changes in how or when requests are made. The log is kept as String Theory keeps it (each tab's last 400 events, written once a second; secrets in a URL shown as •••), and only on musicbrainz.org with \"Share MusicBrainz's request budget with other userscripts (mbu:mb-gate)\" on."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1693",
     "date": "2026-11-24",
     "sections": [

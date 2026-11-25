@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1864 versions; the month pages hold all of them.
+This page shows the newest 100 of 1865 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1694 — 2026-11-25
+
+**✨ Improve**
+
+- With majkinetor's String Theory installed, this script's requests to MusicBrainz now show in its Network log (Ctrl+Alt+N), under the name ShowAllEntityData, beside his scripts' requests. Each Web Service request is one row with its reason (relationships, preview, length, recording of, release events, works, expand), its wait in the shared request gate, its answer, the hold a 503 set and MusicBrainz's rate-limit headers; a retry stays in its row. The pages of a list ("Show all") and the pages behind a card are listed too, marked as not paced. Nothing changes in how or when requests are made. The log is kept as String Theory keeps it (each tab's last 400 events, written once a second; secrets in a URL shown as •••), and only on musicbrainz.org with "Share MusicBrainz's request budget with other userscripts (mbu:mb-gate)" on.
+
 
 ## 9.99.1693 — 2026-11-24
 
@@ -854,13 +861,6 @@ This page shows the newest 100 of 1864 versions; the month pages hold all of the
 **🚀 Feature**
 
 - Discogs searches by the page's filters, without a search text (for example /search?style\_exact=Rock+%26+Roll, ?format\_exact=Vinyl or ?decade=1970&year=1975), now get the "Show all results" button too. The style, genre, format, country, year and decade are sent to Discogs' API; a decade without a year is asked as its ten years. The sort by title, year or Have is kept. Anything the API cannot ask (another sort, a second style) is left out, and the button's hover text and a note above the table say what was left out. Links to such searches get the search card and window too.
-
-
-## 9.99.1594 — 2026-11-10
-
-**🚀 Feature**
-
-- A Discogs seller's shop (/seller/&lt;name&gt;/profile) gets a button: "Show everything for sale". It reads every listing from the shop's own pages, 250 a page, with the page's filters (format, price range, the shop search) and its sort. Discogs' item text is split into Artist, Title and Format, and also kept whole in the Item column, which links the listing. The other columns: the release's image (with the image card and viewer), each label, Cat\#, the community's rating and Have and Want, the media and sleeve condition, the seller's comments, where it ships from, the price as listed, the shipping, and the price in your currency. An empty shop has no button.
 
 
 ---
