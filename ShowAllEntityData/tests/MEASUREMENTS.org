@@ -5127,3 +5127,16 @@ Env: 2026-11-25T19:38:30+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 
 3563 passed, none failed. The merge gate of =feat/saed-log-icon= (on top of the unmerged
 =chore/refresh-majkinetor-8384078=): =_mbGateLogIcon()= and three new tests T8–T10 in =mb-shared-gate.spec.js=.
+
+* 2026-11-25 — =npm run test:full= on =NB-3641=, feat/gate-search-shed (search-shed, jitter, hot rule; WIP.1)
+
+Env: 2026-11-25T20:45:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                       | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =46ec76d4= |  3574 |      14 |  25 m 51 s  | =run-test-full.py=, 20:45:49–21:11:40 CET |
+
+3573 passed, 1 failed: =findings-rec-dup.spec.js= "the card: a dup entry with its tier pill and the other members"
+(=#mb-stat-tooltip= not visible within 5 s after the hover, in a 33 s test). Not related to the gate: the spec routes no
+=/ws/2= and books no slot. Alone it passed 3/3 (=--repeat-each=3=, 21:12 CET) and the whole file 14/14 (21:15 CET):
+a hover card under the full run's load. The gate spec file: 51/51.

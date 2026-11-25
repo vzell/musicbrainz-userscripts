@@ -585,7 +585,10 @@ CLOSED: [2026-11-21 Sat]
     52/52 (11 finds re-pointed). The first mutation run let three through (the booking's and the wait's =scool= checks
     covered for each other; S3 could not see the search marker, a shed being known from its header alone): S10, S11
     and a second search in S3 close them. Anchors =saed-search-shed=, =saed-gate-jitter=. Design: docs/claude/fetch-and-render-pipeline.md,
-    "Only 429/503 write a hold".
+    "Only 429/503 write a hold". *After* (live, case D, 2026-11-25T21:15:38–21:16:23+01:00, NB-3641, GM
+    stubs): two sheds, both on EH's searches; the stored schedule kept =cool= 0 and =hot= 0 with a =scool=; SAED took
+    no hold, waited 1.0 s in all, its 31-page fetch 29.2 s (before, 20:19 CET: two holds, 5.3 s; one run each, not a
+    benchmark). =test:full= 3573/3574 (one hover-card flake in =findings-rec-dup.spec.js=, 3/3 alone).
 - *Keep 1000 ms* (recommended): it is what MusicBrainz documents, and SAED's own pacing must not depend on a
   neighbour's choice. A post could ask majkinetor whether 125 ms is meant for MusicBrainz's own servers too (his
   comment cites 503s from MusicBrainz's load whatever the pace) and point out the DEVELOP.md line. vzell decides
