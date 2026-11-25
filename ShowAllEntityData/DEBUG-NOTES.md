@@ -31750,3 +31750,68 @@ Tests: `mb-shared-gate.spec.js` T8 (the entry, another script's kept), T9
 string, null: replaced), and T6 now asserts no key with the gate off. The
 file: 40/40 (2 m 5 s). Mutations `mb-gate-trace.json`: five new, 18/18
 caught; the userscript restored and hash-verified.
+
+## 2026-11-25 — search-shed, hold jitter and upstream's hot rule in the shared gate (feat/gate-search-shed, WIP.1)
+
+Env: 2026-11-25T20:19:55–20:22:46+01:00 (live probe) and 20:25–20:45 (specs, mutations) · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · browser check 22:16–22:40 CET in vzell's browser (versions unknown)
+
+SAED's port of majkinetor's gate answered every 429/503 the same way: a
+hold for every script in every tab, multiplied by `hot`. Upstream's
+`mbnAnswer()` at `8384078` tells three cases apart by `X-RateLimit-Who`
+and adds a random spread. Measured first, with a new probe field
+(`trace.throttled`: every gate copy's 429/503 answer rows by script, `who`
+and search/lookup), in two runs of case D (Event Horizon + SAED on Bruce
+Springsteen's artist page): 21 503s, 11 `search-shed` (all on Event
+Horizon's `release-group?query=…` searches), 8 `global`, 2 `per-ip`
+(`Retry-After: 2`; one on SAED's `artist?inc=url-rels`). Bundle cases B
+and C: 7 `global`, no shed. Every shed, under the old port, would have
+stopped every lookup everywhere.
+
+Ported (vzell chose "shed + jitter + hot rule"):
+
+- a 503 with `search-shed` holds searches only: `scool`/`shot`, a flat
+  `max(1 s, Retry-After)` plus jitter; `cool` and `hot` untouched;
+  `_mbgScoolSeen` counts `scool` the way `_mbgHoldSeen` counts `cool`
+  (`_mbGateHoldEnd()` got a `seen` parameter);
+- `_mbGateSlot()` makes a search wait out `max(cool, scool)` at the booking
+  and in every slice; `_mbGateFetch()` marks a `?query=` URL as a search;
+- every hold gets up to 500 ms at random (`_MBG_JITTER`);
+- the hold grows with `hot` only without a `Retry-After` and not on
+  `global`, and `global` does not step `hot`; `per-ip` stays an ordinary
+  hold;
+- a clean answer to a search takes a step of `shot` back; the trace's shed
+  row carries `shold`/`shot`.
+
+Not ported: `slip` and the retry head. Specs S1–S11 in
+`mb-shared-gate.spec.js`; two older tests got the jitter in their upper
+bounds. The first mutation run let three mutants live: the booking's and the
+wait loop's `scool` checks covered for each other (S2 passes with either),
+and S3 could not tell whether `_mbGateFetch()` marks a search, since a shed
+is recognised from its header alone. S10 (the booking's `book` row names the
+shed's wait), S11 (a shed that begins while a search waits) and a second
+search in S3 close them: `mb-gate-shed.json` 13/13, `mb-shared-gate.json`
+52/52 (11 finds re-pointed), the userscript restored and hash-verified.
+
+Browser check (vzell, 2026-11-25T22:16–22:40+01:00, his browser with String
+Theory, versions unknown; screenshots `debug/gate-search-shed-*.png`, not
+in git):
+
+- release group f83d2211 → ▶🔗: three `global` 503s (`Retry-After: 1`)
+  held everyone 1.3 s, 1.4 s and 1.1 s (1 s plus the jitter), `Hot 0`;
+- Bruce Springsteen's recordings → ⏱: a `global` 503 on a `length`
+  search held everyone 1.4 s, the retry got HTTP 200
+  (`debug/gate-search-shed-netlog-length-global-503.png`);
+- The Rolling Stones' recordings (b071f9fa) → ⏱, 22:37:23 CET: the first
+  real `search-shed` seen in a browser. The Activity log's `mbgate` line
+  reads "HTTP 503 (search-shed) (Retry-After: 1) — searches hold 1.2 s;
+  lookups go on" (`debug/gate-search-shed-activity-log-mbgate.png`);
+  String Theory's Network log "HTTP 503 · Retry-After 1 · searches hold
+  1.2s · rate limit search-shed", the retry booked with 0.1 s of the
+  search hold left and got HTTP 200, the chips `Hold none` and `Hot 0`
+  (`debug/gate-search-shed-netlog-search-shed.png`). One shed in a
+  323-row batch.
+
+The `who` shows in String Theory's log at the end of each expanded
+`answer` line ("rate limit global"), not in the Result column. Merged as
+9.99.1700 without a second `test:full` (vzell's call; the branch's run was
+3573/3574, one unrelated hover flake).

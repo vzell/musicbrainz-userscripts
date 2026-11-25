@@ -255,10 +255,35 @@ version 1 (on his `main` since `7eb7c563`). Anchors `gate-version`,
 - **Only 429/503 write a hold**; any other answer below 500 takes one step of
   `hot` back; 502/504 change nothing in the schedule (the protocol's rule) but
   are still retried locally (`_isTransientHttp()`). `hot` steps once per
-  throttle EPISODE (`now >= cool`), resets after 30 s of quiet, caps at 6; the
-  hold is `min(max(1 s, Retry-After) × max(1, hot), 60 s)`. That `Retry-After`
-  parse is the protocol's own (raw header, no 30 s cap); `_parseRetryAfterMs()`
-  stays the local backoff's.
+  throttle EPISODE (`now >= cool`), resets after 30 s of quiet, caps at 6. That
+  `Retry-After` parse is the protocol's own (raw header, no 30 s cap);
+  `_parseRetryAfterMs()` stays the local backoff's. **Since 2026-11-25
+  (`feat/gate-search-shed`, upstream's `mbnAnswer()` at `8384078`)** the hold
+  is `min(max(1 s, Retry-After) × grow + jitter, 60 s)`:
+  - `grow` is `max(1, hot)` only WITHOUT a `Retry-After` and not on
+    `X-RateLimit-Who: global`; otherwise 1. A `Retry-After` is MusicBrainz's
+    own answer for how long, and a `global` 503 says MusicBrainz as a whole is
+    out of room, not that our pace was too high, so it does not step `hot`
+    either (#1095). Before, every hold was multiplied (Retry-After 2 s at hot 3
+    held every script 6 s where his gate held 2 s).
+  - `jitter` is up to `_MBG_JITTER` (500 ms) at random (#1112), so the waiters
+    of many tabs do not leave on one beat into a fresh 503.
+  - **A 503 with `X-RateLimit-Who: search-shed` holds searches only**: MusicBrainz
+    refused searches and went on answering lookups. It sets `scool` (and its
+    episode counter `shot`), never `cool` or `hot`; `scool` counts through
+    `_mbGateHoldEnd()` with its own record `_mbgScoolSeen`. A search is a
+    `?query=` URL (`_mbGateFetch()` sets `o.search`, as upstream's `mbnFetch()`);
+    `_mbGateSlot()` makes a search wait out `max(cool, scool)` at the booking
+    and in every slice, a lookup only `cool`. A clean answer to a search takes
+    a step of `shot` back. The gated searches today: the ⏱ length batch
+    (`_msFetchOneBatch()`, `recording?query=rid:(…)`) and the event's release
+    group lookup (`_eventRgLookup()`, `release-group?query=…`). Treating a shed
+    as a full hold (the old port) stopped every script's lookups in every tab
+    for a refusal of searches. The trace's `answer` row of a shed carries
+    `shold` and `shot` instead of `hold`. Specs `mb-shared-gate.spec.js` S1–S8.
+  - Not ported: upstream's `slip` (a hold moves the whole queue later) and the
+    retry head (`rhead`/`bslip`); this script's waiters re-read the hold every
+    slice instead.
 - **Version handling.** Absent = 1. Writes stamp `version: 1` and spread the
   stored object, so a field a newer writer added survives. An explicit unknown
   version is refused WITHOUT writing: `_mbgRefused` is set, logged once on the

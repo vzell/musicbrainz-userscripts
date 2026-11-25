@@ -2020,6 +2020,9 @@ millisecond lengths, release events, the Recording of columns, the
 release-group ▶ expand) take their place in the same schedule and pause with
 them, so they no longer crowd those scripts out. That never makes this
 script faster, since its own pace of one request per 1.1 s still applies.
+When MusicBrainz is busy it sometimes refuses only searches (and says so):
+then only searches wait, this script's millisecond lengths of a recording
+list included, while every other request goes on.
 While the others are busy or MusicBrainz asked everyone to wait, the
 Relationships column's [progress card](#the-progress-card) says so in its
 last requests. With String Theory installed, its *Network log* (Ctrl+Alt+N)

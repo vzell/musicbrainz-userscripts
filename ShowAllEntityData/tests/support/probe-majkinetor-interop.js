@@ -475,10 +475,18 @@ function rateFigures(list) {
  * GM_xmlhttpRequest (type 'gm'). `saWs2Traced` counts SAED's answered ws/2
  * paths that appear in any trace row's `l` or `u`, out of `saWs2`.
  *
+ * `throttled` (added 2026-11-25 for the search-shed adoption): every 429/503
+ * `answer` row of any copy of the gate, counted under
+ * `"<script> | <X-RateLimit-Who or (none)> | search|lookup"` (a search is a
+ * label or URL with `query=`), and `throttledRows`, the first 40 of them as
+ * text. It measures which 503s MusicBrainz marks `search-shed` (only searches
+ * refused) or `global`, which the gate's answer rules treat differently.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {Object[]} responses - openPage()'s response list
  * @returns {Promise<?{keys: number, rows: number, byScript: Object<string, number>, byEvent: Object<string, number>,
- *          saWs2: number, saWs2Traced: number}>} `null` when the page cannot be read (closed, navigated away).
+ *          saWs2: number, saWs2Traced: number, throttled: Object<string, number>, throttledRows: string[]}>}
+ *          `null` when the page cannot be read (closed, navigated away).
  */
 async function gateTrace(page, responses) {
     await page.evaluate(() => {
@@ -487,7 +495,7 @@ async function gateTrace(page, responses) {
     await page.waitForTimeout(1200);
     const out = await page.evaluate(() => {
         const pre = 'mbu:mb-gate-trace:';
-        const out = { keys: 0, rows: 0, byScript: {}, byEvent: {}, paths: [] };
+        const out = { keys: 0, rows: 0, byScript: {}, byEvent: {}, paths: [], throttled: {}, throttledRows: [] };
         for (const k of Object.keys(localStorage)) {
             if (k.indexOf(pre) !== 0) continue;
             out.keys++;
@@ -501,6 +509,14 @@ async function gateTrace(page, responses) {
                 out.byScript[s] = (out.byScript[s] || 0) + 1;
                 out.byEvent[ev.e || '?'] = (out.byEvent[ev.e || '?'] || 0) + 1;
                 for (const p of [ev.l, ev.u]) if (p) out.paths.push(String(p).replace(/^https?:\/\/[a-z.]*musicbrainz\.org/, ''));
+                if (ev.e === 'answer' && (ev.st === 503 || ev.st === 429)) {
+                    const search = /[?&]query=/.test(String(ev.l || '') + ' ' + String(ev.u || ''));
+                    const key = `${s} | ${ev.who || '(none)'} | ${search ? 'search' : 'lookup'}`;
+                    out.throttled[key] = (out.throttled[key] || 0) + 1;
+                    if (out.throttledRows.length < 40) {
+                        out.throttledRows.push(`${s} ${ev.st} who=${ev.who || '-'} ra=${ev.ra == null ? '-' : ev.ra} hold=${ev.hold == null ? '-' : ev.hold} ${String(ev.l || ev.u || '').slice(0, 90)}`);
+                    }
+                }
             }
         }
         return out;

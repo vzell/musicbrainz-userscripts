@@ -324,6 +324,10 @@
 //   mbnTabCheck(), mbnRid()/mbnTabId(), mbnHideUrl() and mbnLog() at 9f8aa0c: the same
 //   localStorage key ("mbu:mb-gate-trace:<tab>"), tab id and row fields, so this script's
 //   requests show in String Theory's Network log.
+//   Added 2026-11-25: the answer rules of his mbnAnswer() at 8384078 are PORTED into
+//   _mbGateAnswerState() and _mbGateSlot(): a 503 with "X-RateLimit-Who: search-shed" holds only
+//   searches (scool/shot), up to MBN_JITTER (500 ms) at random on every hold, and the hold grows
+//   with hot only without a Retry-After and not on "X-RateLimit-Who: global".
 // ============================================================================================================================================
 
 (function() {
@@ -71447,6 +71451,12 @@
     const _MBG_SLICE_MS = 250;
     /** After this long without a throttle, `hot` counts as 0 again, ms. */
     const _MBG_QUIET_MS = 30000;
+    /**
+     * Up to this much is added at random to every hold, so the waiters of many
+     * tabs do not all leave on the same beat into a fresh 503, ms (upstream's
+     * `MBN_JITTER`, #1112).
+     */
+    const _MBG_JITTER = 500;
 
     /**
      * The explicit unknown `version` found in the schedule, or `null`. Set
@@ -71746,6 +71756,14 @@
     const _mbgHoldSeen = { cool: 0, end: -Infinity, raw: -Infinity, own: -Infinity };
 
     /**
+     * The same record for `scool`, the hold for searches only that a 503 with
+     * `X-RateLimit-Who: search-shed` sets (`_mbGateHoldEnd()` with this as
+     * `seen`; its `cool` field holds the last `scool` read).
+     * @type {{cool: number, end: number, raw: number, own: number}}
+     */
+    const _mbgScoolSeen = { cool: 0, end: -Infinity, raw: -Infinity, own: -Infinity };
+
+    /**
      * The stored `leadUntil` this tab read last, and the end this tab gave it
      * when it first read that value, on the monotonic clock
      * (`_mbGateLeadLeft()`).
@@ -71779,19 +71797,24 @@
      * A step at the moment of the first read still counts once (the value is
      * read against the stepped clock), bounded by the 60 s.
      *
+     * The same rules count `scool` (the hold for searches only), with its own
+     * record `_mbgScoolSeen` as `seen`.
+     *
      * @param {number} raw The stored `cool` (0 or missing: no hold).
      * @param {number} wall `Date.now()` of the caller's read.
      * @param {number} mono `_steadyNow()` of the same read.
+     * @param {{cool: number, end: number, raw: number, own: number}} [seen] Which hold:
+     *        `_mbgHoldSeen` (`cool`, the default) or `_mbgScoolSeen` (`scool`).
      * @returns {number} The hold's end on the monotonic clock (in the past: no hold).
      */
-    function _mbGateHoldEnd(raw, wall, mono) {
+    function _mbGateHoldEnd(raw, wall, mono, seen = _mbgHoldSeen) {
         const v = +raw || 0;
-        if (v !== _mbgHoldSeen.cool) {
-            _mbgHoldSeen.cool = v;
-            _mbgHoldSeen.raw = mono + (v - wall);
-            _mbgHoldSeen.end = mono + Math.min(v - wall, _MBG_MAX_HOLD);
+        if (v !== seen.cool) {
+            seen.cool = v;
+            seen.raw = mono + (v - wall);
+            seen.end = mono + Math.min(v - wall, _MBG_MAX_HOLD);
         }
-        return Math.max(_mbgHoldSeen.end, Math.min(_mbgHoldSeen.own, _mbgHoldSeen.raw));
+        return Math.max(seen.end, Math.min(seen.own, seen.raw));
     }
 
     /**
@@ -72219,8 +72242,13 @@
      * page), `book` (only when the slot is not now: its wait and why),
      * `cancel`, and `start` with the whole wait.
      *
+     * A search (`o.search`, a `?query=` URL; `_mbGateFetch()` sets it) also
+     * waits out `scool`, the hold a `search-shed` 503 sets for searches only
+     * (upstream's `mbnSlot()` at 8384078): at the booking and in every slice
+     * of the wait. A lookup or browse ignores `scool`.
+     *
      * @param {{background?: boolean, cancelled?: ?function(): boolean, label?: string,
-     *          onWait?: ?function(string): void, trace?: Object}} [o]
+     *          onWait?: ?function(string): void, trace?: Object, search?: boolean}} [o]
      * @returns {Promise<{ok: boolean, waited: number, shared: boolean}>}
      */
     async function _mbGateSlot(o = {}) {
@@ -72257,8 +72285,11 @@
         const booked = await _mbGateState(s => {
             const now = Date.now();
             const mono = _steadyNow();
-            // The hold as this tab counts it, back on the wall clock for the booking.
-            const cool = now + (_mbGateHoldEnd(s.cool, now, mono) - mono);
+            // The hold as this tab counts it, back on the wall clock for the booking;
+            // a search also waits out the hold for searches (`scool`).
+            const end = Math.max(_mbGateHoldEnd(s.cool, now, mono),
+                o.search ? _mbGateHoldEnd(s.scool, now, mono, _mbgScoolSeen) : -Infinity);
+            const cool = now + (end - mono);
             const tat = s.tat || 0;
             let at = background ? Math.max(now, tat - (_MBG_BURST - 1) * _MBG_GAP) : now;
             at = Math.max(at, cool);
@@ -72280,7 +72311,10 @@
         for (let toldUntil = 0, toldAt = 0; ;) {
             if (o.cancelled && o.cancelled()) return cancel();
             const now = _steadyNow();
-            const cool = _mbGateHoldEnd(_mbGateRead().cool, Date.now(), now);
+            const sched = _mbGateRead();
+            const wall = Date.now();
+            const cool = Math.max(_mbGateHoldEnd(sched.cool, wall, now),
+                o.search ? _mbGateHoldEnd(sched.scool, wall, now, _mbgScoolSeen) : -Infinity);
             const until = Math.max(booked.value.atMono, cool);
             const left = until - now;
             if (left <= 0) break;
@@ -72315,11 +72349,14 @@
 
     /**
      * Tells the shared schedule how MusicBrainz answered (upstream's
-     * `mbnAnswer()`). A 429/503 holds every script in every tab:
-     * `hot` steps up once per throttle EPISODE (not per answer: the requests
-     * already in flight answer 503 too) and is reset after `_MBG_QUIET_MS`
-     * of quiet; the hold is `min(max(1 s, Retry-After) × max(1, hot), 60 s)`
-     * — `Retry-After` a floor, since MusicBrainz sends `Retry-After: 0`. Any
+     * `mbnAnswer()`; the rules are `_mbGateAnswerState()`'s, as at 8384078).
+     * A 429/503 holds every script in every tab, except a 503 with
+     * `X-RateLimit-Who: search-shed`, which holds searches only. `hot` steps
+     * up once per throttle EPISODE (not per answer: the requests already in
+     * flight answer 503 too) and is reset after `_MBG_QUIET_MS` of quiet;
+     * the hold is `max(1 s, Retry-After)` — a floor, since MusicBrainz sends
+     * `Retry-After: 0` — times `hot` only without a Retry-After and not on
+     * `global`, plus up to `_MBG_JITTER`, at most 60 s. Any
      * other answer below 500 earns a step of `hot` back. 502/504 change
      * nothing here (the protocol's rule); `_ws2GetJson()` still retries them.
      *
@@ -72329,7 +72366,15 @@
      * reset, and would report that value's ten minutes for a one-second 503
      * (seen in vzell's browser check, 2026-11-18).
      *
-     * `X-RateLimit-*` is NOT read, on purpose. Probe
+     * Of the `X-RateLimit-*` headers only `X-RateLimit-Who` steers (since
+     * 2026-11-25, upstream's rules): `search-shed` (searches refused),
+     * `global` (MusicBrainz as a whole out of room) or `per-ip` (this
+     * client's pace; an ordinary hold). Measured the same day (probe field
+     * `trace.throttled`, 2026-11-25T20:19–20:22+01:00, NB-3641, GM stubs):
+     * in two runs of case D, 11 of 21 503s were `search-shed` (all on Event
+     * Horizon's `release-group?query=…`), 8 `global`, 2 `per-ip`
+     * (`Retry-After: 2`, one on this script's `artist?inc=url-rels`). The
+     * budget headers (Limit, Remaining, Reset) are still NOT read. Probe
      * (`scripts/probe-ws2-throttle-shape.py`, 2026-11-09T00:37:52+01:00,
      * vzell-lap, n/a browser): 10 lookups at 1.1 s, all 200, no
      * `Retry-After`; `X-RateLimit-Limit: 1900` on each, and
@@ -72347,15 +72392,18 @@
      *
      * @param {number} status
      * @param {?string} retryAfterRaw - The raw `Retry-After` header, or null.
-     * @param {{trace?: Object, header?: function(string): ?string}} [o]
-     * @returns {Promise<number>} How long everyone now holds, ms (0 when not throttled).
+     * @param {{trace?: Object, header?: function(string): ?string, search?: boolean}} [o] -
+     *        `search`: the request was a search (`?query=`; `_mbGateFetch()` sets it).
+     * @returns {Promise<number>} How long everyone now holds, ms (for a search-shed: how long
+     *          every search holds; 0 when not throttled).
      */
     async function _mbGateAnswer(status, retryAfterRaw, o = {}) {
         if (!_mbGateActive()) return 0;
-        const held = await _mbGateAnswerState(status, retryAfterRaw);
+        const hdr = (n) => { try { const v = o.header ? o.header(n) : null; return v == null || v === '' ? undefined : String(v); } catch (_) { return undefined; } };
+        const ans = await _mbGateAnswerState(status, retryAfterRaw, { who: hdr('X-RateLimit-Who'), search: !!o.search });
+        const held = ans.shed ? 0 : ans.hold;
         if (o.trace) {
             const rl = {};
-            const hdr = (n) => { try { const v = o.header ? o.header(n) : null; return v == null || v === '' ? undefined : String(v); } catch (_) { return undefined; } };
             for (const [k, n] of [['lim', 'X-RateLimit-Limit'], ['rem', 'X-RateLimit-Remaining'], ['rst', 'X-RateLimit-Reset'], ['who', 'X-RateLimit-Who']]) {
                 const v = hdr(n);
                 if (v !== undefined) rl[k] = v.slice(0, 40);
@@ -72366,50 +72414,90 @@
                 rs: len && /^\d+$/.test(len.trim()) ? +len : undefined,
                 ra: retryAfterRaw == null ? undefined : String(retryAfterRaw).slice(0, 40),
                 hold: held > 0 ? Math.round(held) : undefined,
+                shold: ans.shed && ans.hold > 0 ? Math.round(ans.hold) : undefined,
+                shot: ans.shed ? ans.shot : undefined,
             });
         }
-        return held;
+        return ans.hold;
     }
 
     /**
-     * `_mbGateAnswer()`'s schedule half: the hold for a 429/503, a step of
-     * `hot` back for a clean answer.
+     * `_mbGateAnswer()`'s schedule half (upstream's `mbnAnswer()` at 8384078):
+     * - a 503 with `X-RateLimit-Who: search-shed`: MusicBrainz refused
+     *   searches only. Only searches hold: `scool = max(scool, now + ms)`,
+     *   `ms = min(max(1 s, Retry-After) + jitter, _MBG_MAX_HOLD)`, and `shot`
+     *   steps once per shed episode (reset after `_MBG_QUIET_MS` past `scool`);
+     *   `cool` and `hot` stay as they are, so lookups and browses go on;
+     * - any other 429/503 holds every script: `hot` steps once per episode,
+     *   but not on `X-RateLimit-Who: global` (MusicBrainz as a whole is out of
+     *   room, not about our pace); the hold is `max(1 s, Retry-After)`, times
+     *   `max(1, hot)` only without a Retry-After and not on `global` (a
+     *   Retry-After is MusicBrainz's own answer for how long), plus up to
+     *   `_MBG_JITTER` at random, at most `_MBG_MAX_HOLD`;
+     * - a clean answer (2xx–4xx) takes a step of `hot` back, and for a search
+     *   a step of `shot`.
      *
      * @param {number} status
      * @param {?string} retryAfterRaw
-     * @returns {Promise<number>} How long everyone now holds, ms (0 when not throttled).
+     * @param {{who?: string, search?: boolean}} [o] - `X-RateLimit-Who`; whether the request was a search.
+     * @returns {Promise<{hold: number, shed: boolean, shot?: number}>} `hold`: how long everyone
+     *          (or, `shed`, every search) now holds, ms; 0 when not throttled.
      */
-    async function _mbGateAnswerState(status, retryAfterRaw) {
+    async function _mbGateAnswerState(status, retryAfterRaw, o = {}) {
         _mbgStats.answers++;
+        const who = String(o.who || '').trim();
         if (status === 429 || status === 503) {
             const raw = retryAfterRaw == null ? null : String(retryAfterRaw);
             const secs = Number(raw);
             const date = raw ? Date.parse(raw) : NaN;
             const ra = Number.isFinite(secs) ? secs * 1000 : Number.isFinite(date) ? Math.max(0, date - Date.now()) : 0;
+            const jitter = () => Math.round(Math.random() * _MBG_JITTER);
+            if (status === 503 && /^search-shed$/i.test(who)) {
+                const res = await _mbGateState(s => {
+                    const now = Date.now();
+                    const mono = _steadyNow();
+                    const scool = _mbGateHoldEnd(s.scool, now, mono, _mbgScoolSeen);
+                    if (mono > scool + _MBG_QUIET_MS) s.shot = 0;
+                    if (mono >= scool) s.shot = Math.min((s.shot || 0) + 1, 6);
+                    const ms = Math.min(Math.max(1000, ra) + jitter(), _MBG_MAX_HOLD);
+                    s.scool = Math.max(s.scool || 0, now + ms);
+                    _mbgScoolSeen.own = Math.max(_mbgScoolSeen.own, mono + ms);
+                    return { hold: Math.max(0, _mbGateHoldEnd(s.scool, now, mono, _mbgScoolSeen) - mono), shot: s.shot };
+                });
+                if (!res.ok) return { hold: 0, shed: true };
+                _mbgStats.holds++;
+                Lib.debug('mbgate', `HTTP 503 (search-shed)${raw != null ? ` (Retry-After: ${raw})` : ''} — searches hold `
+                    + `${Math.round(res.value.hold / 100) / 10} s; lookups go on`);
+                return { hold: res.value.hold, shed: true, shot: res.value.shot };
+            }
+            const load = /^global$/i.test(who);
             const res = await _mbGateState(s => {
                 const now = Date.now();
                 const mono = _steadyNow();
                 const cool = _mbGateHoldEnd(s.cool, now, mono);
                 if (mono > cool + _MBG_QUIET_MS) s.hot = 0;
-                if (mono >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);
-                const ms = Math.min(Math.max(1000, ra) * Math.max(1, s.hot), _MBG_MAX_HOLD);
+                if (!load && mono >= cool) s.hot = Math.min((s.hot || 0) + 1, 6);
+                const grow = load || raw != null ? 1 : Math.max(1, s.hot || 0);
+                const ms = Math.min(Math.max(1000, ra) * grow + jitter(), _MBG_MAX_HOLD);
                 s.cool = Math.max(s.cool || 0, now + ms);
                 _mbgHoldSeen.own = Math.max(_mbgHoldSeen.own, mono + ms);
                 return Math.max(0, _mbGateHoldEnd(s.cool, now, mono) - mono);
             });
-            if (!res.ok) return 0;
+            if (!res.ok) return { hold: 0, shed: false };
             _mbgStats.holds++;
-            Lib.debug('mbgate', `HTTP ${status}${raw != null ? ` (Retry-After: ${raw})` : ''} — every script holds `
+            Lib.debug('mbgate', `HTTP ${status}${raw != null ? ` (Retry-After: ${raw})` : ''}${who ? ` [${who.slice(0, 20)}]` : ''} — every script holds `
                 + `${Math.round(res.value / 100) / 10} s`);
-            return res.value;
+            return { hold: res.value, shed: false };
         }
         if (status >= 200 && status < 500) {
             await _mbGateState(s => {
                 const mono = _steadyNow();
-                if (s.hot) s.hot = mono > _mbGateHoldEnd(s.cool, Date.now(), mono) + _MBG_QUIET_MS ? 0 : s.hot - 1;
+                const now = Date.now();
+                if (s.hot) s.hot = mono > _mbGateHoldEnd(s.cool, now, mono) + _MBG_QUIET_MS ? 0 : s.hot - 1;
+                if (o.search && s.shot) s.shot = mono > _mbGateHoldEnd(s.scool, now, mono, _mbgScoolSeen) + _MBG_QUIET_MS ? 0 : s.shot - 1;
             });
         }
-        return 0;
+        return { hold: 0, shed: false };
     }
 
     /**
@@ -72426,14 +72514,17 @@
      * @param {string} url
      * @param {RequestInit} init
      * @param {{background?: boolean, cancelled?: ?function(): boolean, label?: string,
-     *          onWait?: ?function(string): void, id?: string, reason?: string}} [o]
+     *          onWait?: ?function(string): void, id?: string, reason?: string, search?: boolean}} [o] -
+     *        `search` defaults to "the URL has `query=`": a search also waits out a search-shed hold.
      * @returns {Promise<?Response>} `null` when `cancelled()` stopped it before it was sent.
      *          Rejects as `fetch()` does.
      */
     async function _mbGateFetch(url, init, o = {}) {
         if (!_mbGateGated(url)) return fetch(url, init);
+        // A search (`?query=`) also waits out a search-shed hold (upstream's mbnFetch()).
+        const search = o.search !== undefined ? !!o.search : /[?&]query=/.test(String(url));
         const trace = _mbGateTraceCtx(url, { id: o.id, reason: o.reason, background: o.background, method: init && init.method });
-        const slot = await _mbGateSlot({ ...o, trace });
+        const slot = await _mbGateSlot({ ...o, trace, search });
         if (!slot.ok) return null;
         let resp;
         try {
@@ -72442,7 +72533,7 @@
             _mbGateTrace({ e: 'error', ...trace, err: String((e && (e.name === 'AbortError' ? 'aborted' : e.message)) || e).slice(0, 80) });
             throw e;
         }
-        await _mbGateAnswer(resp.status, resp.headers.get('Retry-After'), { trace, header: (n) => resp.headers.get(n) });
+        await _mbGateAnswer(resp.status, resp.headers.get('Retry-After'), { trace, search, header: (n) => resp.headers.get(n) });
         return resp;
     }
 
@@ -198590,11 +198681,27 @@ a { color: #1565c0; }`;
                  */
                 stall: () => _mbgWake.stall,
                 /**
+                 * The shipping `_mbGateAnswer()`.
                  * @param {number} status
                  * @param {?string} retryAfter
-                 * @returns {Promise<number>} The hold, ms.
+                 * @param {?Object<string, string>} [headers] - Response headers (`X-RateLimit-Who`, …).
+                 * @param {boolean} [search] - The request was a search (`?query=`).
+                 * @returns {Promise<number>} The hold, ms (for a search-shed, the searches' hold).
                  */
-                answer: (status, retryAfter) => _mbGateAnswer(status, retryAfter == null ? null : retryAfter),
+                answer: (status, retryAfter, headers, search) => _mbGateAnswer(status, retryAfter == null ? null : retryAfter, {
+                    search: !!search,
+                    header: (n) => {
+                        const k = headers && Object.keys(headers).find((x) => x.toLowerCase() === String(n).toLowerCase());
+                        return k ? headers[k] : null;
+                    },
+                }),
+                /**
+                 * The shipping `_mbGateFetch()` (a `?query=` URL is a search).
+                 * @param {string} url
+                 * @param {Object} [o] - `_mbGateFetch()`'s options.
+                 * @returns {Promise<number>} The answer's status (0: cancelled).
+                 */
+                fetch: (url, o) => _mbGateFetch(url, { credentials: 'same-origin' }, o || {}).then((r) => (r ? r.status : 0)),
                 /**
                  * The gate's trace (`_mbGateTrace()`, String Theory's Network log).
                  */
