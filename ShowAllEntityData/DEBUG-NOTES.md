@@ -31753,7 +31753,7 @@ caught; the userscript restored and hash-verified.
 
 ## 2026-11-25 — search-shed, hold jitter and upstream's hot rule in the shared gate (feat/gate-search-shed, WIP.1)
 
-Env: 2026-11-25T20:19:55–20:22:46+01:00 (live probe) and 20:25–20:45 (specs, mutations) · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · browser check pending
+Env: 2026-11-25T20:19:55–20:22:46+01:00 (live probe) and 20:25–20:45 (specs, mutations) · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · browser check 22:16–22:40 CET in vzell's browser (versions unknown)
 
 SAED's port of majkinetor's gate answered every 429/503 the same way: a
 hold for every script in every tab, multiplied by `hot`. Upstream's
@@ -31791,3 +31791,27 @@ is recognised from its header alone. S10 (the booking's `book` row names the
 shed's wait), S11 (a shed that begins while a search waits) and a second
 search in S3 close them: `mb-gate-shed.json` 13/13, `mb-shared-gate.json`
 52/52 (11 finds re-pointed), the userscript restored and hash-verified.
+
+Browser check (vzell, 2026-11-25T22:16–22:40+01:00, his browser with String
+Theory, versions unknown; screenshots `debug/gate-search-shed-*.png`, not
+in git):
+
+- release group f83d2211 → ▶🔗: three `global` 503s (`Retry-After: 1`)
+  held everyone 1.3 s, 1.4 s and 1.1 s (1 s plus the jitter), `Hot 0`;
+- Bruce Springsteen's recordings → ⏱: a `global` 503 on a `length`
+  search held everyone 1.4 s, the retry got HTTP 200
+  (`debug/gate-search-shed-netlog-length-global-503.png`);
+- The Rolling Stones' recordings (b071f9fa) → ⏱, 22:37:23 CET: the first
+  real `search-shed` seen in a browser. The Activity log's `mbgate` line
+  reads "HTTP 503 (search-shed) (Retry-After: 1) — searches hold 1.2 s;
+  lookups go on" (`debug/gate-search-shed-activity-log-mbgate.png`);
+  String Theory's Network log "HTTP 503 · Retry-After 1 · searches hold
+  1.2s · rate limit search-shed", the retry booked with 0.1 s of the
+  search hold left and got HTTP 200, the chips `Hold none` and `Hot 0`
+  (`debug/gate-search-shed-netlog-search-shed.png`). One shed in a
+  323-row batch.
+
+The `who` shows in String Theory's log at the end of each expanded
+`answer` line ("rate limit global"), not in the Result column. Merged as
+9.99.1700 without a second `test:full` (vzell's call; the branch's run was
+3573/3574, one unrelated hover flake).
