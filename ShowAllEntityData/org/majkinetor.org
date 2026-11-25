@@ -3062,7 +3062,7 @@ the tabs do not react on clicks
 
 All other sites work as noted
 
-** fixed but why the "may" in the "COPY" note
+** DONE fixed but why the "may" in the "COPY" note
 
 1.)
 
@@ -3078,3 +3078,15 @@ https://brucebase.wikidot.com/1985 - [Image #11]
 https://brucebase.wikidot.com/1985-list - [Image #12]
 #+end_example
 
+
+** TODO 938 issue
+
+majkinetor answered at
+
+#+begin_example
+https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7167982614
+https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7168523739
+https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-7168915710
+#+end_example
+
+refresh his repo and tackle the new situation
