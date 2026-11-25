@@ -1034,12 +1034,15 @@ puts `mb-orig-tables` on `<body>`, and the switch swaps it for
 `_*PrepareLivePage()` call it right after inserting our section, at page
 init, and it puts `data-mb-site` on every `<body>` child AFTER our section
 (never an `mb-`/`mbu-` one); `_origViewStyle()` hides
-`body.mb-orig-tables > [data-mb-site]` LAID OUT, never `display: none`:
-off screen to the left, a window wide and high, `visibility: hidden`, no
-pointer. At 0 × 0 the site's own scripts measure nothing and react:
-archive.org's item page put `display: none` on its player and pictures
-(`#theatre-ia`) for good (vzell, 2026-11-25,
-`debug/ia-IP-release-ctrlmp-2-bug.html`). It names nothing on purpose: the
+`body.mb-orig-tables > [data-mb-site]` (`display: none`). The site's page is
+also not ours to fold: `makeH2sCollapsible()` leaves every h2 inside it
+alone, but on discogs.com (its section folds are a feature, 2026-10-24).
+It had folded archive.org's `h2.sr-only` and with it the player right
+after it, which the switch then showed folded away (vzell, 2026-11-25,
+`debug/ia-IP-release-ctrlmp-3-bug.html`). Found with a DOM breakpoint on
+the live page (`scripts/probe-ia-theatre-hide.js`); a first guess, that
+archive.org's own script hid it at 0 × 0, led to an off-screen hide that
+was taken back. It names nothing on purpose: the
 first rules named elements per host from the saved fixtures (`#app`,
 `<main>`, `#topnav`, …) and hid nothing on the live pages, whose `<body>`
 is built differently (Discogs' search: `div.flex` around header and

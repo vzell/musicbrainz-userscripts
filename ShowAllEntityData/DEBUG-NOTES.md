@@ -31504,3 +31504,36 @@ Mutations: two new entries in `original-page-toggle-live.json`, the hide
 rule's entry and `eh-body-swap.json`'s mask entry follow the code; all
 caught. The three sites' specs with both switch specs and
 `eh-body-swap-floating`: 319/319.
+
+## 2026-11-25 — Correction: archive.org's player was folded by makeH2sCollapsible(), not hidden by archive.org (feat/original-page-toggle, WIP.2)
+
+Env: 2026-11-25T10:26:43+01:00 → 10:38 · petri · WSL2 Ubuntu 24.04.3 LTS (Linux 6.18.58.1) · probe: live archive.org in Playwright 1.62.1, Chromium 151.0.7922.34 headless, userscript in test mode (GM stubs, the item's metadata from the saved fixture), bypassCSP · vzell's browser (version unknown), Tampermonkey 5.5.1
+
+The entry above blamed archive.org's own script reacting to a page held at
+0 × 0, and an off-screen "laid out" hide shipped on that guess. vzell's next
+check (`debug/ia-IP-release-ctrlmp-3-bug.html`): the player still gone.
+`scripts/probe-ia-theatre-hide.js` loads the live item page
+(https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16) with
+the userscript and reads `#theatre-ia` at four moments (log:
+`debug/probe-ia-theatre-hide.log`): visible on the initial page,
+`display: none` after the press, and so after the switch. Setter wrappers
+on the style object caught nothing (Chromium 151 puts the accessors where
+the first version did not look, and a document-start script cannot reach
+`document.documentElement`); a MutationObserver placed the write in the
+press; a DOM breakpoint (`DOMDebugger.setDOMBreakpoint`,
+`attribute-modified`) gave the stack: `makeH2sCollapsible` ←
+`startFetchingProcess`. It gives every h2 of the document a fold toggle and
+folds the content after it; archive.org's `h2.sr-only` sits right before
+`#theatre-ia` (and a styled h2 further down got one too). Before this
+branch that happened under our tables too, unseen.
+
+Fix: `makeH2sCollapsible()` skips h2s inside `[data-mb-site]`, except on
+discogs.com, whose section folds are a feature (2026-10-24). The probe after
+the fix (`debug/probe-ia-theatre-hide-after.log`): 1600 × 546 throughout,
+no write at all. The laid-out hide is taken back (`display: none` again,
+as vzell had checked it on Discogs and setlist.fm), with its test and
+mutation entry; the new test puts archive.org's markup (an `h2.sr-only`
+before `#theatre-ia`) into the live-shape fixture: the player is hidden
+after the switch without the fix (mutation run), visible with it. 319/319.
+Lesson recorded where it bites: a "site script reacts" theory needs the
+writer's stack before a fix, and the probe is now there for the next one.

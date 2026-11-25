@@ -232,13 +232,14 @@ test.describe('the original page on archive.org, as the live item page is built'
         expect(await shown(page, WRAP)).toEqual({ ours: false, wrap: true, skip: true, root: true });
     });
 
-    // vzell, 2026-11-25 (debug/ia-IP-release-ctrlmp-2-bug.html): after the
-    // switch, archive.org's player and pictures were gone: its own script had
-    // put display:none on #theatre-ia while we held the page at display:none
-    // (0 × 0). Stood in for here by a script that does the same on a zero
-    // width; the guarantee is that the site's page stays laid out, at a real
-    // width, while the table view hides it.
-    test('the site\'s page stays laid out while hidden, so its own scripts never see 0 × 0', async ({ page }) => {
+    // vzell, 2026-11-25 (debug/ia-IP-release-ctrlmp-2-bug.html, -3-bug.html):
+    // after the switch archive.org's player, pictures and tracklist header
+    // were gone. Not archive.org's doing (a first guess): a DOM breakpoint on
+    // #theatre-ia (scripts/probe-ia-theatre-hide.js, the live page) stopped in
+    // makeH2sCollapsible(), which gave archive.org's own h2.sr-only, right
+    // before the player, our fold toggle and folded it. The site's page is not
+    // ours to fold (but on Discogs, whose section folds are a feature).
+    test('archive.org\'s own headings get no fold: the player after its h2 is there after the switch', async ({ page }) => {
         const id = 'bs1975-12-27.aud.jk.cb.hrubesh.flac16';
         await page.route(/^https?:\/\//, (route) => route.abort('blockedbyclient'));
         await page.context().addInitScript((r) => { window.__gmXhrResponses = r; }, answers(`ia-metadata-${id}`));
@@ -246,27 +247,19 @@ test.describe('the original page on archive.org, as the live item page is built'
             url: `https://archive.org/details/${id}`, fixtureFile: path.join(__dirname, 'ia-details-wrap.html'), testMode: true,
             settingsOverride: { sa_enable_internetarchive: true, sa_render_threshold: 100000 },
         });
+        // archive.org's markup around its player (debug/ia-IP-release-ctrlmp-bug.html).
         await page.evaluate(() => {
-            const wrap = document.getElementById('wrap');
-            const theatre = document.createElement('div');
-            theatre.id = 'theatre-ia';
-            theatre.textContent = 'player and pictures';
-            wrap.prepend(theatre);
-            // As archive.org's own code did: nothing to measure, nothing to show.
-            new ResizeObserver(() => { if (theatre.getBoundingClientRect().width === 0) theatre.style.display = 'none'; }).observe(theatre);
+            document.getElementById('wrap').insertAdjacentHTML('afterbegin',
+                '<div id="theatre-ia-wrap"><h2 class="sr-only">Audio Preview</h2>'
+                + '<div id="theatre-ia"><div class="row">player and pictures</div></div></div>');
         });
         await page.locator('#mb-ia-root button[data-label="Show all tracks"]').click();
         await waitForRenderComplete(page, { waitForAutoResize: false });
-        const hidden = await page.evaluate(() => {
-            const w = document.getElementById('wrap').getBoundingClientRect();
-            return { width: Math.round(w.width), onScreen: w.right > 0, visibility: getComputedStyle(document.getElementById('wrap')).visibility };
-        });
-        expect(hidden.width, 'laid out at a real width').toBeGreaterThan(300);
-        expect(hidden).toMatchObject({ onScreen: false, visibility: 'hidden' });
-        // A scroll of the page reaches no further than our section and a window.
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
         await switchByKey(page);
         await expect(page.locator('#theatre-ia')).toBeVisible();
+        await expect(page.locator('#theatre-ia-wrap > h2')).not.toHaveClass(/\bmb-toggle-h2\b/);
+        // Our own headings still fold.
+        expect(await page.locator('#mb-ia-root h2.mb-toggle-h2').count()).toBeGreaterThan(0);
     });
 });
 

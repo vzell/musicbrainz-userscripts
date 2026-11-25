@@ -61,7 +61,8 @@ no button: advancedsearch.php does not index what it searches.
   after our section, marked at init (`_origViewTagSite()`): `<app-root>` on
   a search; on a live item page `div#wrap` (top bar and content) and its
   overlays, not the fixture's bare `#topnav`/`main` (`ia-details-wrap.html`
-  has the live shape). Ctrl+M P / ☰ View
+  has the live shape). archive.org's own h2s get no fold toggle (its
+  `h2.sr-only` before the player had folded the player away). Ctrl+M P / ☰ View
   "Show the original page" shows it again, live
   (docs/claude/toolbar-and-header-ui.md, "Switching to the original page").
 - `features.iaToTable` → `applyIaToTable()`: an empty `table.tbl.mb-ia-table`

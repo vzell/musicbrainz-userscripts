@@ -2737,3 +2737,11 @@ IA release pages now do NOT show the IP after our table, but when switching back
 @debug/ia-IP-release-ctrlmp-bug.html - IP - https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16 - header area with images, player and tracklist present
 @debug/ia-IP-release-ctrlmp-2-bug.html - IP - https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16 - header area with images, player and tracklist vanished after pressing "Ctrl-M P" - [Image #5]
 #+end_example
+
+** fixed except
+
+Everything is fixed except the IA release pages when switching back to the original page the header area with images, player and tracklist are still vanished
+
+#+begin_example
+@debug/ia-IP-release-ctrlmp-3-bug.html
+#+end_example

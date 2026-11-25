@@ -114087,18 +114087,13 @@ ${sections.join('\n')}
         const s = document.createElement('style');
         s.id = 'mb-orig-view-css';
         // A live site's own page: what `_origViewTagSite()` marked, every
-        // <body> child after our section at page init. Hidden LAID OUT, never
-        // `display: none`: at 0 × 0 the site's own scripts measure nothing and
-        // react (archive.org's item page hid its player and pictures for good,
-        // `#theatre-ia` got `display: none`; vzell, 2026-11-25,
-        // debug/ia-IP-release-ctrlmp-2-bug.html). So: off screen to the left
-        // (no scrollbar there), a window wide and high (it adds no page
-        // height), invisible and out of reach of the pointer.
+        // <body> child after our section at page init. (A laid-out hide, off
+        // screen, was tried on 2026-11-25 against archive.org's vanished
+        // player and taken back: the player was folded by makeH2sCollapsible(),
+        // not hidden by archive.org's script; scripts/probe-ia-theatre-hide.js.)
         s.textContent = [
             `body.${_ORIG_VIEW_CLASS} #page:not([data-mb-orig-copy]) { display: none !important; }`,
-            `body.${_ORIG_TABLES_CLASS} > [data-mb-site] { position: absolute !important; top: 0 !important;`,
-            '    left: -200vw !important; right: auto !important; width: 100vw !important; height: 100vh !important;',
-            '    overflow: hidden !important; visibility: hidden !important; pointer-events: none !important; }',
+            `body.${_ORIG_TABLES_CLASS} > [data-mb-site] { display: none !important; }`,
             `body.${_ORIG_SITE_CLASS} > :is(#mb-dg-root, #mb-ia-root, #mb-sfm-root) { display: none !important; }`,
             `body:not(.${_ORIG_SITE_CLASS}) > #mb-orig-live-note { display: none !important; }`,
             '#mb-orig-live-note { margin: 10px 12px; }',
@@ -151713,12 +151708,24 @@ a { color: #1565c0; }`;
      * the header's own siblings; an h2 in a table cell (the release's info
      * table: "Label:", "Format:") is no section and gets no toggle
      * (org/TODO.org "some more BB and MB fixes/enhancements" 5c, 2026-10-24).
+     *
+     * Elsewhere a live site's own page (`[data-mb-site]`: archive.org,
+     * setlist.fm) is left alone: its h2s get no toggle and fold nothing
+     * (2026-11-25: archive.org's player hid under its `h2.sr-only`).
      */
     function makeH2sCollapsible() {
         Lib.debug('render', 'Initializing collapsible H2 headers...');
         const _h2PassT0 = performance.now();
-        // Capture all H2s currently in the document to allow peer filtering later
-        const allH2s = Array.from(document.querySelectorAll('h2'));
+        // Capture all H2s currently in the document to allow peer filtering later.
+        // A live site's own page (`data-mb-site`, `_origViewTagSite()`) is not
+        // ours to fold, but on discogs.com, whose section headings fold on
+        // purpose (2026-10-24, `_dgSectionHeader()`): archive.org's item page
+        // has an `h2.sr-only` right before its player, and folding it hid the
+        // player, which the switch then showed folded away (vzell, 2026-11-25,
+        // debug/ia-IP-release-ctrlmp-3-bug.html; scripts/probe-ia-theatre-hide.js
+        // stopped on the write in makeH2sCollapsible()).
+        const allH2s = Array.from(document.querySelectorAll('h2'))
+            .filter(h2 => _isDgHost || !h2.closest('[data-mb-site]'));
         const _sbSidebarEl = document.getElementById('sidebar');
         const _dgAppEl = _isDgHost ? document.getElementById('app') : null;
 
