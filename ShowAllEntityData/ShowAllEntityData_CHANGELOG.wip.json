@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-25",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "In String Theory's Network log (Ctrl+Alt+N), this script's rows now carry its own icon, the small table of its entries in Event Horizon's ⋯ menu, instead of String Theory's. It needs String Theory 2026.11.25.174628 or newer, which reads a script's icon from the shared browser storage (mbu.logIcons); this script writes its entry there once, on musicbrainz.org, when it first logs a request, and keeps every other script's entry. Like the log rows, only with \"Share MusicBrainz's request budget with other userscripts (mbu:mb-gate)\" on."
+        ]
+      }
+    ]
+  }
+]

@@ -1015,6 +1015,15 @@ test.describe('shared request gate: a write lowers a broken hold or lead in stor
 //      without the failing request let that check go untested).
 //  T7. SECRETS ARE HIDDEN. `token`/`api_key` values become •••, `barcode`
 //      and `keyword` stay.
+//  T8. THE LOG'S ICON. The first write of a page names this script's icon in
+//      the shared `mbu.logIcons` (String Theory's `stGateIconSrc()`, 8384078):
+//      `ShowAllEntityData` → the ⋯-menu table icon (a 16 px SVG data URI);
+//      another script's entry stays. (T6 also asserts nothing is written
+//      with the gate off.)
+//  T9. ONE READ, NO REWRITE. With the entry already there, a later page and a
+//      later write of the same page do not write the key again.
+//  T10. A BROKEN VALUE IS REPLACED. Not JSON, an array, a string or null:
+//      the key becomes an object holding this script's entry.
 
 const TRACE_PRE = 'mbu:mb-gate-trace:';
 
@@ -1194,6 +1203,7 @@ test.describe("the gate's trace (String Theory's Network log)", () => {
         const t = await readTrace(page);
         expect(t.keys).toEqual([]);
         expect(await page.evaluate(() => window.__saTest.mbGate.trace.tab())).toBe('');
+        expect(await page.evaluate(() => localStorage.getItem('mbu.logIcons')), 'no icon for the log either').toBeNull();
     });
 
     test('T7: a secret in a URL is hidden; ordinary keys that end alike are not', async ({ page }) => {
@@ -1202,5 +1212,72 @@ test.describe("the gate's trace (String Theory's Network log)", () => {
         expect(await h('/ws/2/x?token=abc&barcode=123')).toBe('/ws/2/x?token=•••&barcode=123');
         expect(await h('/x?api_key=k1&keyword=rock&apiKey=k2')).toBe('/x?api_key=•••&keyword=rock&apiKey=•••');
         expect(await h('/x?query=arid:1')).toBe('/x?query=arid:1');
+    });
+
+    test("T8: the first write names this script's icon in mbu.logIcons; another script's entry stays", async ({ page }) => {
+        await loadRelPage(page, null);
+        const r = await page.evaluate(async () => {
+            const g = window.__saTest.mbGate;
+            localStorage.setItem('mbu.logIcons', JSON.stringify({ 'Some Script': 'https://example.org/i.png' }));
+            g.trace.iconAgain();
+            await g.slot({ background: false, trace: { id: 'i1', l: 'icon', m: 'GET', b: 0 } });
+            g.trace.flush();
+            return { icons: JSON.parse(localStorage.getItem('mbu.logIcons')), icon: g.trace.icon() };
+        });
+        expect(r.icon, 'a data URI, so the log makes no request').toMatch(/^data:image\/svg\+xml,/);
+        expect(decodeURIComponent(r.icon.slice('data:image/svg+xml,'.length)), 'the 16 px table of the ⋯ menu').toContain('viewBox="0 0 16 16"');
+        expect(r.icons.ShowAllEntityData, 'keyed by the rows\' name s').toBe(r.icon);
+        expect(r.icons['Some Script'], "another script's icon is kept").toBe('https://example.org/i.png');
+    });
+
+    test('T9: with the entry already there, neither a later page nor a later write rewrites the key', async ({ page }) => {
+        await loadRelPage(page, null);
+        const r = await page.evaluate(async () => {
+            const g = window.__saTest.mbGate;
+            const step = async (id) => {
+                await g.slot({ background: false, trace: { id, l: 'icon', m: 'GET', b: 0 } });
+                g.trace.flush();
+            };
+            localStorage.removeItem('mbu.logIcons');
+            g.trace.iconAgain();
+            await step('a');
+            const first = localStorage.getItem('mbu.logIcons');
+            let writes = 0;
+            const real = Storage.prototype.setItem;
+            Storage.prototype.setItem = function (k, v) {
+                if (k === 'mbu.logIcons') writes += 1;
+                return real.call(this, k, v);
+            };
+            try {
+                g.trace.iconAgain();   // as a new page would: the entry is already stored
+                await step('b');
+                await step('c');       // a later write of the same page
+            } finally { Storage.prototype.setItem = real; }
+            return { first, writes, after: localStorage.getItem('mbu.logIcons') };
+        });
+        expect(r.first, 'the first write stored it').toBeTruthy();
+        expect(r.writes, 'one read, no write when the entry is the same').toBe(0);
+        expect(r.after).toBe(r.first);
+    });
+
+    test('T10: a broken mbu.logIcons value is replaced by an object with this script\'s entry', async ({ page }) => {
+        await loadRelPage(page, null);
+        const out = await page.evaluate(async () => {
+            const g = window.__saTest.mbGate;
+            const res = {};
+            for (const bad of ['not json', '[1,2]', '"str"', 'null']) {
+                localStorage.setItem('mbu.logIcons', bad);
+                g.trace.iconAgain();
+                await g.slot({ background: false, trace: { id: 'x', l: 'icon', m: 'GET', b: 0 } });
+                g.trace.flush();
+                let v;
+                try { v = JSON.parse(localStorage.getItem('mbu.logIcons')); } catch (_) { v = 'unparsable'; }
+                res[bad] = { plain: !!v && typeof v === 'object' && !Array.isArray(v), mine: v && v.ShowAllEntityData === g.trace.icon() };
+            }
+            return res;
+        });
+        for (const [bad, v] of Object.entries(out)) {
+            expect(v, `stored value ${bad}`).toEqual({ plain: true, mine: true });
+        }
     });
 });
