@@ -1106,7 +1106,10 @@ region nor the live sites' "what follows our section" fits.
   click is `guardAnchorClick()`, shared as `_origView.navGuard` (a link into
   one of the site's named frames is not asked about). The site's filter
   links (brucespringsteen.it) are only there now, since the table view hides
-  the form.
+  the form. The one script behaviour the copy gets back: a wikidot tabview's
+  tabs (Brucebase's song list letters, the side bar's News/Media/Released)
+  switch their panels, `_origViewFrameTab()` from the same click listener
+  (vzell, 2026-11-25: "the tabs do not react on clicks" on stats:songs).
 - **Brucebase detail pages** (an event, song, venue, person, release,
   story, tag page: `h2.mb-bb-native-h2` after the render): the LIVE wiki page
   in place instead (vzell, 2026-11-25, "Live wiki page"; the mockup's
@@ -1119,7 +1122,7 @@ region nor the live sites' "what follows our section" fits.
   (`makeH2sCollapsible()`), or the live view would show them folded.
 
 Spec: `tests/fixtures/original-page-toggle-frame.spec.js`; mutations:
-`scripts/mutations/original-page-toggle-frame.json` (17). Specs that worked
+`scripts/mutations/original-page-toggle-frame.json` (18). Specs that worked
 on the site's page under our tables now switch first or ignore what the
 table view hides (`bb-event`, `bb-songs`, `sl-sticky-headers`,
 `bs-records`), and two layout-dependent tests were made robust where the

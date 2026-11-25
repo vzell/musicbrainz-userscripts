@@ -220,5 +220,18 @@
     "grep": "touch drag on the corner grip",
     "project": "chromium-mobile",
     "expect": "fail"
+  },
+  {
+    "name": "the copy's tabview tabs are not switched",
+    "why": "The frame runs no script, so the wiki's YUI tabs of stats:songs did nothing (vzell, 2026-11-25).",
+    "edits": [
+      {
+        "find": "            if (a && _origViewFrameTab(a)) { e.preventDefault(); return; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/original-page-toggle-frame.spec.js",
+    "grep": "a letter tab of the copy switches its panel",
+    "expect": "fail"
   }
 ]

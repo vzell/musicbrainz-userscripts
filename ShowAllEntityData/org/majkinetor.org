@@ -2702,7 +2702,7 @@ On e.g. https://musicbrainz.org/release/22a6802f-d22e-4f47-9f22-6aac257a4194 whe
 
 I dont want to see and hear any artifacts of his player, as we currently have our own player implementation
 
-** shine through bugs
+** DONE shine through bugs
 
 1.)
 
@@ -2731,7 +2731,7 @@ https://www.setlist.fm/setlist/bruce-springsteen/1976/the-stone-pony-asbury-park
 @debug/sfm-black-area-bug.html - FRP - https://www.setlist.fm/setlists/bruce-springsteen-2bd6dcce.html?tour=53d7e759 - [Image #2] - after scrolling down and the header line turns black
 #+end_example
 
-** bugs
+** DONE bugs
 
 1.)
 
@@ -2746,10 +2746,42 @@ IA release pages now do NOT show the IP after our table, but when switching back
 @debug/ia-IP-release-ctrlmp-2-bug.html - IP - https://archive.org/details/bs1975-12-27.aud.jk.cb.hrubesh.flac16 - header area with images, player and tracklist vanished after pressing "Ctrl-M P" - [Image #5]
 #+end_example
 
-** fixed except
+** DONE fixed except
 
 Everything is fixed except the IA release pages when switching back to the original page the header area with images, player and tracklist are still vanished
 
 #+begin_example
 @debug/ia-IP-release-ctrlmp-3-bug.html
 #+end_example
+
+** BB bugs
+
+1.)
+
+On e.g.
+
+#+begin_example
+https://brucebase.wikidot.com/gig:1978-07-07-roxy-theatre-west-hollywood-ca
+https://brucebase.wikidot.com/song:the-promise
+https://brucebase.wikidot.com/stats:discography-album
+https://brucebase.wikidot.com/stats:on-the-tracks-songs
+https://brucebase.wikidot.com/stats:lyrics-by-album
+https://brucebase.wikidot.com/stats:born-in-the-usa-studio-sessions
+https://brucebase.wikidot.com/stats:discography-playlist
+#+end_example
+
+"Ctrl-M P" works and all tabs are functioning when clicking them.
+
+2.)
+
+On e.g.
+
+#+begin_example
+https://brucebase.wikidot.com/stats:songs
+#+end_example
+
+the tabs do not react on clicks
+
+3.)
+
+All other sites work as noted

@@ -159,6 +159,30 @@ test.describe('the original page on brucebase.wikidot.com', () => {
         await page.locator(BACK).click();
         await expect(page.locator(FRAME)).toBeHidden();
     });
+
+    // vzell, 2026-11-25: "the tabs do not react on clicks" (the frame runs no
+    // script; _origViewFrameTab() switches them).
+    test('the songs page: a letter tab of the copy switches its panel, as the wiki does', async ({ page }) => {
+        await loadBbSongsPage(page);
+        await press(page, BB_BUTTON);
+        await clickToolbarItem(page, ROW);
+        const fl = page.frameLocator(FRAME);
+        const tabState = () => page.locator(FRAME).evaluate((fr) => {
+            const set = fr.contentDocument.querySelector('#page-content .yui-navset');
+            const lis = Array.from(set.querySelector('.yui-nav').children);
+            const panels = Array.from(set.querySelector('.yui-content').children);
+            return {
+                selected: lis.findIndex(li => li.classList.contains('selected')),
+                shown: panels.map((p, k) => (p.getClientRects().length ? k : -1)).filter(k => k >= 0),
+            };
+        });
+        expect(await tabState()).toEqual({ selected: 0, shown: [0] });
+        await fl.locator('#page-content .yui-nav a', { hasText: '=- B -=' }).click();
+        expect(await tabState()).toEqual({ selected: 2, shown: [2] });
+        await expect(page.locator(FRAME)).toBeVisible();
+        await fl.locator('#page-content .yui-nav a', { hasText: '=- 0-9 -=' }).click();
+        expect(await tabState()).toEqual({ selected: 0, shown: [0] });
+    });
 });
 
 // The table view (vzell's answer to the mockup's question 4): only our

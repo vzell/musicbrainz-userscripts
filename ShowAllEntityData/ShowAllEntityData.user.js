@@ -114180,6 +114180,35 @@ ${sections.join('\n')}
     }
 
     /**
+     * A tab of a wikidot tabview in the original-page frame (Brucebase's
+     * song list: the `=- A -=` letter tabs, and the side bar's
+     * News/Media/Released): switches it as the wiki's YUI script would, which
+     * the frame does not run (vzell, 2026-11-25: "the tabs do not react on
+     * clicks" on stats:songs). The tab's `<li>` becomes `selected` (with the
+     * wiki's `title="active"`), the panel at its index in the navset's
+     * `.yui-content` shows, the others hide.
+     *
+     * @param {HTMLAnchorElement} a - The link clicked in the frame.
+     * @returns {boolean} True when it was such a tab (the click is handled).
+     */
+    function _origViewFrameTab(a) {
+        const li = a.parentElement;
+        const nav = li && li.tagName === 'LI' ? li.parentElement : null;
+        const set = nav && nav.classList.contains('yui-nav') ? nav.closest('.yui-navset') : null;
+        if (!set) return false;
+        const tabs = Array.from(nav.children);
+        const i = tabs.indexOf(li);
+        const content = Array.from(set.children).find(el => el.classList.contains('yui-content'));
+        const panels = content ? Array.from(content.children) : [];
+        tabs.forEach((t, k) => {
+            t.classList.toggle('selected', k === i);
+            if (k === i) t.setAttribute('title', 'active'); else t.removeAttribute('title');
+        });
+        panels.forEach((p, k) => { p.style.display = k === i ? 'block' : 'none'; });
+        return true;
+    }
+
+    /**
      * The prefix key, then P, inside the original-page frame: back to the
      * tables, as `ctrlMFunctionMap.p` does outside it.
      *
@@ -114196,6 +114225,7 @@ ${sections.join('\n')}
         // frameset's targets) opens elsewhere and is not asked about.
         d.addEventListener('click', (e) => {
             const a = e.target && e.target.closest && e.target.closest('a[href]');
+            if (a && _origViewFrameTab(a)) { e.preventDefault(); return; }
             if (!a || !_origView.navGuard) return;
             const t = (a.getAttribute('target') || '').toLowerCase();
             if (t && !['_self', '_top', '_parent'].includes(t)) return;
