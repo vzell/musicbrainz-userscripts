@@ -31682,3 +31682,42 @@ listeners only. It got a click listener: 3/3 then. That is a real-finger
 improvement as well. After the updates: 86/86 in those files, 164/164 in
 every spec of the leave-page guard, mutations 17/17 (+ the moved Event
 Horizon guard entry).
+
+## 2026-11-25 — majkinetor refresh: 9f8aa0c → 8384078, his answers on #938 (chore/refresh-majkinetor-8384078)
+
+Env: 2026-11-25T19:18:43–19:24:46+01:00 (probe) · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · SAED 9.99.1698 (=9b250fc6=) · code reading: n/a
+
+majkinetor answered every open question on #938 at 17:26 CET (himself) and
+17:46 CET (milic-bot, on `main` as `79a48b4`), and closed the issue at
+18:02 CET; further posts go to the repo's Discussions, category
+"Integration". The clone moved to `8384078` (String Theory
+2026.11.25.191333, Event Horizon 2026.11.25.191238, ISRC Scout 2026.11.25,
+a date-only stamp); the three harness copies were re-copied and their
+manifest entries re-scanned.
+
+What changed for SAED, all recorded in `org/majkinetor.org`:
+
+- Event Horizon's player: his answer is "You shouldn't start player and
+  disable EH"; nothing changes upstream, so our 9.99.1680 fallback stays.
+- The gate's pace: internal, found by testing; DEVELOP.md no longer states a
+  gap or a burst, and "SAED's one-second slot … is fine". The gate's code
+  did not change (no diff under `dev/net/`).
+- The trace: documented in DEVELOP.md "Request trace", "new and not yet
+  stable". SAED writes a subset of the events, which the section allows.
+- Apollo sets `mbLastWrite` again (alias editor and release editor).
+- `:root[data-mbu-quiet]` hides String Theory's HUD `#st-gate-hud-box`, so
+  SAED's quiet mark (C4) takes it off our table; nothing to build.
+- `localStorage['mbu.logIcons']` gives a script outside the suite its icon
+  in the Network log (`stGateIconSrc()`): new TODO, built next on
+  `feat/saed-log-icon`.
+
+Probe (live musicbrainz.org): every structural row as in the morning.
+SAED's rows are in the trace under its own name, *measured*: case 0 66 rows,
+`saWs2Traced` 2/2; case D 69 of 141 rows, 3/3 (Event Horizon's rows carry
+the stub's "ShowAllEntityData (test)" in the harness). Case D: up to six
+responses a second, nine 503s, seven on Event Horizon's searches and
+browse, two on SAED's `artist?inc=url-rels`; a search-only hold (`scool`)
+was in the stored schedule. Anchors 141/141: `saed-mbu-awareness` (count 8,
+the original-page switch reads `data-mbu-dock` too), `conv-c7` and
+`c7-writer-apollo` (count 2 each, Apollo's flipped to present) and three
+Network log claims rewritten; seven added.
