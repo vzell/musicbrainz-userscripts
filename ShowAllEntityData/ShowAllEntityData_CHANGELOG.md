@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1871 versions; the month pages hold all of them.
+This page shows the newest 100 of 1872 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1701 — 2026-11-26
+
+**🐛 Fix**
+
+- When MusicBrainz answered a "Show all" page with its "Verifying your browser" page (once a day, after the browser's check expired), that page was taken for the list page: its rows were silently missing and the run called itself complete ("Loaded 3 pages (200 rows)" of 300), and on the request for the page count the whole list came out as one empty page. Now the script lets MusicBrainz verify the browser in a hidden frame and asks for the page again, as majkinetor's scripts do; if that does not work, the page counts as failed, the status line says INCOMPLETE and why, and ↻ Load the missing pages carries on. The link previews' cards also no longer take an ordinary page for the check because of a beacon address it contains.
+
 
 ## 9.99.1700 — 2026-11-25
 
@@ -851,17 +858,6 @@ This page shows the newest 100 of 1871 versions; the month pages hold all of the
 **🚀 Feature**
 
 - Brucebase song pages get a button, "Song": the credits (each release, who played what), the performances counted by tour (only the tours it was played on, with its share of the shows), every performance, multiple performances on one date, snippets, the official live downloads and its takes On The Tracks (title, take, running time, the bootlegs and releases it is on), as tables you can filter and sort. Above them: where the song comes from, Released on Album, the lyrics and notes (folded), a Song card (how often and when last played live, released on, live downloads, takes), its tags, media and links; the wiki's page folded below. An On The Tracks page gets "Versions": its takes as one table. Nothing is fetched. The setting is now called "Detail pages: events and songs as tables".
-
-
-## 9.99.1601 — 2026-11-13
-
-**🚀 Feature**
-
-- Brucebase event pages (a gig, a show that did not happen, a recording session, a rehearsal, an interview) get a button, "Event", that lays the page out like a MusicBrainz release, from the page itself with nothing fetched. Above the tables: what it was, where and when; About this show; an Event card (type, date and weekday, scheduled time, venue, tour, the year page, running time), the page's tags by family and its YouTube links; the pictures with a chip per kind and per photographer. The tables: the Setlist as one table (Set, \#, Song in MusicBrainz style, Segue, Premiere ★ for a song in bold on the wiki, Note), who was on stage with their band and role, the other shows at the venue (this one in bold), the recordings (official releases, bootlegs with their labels, the live download) and the Storyteller's words by song. The wiki's own page stays below, folded, its headings folding too. Setting "Event pages: a detail view of the gig" (on). Mockup: https://claude.ai/artifact/3rAGVKsBHEv9jGspkJ5X7Z
-
-**🐛 Fix**
-
-- Brucebase previews: the scheduled time is read on pages that write it "Scheduled: 21:00 \| Local Start Time …" too; the card left it out.
 
 
 ---
