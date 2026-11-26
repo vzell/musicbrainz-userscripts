@@ -725,7 +725,11 @@ of ours.
   📊 `dgmbcount:candidate` (`_findCellDgMbCount()`, ranked after the
   numbers, ringed by `_highlightDgMbCountMatch()`). `.mb-dg-mb-eq` and
   `.mb-dg-mb-copy` are in `_CLEAN_STRIP_SEL`. Job popup provider `dgbc`.
-  Spec `tests/fixtures/discogs-mb-barcodes.spec.js` (BC1–BC5), mutations
+  A click on the running button ("■ k / N") stops the run; the popup then
+  says "Stopped after k of N" with the job phase `stopped` (added to
+  `_AJ_PHASES`), never "finished" (vzell's browser check: a run he stopped
+  for a screenshot read "4 / 60 … finished, DONE").
+  Spec `tests/fixtures/discogs-mb-barcodes.spec.js` (BC1–BC6), mutations
   `scripts/mutations/dg-mb-barcodes.json`.
 - **📊:** section `dgMbCount` "MusicBrainz - Links" (🧠, kind `dgmbcount`,
   `_findCellDgMbCount()` reads `data-mb-dg-n`/`-state`), entries "» MB links:

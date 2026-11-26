@@ -31933,3 +31933,13 @@ host grouping never compared. Three releases link two different Discogs
 releases (rel-multi-site, unchanged). Of his first 300 release groups none
 links a page twice. Output `debug/probe-rel-page-keys-bruce-*.json` (not in
 git). `test:full` on `d58b3ef8`: 3587/3587 (tests/MEASUREMENTS.org).
+
+Browser check (vzell, 2026-11-26, his browser, versions unknown;
+`debug/link-page-keys-*.png`, not in git): rel-same-page shows on the
+Darkness release (`c9c1961b…`), naming both Qobuz forms and marking the
+hovered icon; rel-multi-site unchanged; the barcode run works on Born To
+Run's master (🔎 242; no candidates among the four asked: Discogs lists no
+barcode for them). He stopped the run for a screenshot, and the popup
+read "4 / 60 … finished, DONE", which looked like a complete run. Now a
+stopped run says "Stopped after k of N" with a Stopped badge (a `stopped`
+phase in `_AJ_PHASES`) and 🔎 counts the rest; BC6 and a mutation pin it.

@@ -167,5 +167,18 @@
     "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
     "grep": "the button counts what to try",
     "expect": "pass"
+  },
+  {
+    "name": "a stopped run says finished",
+    "why": "vzell's browser check: a run stopped after 4 of 60 read 'finished' and DONE, as if every release had been asked.",
+    "edits": [
+      {
+        "find": "        if (_dgBc.stop && asked < _dgBc.total) {\n",
+        "replace": "        if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "BC6: a click on",
+    "expect": "fail"
   }
 ]

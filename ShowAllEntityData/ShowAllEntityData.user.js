@@ -23205,7 +23205,7 @@
     /** How long a candidate, a "no match" or a "no barcode" is kept: a candidate can become a link at any time. */
     const _DG_BC_TTL_MS = 7 * 86400000;
     /** The barcode job's state, for its header button and the job popup. */
-    const _dgBc = { running: false, stop: false, total: 0, done: 0, failed: 0, found: 0, requests: 0 };
+    const _dgBc = { running: false, stop: false, stopped: false, total: 0, done: 0, failed: 0, found: 0, requests: 0 };
 
     /**
      * Our store's key of a release's barcode answer, beside the importer's
@@ -23365,7 +23365,7 @@
         const todo = _dgBcTodo().slice(0, cap);
         if (!todo.length) { _dgMbUpdateHdrBtns(); return; }
         _dgBcRegisterProvider();
-        Object.assign(_dgBc, { running: true, stop: false, total: todo.length, done: 0, failed: 0, found: 0, requests: 0 });
+        Object.assign(_dgBc, { running: true, stop: false, stopped: false, total: todo.length, done: 0, failed: 0, found: 0, requests: 0 });
         _ajStart('dgbc', null, { user: true, anchor });
         _ajLog('dgbc', null, `${todo.length} release${todo.length === 1 ? '' : 's'} without a MusicBrainz link`);
         _dgMbUpdateHdrBtns();
@@ -23389,7 +23389,19 @@
             _dgMbScheduleRefresh(false);
         }
         _dgBc.running = false;
-        _ajFinish('dgbc', null, _dgBc.failed);
+        const asked = _dgBc.done + _dgBc.failed;
+        if (_dgBc.stop && asked < _dgBc.total) {
+            // A click on "■ k / N" stops the run: say so, never "finished"
+            // (vzell's browser check, 2026-11-26: "4 / 60 … finished, DONE").
+            _dgBc.stopped = true;
+            const job = _ajJob('dgbc', null);
+            if (job) { job.phase = 'stopped'; job.t1 = Date.now(); }
+            _ajLog('dgbc', null, `stopped after ${asked} of ${_dgBc.total}; 🔎 asks for the rest`, 'bad');
+            _ajChanged('dgbc', null);
+        } else {
+            _ajFinish('dgbc', null, _dgBc.failed);
+        }
+        _dgMbUpdateHdrBtns();
         _dgMbScheduleRefresh(true);
     }
 
@@ -23416,9 +23428,12 @@
                     const n = _dgBcTodo().length;
                     return { phase: 'idle', summary: n ? `${fmt(n)} releases without a MusicBrainz link. Click 🔎 to look for them by barcode.` : 'No release left to look for by barcode.', facts, actions };
                 }
+                const asked = _dgBc.done + _dgBc.failed;
                 return {
-                    phase: job.t1 ? 'done' : 'running',
-                    summary: `Barcodes for ${fmt(_dgBc.total)} Discogs release${_dgBc.total === 1 ? '' : 's'}: ${fmt(_dgBc.found)} with a candidate`,
+                    phase: !job.t1 ? 'running' : _dgBc.stopped ? 'stopped' : _dgBc.failed ? 'doneErr' : 'done',
+                    summary: _dgBc.stopped
+                        ? `Stopped after ${fmt(asked)} of ${fmt(_dgBc.total)} Discogs releases: ${fmt(_dgBc.found)} with a candidate`
+                        : `Barcodes for ${fmt(_dgBc.total)} Discogs release${_dgBc.total === 1 ? '' : 's'}: ${fmt(_dgBc.found)} with a candidate`,
                     done: _dgBc.done, total: _dgBc.total, failed: _dgBc.failed,
                     queued: Math.max(0, _dgBc.total - _dgBc.done - _dgBc.failed), unit: 'releases',
                     facts: facts.concat([['Requests', fmt(_dgBc.requests)]]), actions,
@@ -133537,6 +133552,7 @@ a { color: #1565c0; }`;
         paused:  ['Paused', 'warn'],
         done:    ['Done', 'ok'],
         doneErr: ['Done with errors', 'err'],
+        stopped: ['Stopped', 'warn'],
         error:   ['Failed', 'err']
     };
 

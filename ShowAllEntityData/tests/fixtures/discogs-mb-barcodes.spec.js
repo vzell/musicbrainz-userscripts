@@ -229,4 +229,24 @@ test.describe('discogs.com: barcode candidates in the MusicBrainz column', () =>
         expect(mbSearches(await log(page))).toEqual([]);
         expect(errors).toEqual([]);
     });
+
+    test('BC6: a click on "■ k / N" stops the run, the popup says "Stopped after", 🔎 counts the rest', async ({ page }) => {
+        // vzell's browser check (2026-11-26): a run that ended after 4 of 60
+        // read "finished" and DONE, so a stop looked like the whole run.
+        const { errors } = await openDg(page);
+        await bcBtn(page).click();
+        await expect(bcBtn(page)).toHaveText(/^■ [1-3] \/ 4$/, { timeout: 15000 });
+        await bcBtn(page).click();
+        await expect(bcBtn(page)).toHaveText(/^🔎 [1-3]$/, { timeout: 15000 });
+        const asked = discogsReleaseAsks(await log(page)).length;
+        expect(asked, 'the run stopped before the last release').toBeLessThan(4);
+        await expect(bcBtn(page)).toHaveText(`🔎 ${4 - asked}`);
+        await bcBtn(page).hover();
+        const pop = page.locator('#mb-async-pop');
+        await expect(pop).toBeVisible();
+        await expect(pop).toContainText(`Stopped after ${asked} of 4`);
+        await expect(pop).toContainText('Stopped');
+        await expect(pop).not.toContainText('finished');
+        expect(errors).toEqual([]);
+    });
 });

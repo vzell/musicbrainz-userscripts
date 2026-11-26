@@ -1183,6 +1183,12 @@ CLOSED: [2026-11-20 Fri]
   shared gate's storage is not reachable). Spec =discogs-mb-barcodes.spec.js= 4/4 (BC1–BC5), with
   =discogs-mb-column.spec.js= 26/26; mutations =dg-mb-barcodes.json= 13/13 (the cap =expect: pass=, 25+ releases
   would cost 25 s of Discogs' spacing), =discogs-mb-column.json= two finds re-pointed, green.
+- *Browser check* (vzell, 2026-11-26, versions unknown; screenshots =debug/link-page-keys-*.png=): Darkness on the Edge
+  of Town's release group → Show all Releases → ▶🔗: the XW 1978 release shows ⚠️ "The same page linked twice in
+  Relationships", Qobuz's two forms (=qobuz.com/us-en/…= and =play.qobuz.com/album/…=), the hovered icon marked; the
+  old "Several links to one site" unchanged; on Born To Run's master, 🔎 242 ran (no candidates there: the four
+  answered had no barcode on Discogs) and was stopped by vzell for a screenshot, which the popup called "finished,
+  DONE". Fixed: a stopped run says "Stopped after k of N" (phase =stopped=), BC6 and one mutation.
 
 ** DONE The browser check on SAED's own page fetches (=mbnIsCheck=, =mbnReverify=)
 :PROPERTIES:
