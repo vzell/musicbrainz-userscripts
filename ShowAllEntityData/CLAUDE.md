@@ -515,7 +515,8 @@ These were in Claude's memory on one machine only; vzell works on three
    under `debug/`, the summary with an Env stamp into the notes.
 7. **The Brucebase mirror.** `~/git/scripts/BruceParser/bb/latest`: check
    `ls -la` first. On `petri` it is a local run of 2026-11-13 (42,531 pages,
-   fast); on other hosts it may still point to the NAS copy
+   fast), on `vzell-lap` one of 2026-11-26 (42,685 pages); on other hosts it
+   may still point to the NAS copy
    (`/mnt/share/brucebase/…`), which is older and slow (copy samples to
    `debug/bb-mirror/<kind>/` first). Say which mirror a probe ran on.
    `debug/` is not in git; vzell syncs it between machines by hand.

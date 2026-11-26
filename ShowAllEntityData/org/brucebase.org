@@ -174,11 +174,9 @@ https://brucebase.wikidot.com/stats:discography - tabs - but alos the actual ima
 https://brucebase.wikidot.com/stats:songs-registered - text page - @debug/BB-songs-registered.html
 #+end_example
 
-
-* TODO make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
+* DONE make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
 
 make the standard BB page, rendered below our table h2/h3 click collapsable (also with Ctrl-Click for ALL sections)
-
 
 * DONE Overwhole of, extensions to and beautify of BruceBase (BB) pages
 
@@ -977,7 +975,6 @@ Chromium, no Tampermonkey (GM stubs).
 - Owed 3: Phase 13 survey and mockups done (above); waiting for vzell's answers.
 - The working rules are now in petri's Claude memory too.
 
-
 * DONE answers
 1. Setlist: one table with a Set column (Soundcheck/Show/Encore), or one table per set? one table
 2. Storyteller: a table you can filter by song, or a closed text section? the table.
@@ -1021,7 +1018,6 @@ The entries
 
 for Phase 2 and 3 are also both confirmed like OK
 
-
 * DONE tag answers
 
 1. Tag cloud table, Family column: about 85% of the tags come out as "Other", because songs and people can't be recognised from the word alone. Keep it, drop it, or read the song and people lists once (2
@@ -1046,6 +1042,10 @@ for Phase 2 and 3 are also both confirmed like OK
 6. Studio sessions (D): a detail pageType like bb-retail, with the Song / Version / Take split shared with On The Tracks? [Yes, batch 2, and the On The Tracks split (the open TODO) built with it]
 7. Galleries (E): rows with a Cover column and the image card, or leave the tiles? [Rows with a Cover column, batch 3]
 8. Include fragments (performances-with-bruce-*, awards-*): read only through their main page? [Yes, only through the main page; the fragments keep link previews]
+
+* DONE Wikidot tagsize limit of 500 chars for all tags of a wiki page together
+
+Wikidot tagsize limit of 500 chars for all tags of a wiki page together
 
 
 * ● Batch 2 is built, committed and pushed (d632e92d on feature/bb-overhaul). It needs your live check before batch 3.
@@ -1174,7 +1174,7 @@ card, then press Space for the window. On musicbrainz.org, any Springsteen event
 way. I didn't look up a specific event before the limit hit.
 
 
-* TODO adjustments
+* DONE adjustments
 ** DONE On The Tracks
 Done with Phase 13 batch 2 (2026-11-12): =_bbSplitVersion()= — Title, Version, and Take and Date where a
 take names them; what else follows the version stays with it ("V14b radio mix").
@@ -1244,11 +1244,8 @@ On the year-event pages e.g. https://brucebase.wikidot.com/2026#020526 there are
 Cound these icons made available on the "Info & Setlist" POH, see [Image #22]
 
 
-* TODO Wikidot tagsize limit of 500 chars for all tags of a wiki page together
-
-Wikidot tagsize limit of 500 chars for all tags of a wiki page together
-
-* reexecute bbp.sh
+* TODO reexecute bbp.sh
+** DONE for petri
 
 Currently we have only run the @bbp.sh shell script on the "NB-3641" host. On "petri" and "vzell-lap" (my other hosts
 where Claude Code is installed) there is just a @bb/latest symlink to my NAS drive (the content was retrieved once on
@@ -1256,3 +1253,22 @@ where Claude Code is installed) there is just a @bb/latest symlink to my NAS dri
 
 I want to re-execute bbp.sh now on "petri" to have the latest data from the Springsteen sites like e.g. BruceBase etc.
 
+** TODO for vzell-lap
+
+Currently we have only run the @bbp.sh shell script on the "NB-3641" and on the "petri" host. On "vzell-lap" (my other
+host where Claude Code is installed) there is just a @bb/latest symlink to my NAS drive (the content was retrieved once
+on "NB-3641" and copied from there to the NAS).
+
+I want to re-execute bbp.sh now on "vzell-lap" to have the latest data from the Springsteen sites like e.g. BruceBase etc.
+
+Read also CLAUDE.md from
+
+#+begin_example
+/home/vzell/git/scripts/BruceParser
+/home/vzell/git/volkerzell.de
+#+end_example
+
+to get an overview where things stand.
+
+Also make sure that the docker images for the volkerzell.de git repo are present in the WSL environment where we are
+running.
