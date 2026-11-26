@@ -27,7 +27,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   21 503s in case D were sheds; vzell's browser check saw a real shed hold only searches; item "The shared gate at
   eight a second"). Adoption 3, [[#saed-browser-check][the browser check on SAED's page fetches]], *shipped* as
   9.99.1701 (measured first: a check page silently lost a page's rows, or the whole list on the count request;
-  vzell's browser check: no regression, a real check could not be forced).
+  vzell's browser check: no regression, a real check could not be forced). The links adoption (canonical page keys:
+  the new ⚠️ "The same page linked twice in Relationships"; barcode candidates in the Discogs MusicBrainz column)
+  *shipped* as 9.99.1702–03 (vzell's browser check OK; item "Links: canonical page keys …").
 
 - *Now (2026-11-25, latest):* "Switch between SAED's view and the original page (EH's V)" *shipped* as
   9.99.1695–9.99.1698 (=feat/original-page-toggle= merged after vzell's browser checks, =test:full= 3560/3560).
@@ -144,7 +146,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Switch between SAED's view and the original page (EH's V)      | DONE  | 9.99.1695–98  | Adoptions     |
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
-| Links: canonical page keys; Discogs MB column barcode          | NEXT  | WIP.1         | Adoptions     |
+| Links: canonical page keys; Discogs MB column barcode          | DONE  | 9.99.1702–03  | Adoptions     |
 | Browser check on SAED's page fetches (=mbnIsCheck=)            | DONE  | 9.99.1701     | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
 | Posts to majkinetor: fifteen posted; #938 closed               | DONE  | —             | On the record |
@@ -1147,7 +1149,7 @@ CLOSED: [2026-11-20 Fri]
 - *Shipped in 9.99.1677* (the word lists) *and 9.99.1678* (the classes), 2026-11-23: test:full 3456/3456 on the
   branch, vzell's browser check OK.
 
-** NEXT Links: canonical page keys for =rel-multi-site=; Discogs MusicBrainz column barcode fallback
+** DONE Links: canonical page keys for =rel-multi-site=; Discogs MusicBrainz column barcode fallback
 
 - *Who fixes it*: *ours*.
 
