@@ -4,8 +4,8 @@
     "why": "Without the area's properties the window has no pictures. Must fail on the Space test.",
     "edits": [
       {
-        "find": "        area: ['P242', 'P41', 'P94', 'P158', 'P18'],\n    };",
-        "replace": "    };"
+        "find": "        area: ['P242', 'P41', 'P94', 'P158', 'P18'],\n        // 2026-11-26 (vzell)",
+        "replace": "        // 2026-11-26 (vzell)"
       }
     ],
     "spec": "tests/fixtures/pop-area-pictures.spec.js",

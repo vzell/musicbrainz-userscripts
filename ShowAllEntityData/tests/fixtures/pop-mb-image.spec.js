@@ -73,7 +73,7 @@ const withoutCommons = (file) => {
  * Wikidata answers come from `responses`.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{settings?: Object, responses?: Object, pins?: {artist?: string, label?: string, place?: string}}} [opts]
+ * @param {{settings?: Object, responses?: Object, pins?: {artist?: string, label?: string, place?: string, instrument?: string, series?: string}}} [opts]
  * @returns {Promise<{ws2: string[]}>}
  */
 async function open(page, { settings = {}, responses = {}, pins = {} } = {}) {
@@ -92,6 +92,8 @@ async function open(page, { settings = {}, responses = {}, pins = {} } = {}) {
         else if (/\/ws\/2\/label\/[0-9a-f-]{36}\?inc=url-rels/.test(url)) body = pins.label || json('ws2-pop-label-columbia-pin.json');
         else if (/\/ws\/2\/release\?label=/.test(url)) body = json('ws2-pop-label-columbia-count.json');
         else if (/\/ws\/2\/place\/[0-9a-f-]{36}\?/.test(url)) body = pins.place || json('ws2-pop-place-sp.json');
+        else if (/\/ws\/2\/instrument\/[0-9a-f-]{36}\?/.test(url)) body = pins.instrument || json('ws2-pop-instrument-guitar.json');
+        else if (/\/ws\/2\/series\/[0-9a-f-]{36}\?/.test(url)) body = pins.series || json('ws2-pop-series-st.json');
         return route.fulfill(body ? { status: 200, contentType: 'application/json', body }
             : { status: 404, contentType: 'application/json', body: '{"error":"no fixture"}' });
     });
@@ -509,5 +511,193 @@ test.describe('Event Horizon\'s pictures (sa_pop_mb_eh_images, C8)', () => {
         await page.clock.fastForward(21000);
         await expect(dialog(page).locator('.mb-pop-xpic-eh-wait')).toHaveCount(0, QUEUE);
         await expect(winPic(page).locator('img.mb-dp-xcover')).toHaveAttribute('src', /Bruce_Springsteen_-_Roskilde_Festival_2012\.jpg/);
+    });
+});
+
+// ── Instrument and series pictures; a place page's known picture (2026-11-26) ──
+//
+// vzell's choices: an instrument's window shows MusicBrainz's own IROMBOOK
+// drawing (its `image` url-rel, no request; Event Horizon's insHero); a
+// series' window its own picture link, else Wikidata P18 on Space; a place's
+// (and a series') page the picture its window found. Pins:
+//   P1 instrument: the window shows the drawing ("IROMBOOK") and a links
+//      table, Wikidata is never asked, the card shows it afterwards;
+//   P2 series with a Commons link: the picture, no Wikidata request;
+//   P3 series with only a Wikidata link: a hover asks nothing, Space asks P18
+//      once, the card shows it afterwards;
+//   P4 series with no picture: the links table, no picture box;
+//   P5 a place page shows the window's known record beside the name, the
+//      page asking nothing;
+//   P6 an instrument without a drawing: its Wikidata image, on Space only
+//      (vzell's browser check, "bass guitar");
+//   P7 an instrument's HTML description: links as links (MusicBrainz paths
+//      and https only), other tags as their text.
+
+const INSTRUMENT = '63021302-86cd-4aee-80df-2270d54f4978';
+const SERIES = 'aa3694d3-a3d0-48ed-8f07-5b576de87908';
+const IROMBOOK = 'https://static.metabrainz.org/irombook/guitar/guitar.png';
+const urlRel = (type, resource) => ({ 'target-type': 'url', type, direction: 'forward', url: { resource, id: 'u-' + type } });
+/** A capture with url-rels added. */
+const withRels = (file, rels) => {
+    const d = JSON.parse(json(file));
+    d.relations = (d.relations || []).concat(rels);
+    return JSON.stringify(d);
+};
+
+/**
+ * Appends a link to `href` to the first table cell and returns it.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} href
+ * @param {string} text
+ */
+async function probeLink(page, href, text) {
+    await page.evaluate(([h, t]) => {
+        const a = document.createElement('a');
+        a.href = h;
+        a.className = 'pop-probe';
+        a.textContent = t;
+        document.querySelector('table.tbl tbody tr td:first-child').append(' ', a);
+    }, [href, text]);
+    return page.locator('a.pop-probe');
+}
+
+test.describe('instrument and series pictures; a place page\'s known picture (2026-11-26)', () => {
+    test('P1: an instrument window shows its IROMBOOK drawing and the links table; Wikidata is never asked', async ({ page }) => {
+        const log = await open(page, {
+            pins: { instrument: withRels('ws2-pop-instrument-guitar.json', [urlRel('image', IROMBOOK), urlRel('wikidata', 'https://www.wikidata.org/wiki/Q6607')]) },
+        });
+        await page.route('https://static.metabrainz.org/irombook/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        const link = await probeLink(page, `/instrument/${INSTRUMENT}`, 'guitar');
+        await pin(page, link);
+        await expect(winPic(page).locator('img')).toHaveAttribute('src', IROMBOOK, QUEUE);
+        await expect(winPic(page).locator('figcaption')).toContainText('IROMBOOK');
+        await expect(dialog(page).locator('h4', { hasText: /^Links \(2\)/ })).toHaveCount(1);
+        expect(await wdLog(page), 'an instrument never asks Wikidata').toEqual([]);
+        // The route answers with the links whatever is asked: the lookup must ask for them.
+        expect(log.ws2.filter(u => u.includes(`/ws/2/instrument/${INSTRUMENT}?`))).toEqual([expect.stringContaining('inc=instrument-rels+aliases+url-rels')]);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        await ctrlHover(page, link);
+        await expect(card(page).locator('.mb-pop-pic img')).toHaveAttribute('src', IROMBOOK, QUEUE);
+    });
+
+    test('P2: a series with a Commons link shows it, with no Wikidata request', async ({ page }) => {
+        const log = await open(page, {
+            pins: { series: withRels('ws2-pop-series-st.json', [urlRel('image', 'https://commons.wikimedia.org/wiki/File:Studio_Collection.jpg'),
+                urlRel('wikidata', 'https://www.wikidata.org/wiki/Q99999999')]) },
+        });
+        const link = await probeLink(page, `/series/${SERIES}`, 'Bruce Springsteen Studio Collection');
+        await pin(page, link);
+        await expect(winPic(page).locator('img')).toHaveAttribute('src',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Studio_Collection.jpg?width=330', QUEUE);
+        expect(await wdLog(page)).toEqual([]);
+        expect(log.ws2.filter(u => u.includes(`/ws/2/series/${SERIES}?`))).toEqual([expect.stringMatching(/inc=[^&]*\+url-rels(?:&|$)/)]);
+    });
+
+    test('P3: a series with only its Wikidata link: a hover asks nothing, Space asks P18 once, the card shows it afterwards', async ({ page }) => {
+        await open(page, {
+            pins: { series: withRels('ws2-pop-series-st.json', [urlRel('wikidata', 'https://www.wikidata.org/wiki/Q99999999')]) },
+            responses: { [WD('Q99999999', 'P18')]: claims('P18', [['normal', 'Series cover.jpg']]) },
+        });
+        const link = await probeLink(page, `/series/${SERIES}`, 'Bruce Springsteen Studio Collection');
+        await ctrlHover(page, link);
+        await expect(card(page).locator('.mb-tt-foot')).toBeVisible(QUEUE);
+        await expect(card(page).locator('.mb-pop-pic')).toHaveCount(0);
+        expect(await wdLog(page), 'a hover asks Wikidata nothing').toEqual([]);
+        await page.keyboard.press('Space');
+        await expect(winPic(page).locator('img')).toHaveAttribute('src',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Series_cover.jpg?width=330', QUEUE);
+        await expect(winPic(page).locator('figcaption')).toContainText('from Wikidata Q99999999 (image)');
+        expect(await wdLog(page)).toEqual([WD('Q99999999', 'P18')]);
+        await page.keyboard.press('Escape');
+        await expect(dialog(page)).toBeHidden();
+        await ctrlHover(page, link);
+        await expect(card(page).locator('.mb-pop-pic img')).toHaveAttribute('src', /Series_cover\.jpg/, QUEUE);
+        expect(await wdLog(page), 'the card asked nothing more').toHaveLength(1);
+    });
+
+    test('P4: a series with no picture gets its links table and no picture box', async ({ page }) => {
+        await open(page, {
+            pins: { series: withRels('ws2-pop-series-st.json', [urlRel('discogs', 'https://www.discogs.com/label/12345')]) },
+        });
+        const link = await probeLink(page, `/series/${SERIES}`, 'Bruce Springsteen Studio Collection');
+        await pin(page, link);
+        await expect(dialog(page).locator('h4', { hasText: /^Links \(1\)/ })).toHaveCount(1, QUEUE);
+        await expect(dialog(page).locator('.mb-dp-spin')).toHaveCount(0, QUEUE);
+        await expect(winPic(page)).toHaveCount(0);
+        expect(await wdLog(page)).toEqual([]);
+    });
+
+    test('P6: an instrument without a drawing falls back to its Wikidata image, on Space only', async ({ page }) => {
+        // vzell's browser check: "bass guitar" has no IROMBOOK drawing, only its Wikidata item.
+        await open(page, {
+            pins: { instrument: withRels('ws2-pop-instrument-guitar.json', [urlRel('wikidata', 'https://www.wikidata.org/wiki/Q46185')]) },
+            responses: { [WD('Q46185', 'P18')]: claims('P18', [['normal', 'Bass guitar.jpg']]) },
+        });
+        const link = await probeLink(page, `/instrument/${INSTRUMENT}`, 'guitar');
+        await ctrlHover(page, link);
+        await expect(card(page).locator('.mb-tt-foot')).toBeVisible(QUEUE);
+        expect(await wdLog(page), 'a hover asks Wikidata nothing').toEqual([]);
+        await page.keyboard.press('Space');
+        await expect(winPic(page).locator('img')).toHaveAttribute('src',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Bass_guitar.jpg?width=330', QUEUE);
+        await expect(winPic(page).locator('figcaption')).toContainText('from Wikidata Q46185 (image)');
+        expect(await wdLog(page)).toEqual([WD('Q46185', 'P18')]);
+    });
+
+    test('P7: an instrument\'s HTML description: its links are links in the window, plain text in the card, no tag shown', async ({ page }) => {
+        const d = JSON.parse(json('ws2-pop-instrument-guitar.json'));
+        d.description = 'Bass member of the guitar family. For the electric variant use <a href="/instrument/0b9d87fa-93fa-4956-8b6a-a419566cc915">electric bass guitar</a>, '
+            + 'never <a href="javascript:alert(1)">this</a> <b>bold</b>.';
+        await open(page, { pins: { instrument: JSON.stringify(d) } });
+        const link = await probeLink(page, `/instrument/${INSTRUMENT}`, 'guitar');
+        await ctrlHover(page, link);
+        await expect(card(page).locator('.mb-tt-foot')).toBeVisible(QUEUE);
+        await expect(card(page)).toContainText('For the electric variant use electric bass guitar, never this bold.');
+        await expect(card(page)).not.toContainText('<a');
+        await page.keyboard.press('Space');
+        const desc = dialog(page).locator('.mb-dp-section').first();
+        await expect(desc.locator('a[href="/instrument/0b9d87fa-93fa-4956-8b6a-a419566cc915"]')).toHaveText('electric bass guitar', QUEUE);
+        await expect(desc).not.toContainText('<a');
+        await expect(desc.locator('a'), 'the javascript: link is text only').toHaveCount(1);
+        await expect(desc.locator('b')).toHaveCount(0);
+        await expect(desc).toContainText('never this bold.');
+    });
+
+    test('P5: a place page shows the picture its window found, and the page asks nothing', async ({ page }) => {
+        // A place page with a sidebar: the committed place fixture plus an
+        // empty #sidebar, written to a temporary file.
+        const os = require('os');
+        const html = fs.readFileSync(path.join(__dirname, 'place-events-lineup.html'), 'utf8')
+            .replace(/<div id="content"/, '<div id="sidebar"><h2 class="place-information">Place information</h2></div><div id="content"');
+        expect(html, 'premise: the fixture has #content').toContain('<div id="sidebar">');
+        const file = path.join(os.tmpdir(), `saed-place-sidebar-${process.pid}.html`);
+        fs.writeFileSync(file, html);
+        const URL_ = `https://musicbrainz.org/place/${PLACE}/events`;
+        const ws2 = [];
+        await page.context().route(/\/ws\/2\//, (route) => { ws2.push(route.request().url()); return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' }); });
+        await page.context().route(/^https:\/\/(?:commons|upload)\.wikimedia\.org\//, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        await loadUserscriptPage(page, { url: URL_, fixtureFile: file, testMode: true, settingsOverride: { sa_entity_images: true } });
+        // What the window's Space put in the store (version 2 records).
+        await page.evaluate(async (id) => {
+            const file = 'Stone Pony.jpg';
+            const thumb = 'https://commons.wikimedia.org/wiki/Special:FilePath/Stone_Pony.jpg?width=330';
+            const rec = {
+                url: `mb:pop:img:place:${id}`, v: 2, at: Date.now(),
+                data: { images: [{ src: thumb, thumb, large: thumb, page: 'https://commons.wikimedia.org/wiki/File:Stone_Pony.jpg', url: thumb, type: 'image', file, host: 'commons.wikimedia.org', prop: 'P18' }], file, from: 'P18', item: 'Q3989486' },
+            };
+            await new Promise((resolve) => {
+                const req = indexedDB.open('vz-saed-detail-pages', 1);
+                req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains('pages')) req.result.createObjectStore('pages', { keyPath: 'url' }); };
+                req.onsuccess = () => { const tx = req.result.transaction('pages', 'readwrite'); tx.objectStore('pages').put(rec); tx.oncomplete = () => { req.result.close(); resolve(); }; };
+                req.onerror = () => resolve();
+            });
+        }, PLACE);
+        await reloadScript(page);
+        await expect(page.locator('#sidebar')).toHaveAttribute('data-mb-ei', 'known', QUEUE);
+        await expect(page.locator('h1 .mb-ei-avatar img').first()).toHaveAttribute('src', /Stone_Pony\.jpg/);
+        expect(ws2.filter(u => u.includes('/place/')), 'the page asked nothing').toEqual([]);
+        expect(await wdLog(page)).toEqual([]);
+        fs.unlinkSync(file);
     });
 });

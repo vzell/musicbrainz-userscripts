@@ -29,7 +29,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   9.99.1701 (measured first: a check page silently lost a page's rows, or the whole list on the count request;
   vzell's browser check: no regression, a real check could not be forced). The links adoption (canonical page keys:
   the new ⚠️ "The same page linked twice in Relationships"; barcode candidates in the Discogs MusicBrainz column)
-  *shipped* as 9.99.1702–03 (vzell's browser check OK; item "Links: canonical page keys …").
+  *shipped* as 9.99.1702–03 (vzell's browser check OK; item "Links: canonical page keys …"). The rest of entity
+  pictures (instrument and series previews, a place page's known picture) *shipped* as 9.99.1704.
 
 - *Now (2026-11-25, latest):* "Switch between SAED's view and the original page (EH's V)" *shipped* as
   9.99.1695–9.99.1698 (=feat/original-page-toggle= merged after vzell's browser checks, =test:full= 3560/3560).
@@ -144,7 +145,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | In-page log window (=mbuLog=)                                  | DONE  | 9.99.1689     | Adoptions     |
 | In-page log: past sessions (mbuLog's history)                  | TODO  | —             | Adoptions     |
 | Switch between SAED's view and the original page (EH's V)      | DONE  | 9.99.1695–98  | Adoptions     |
-| Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
+| Entity pictures: EH's providers done, area map left            | DONE  | 9.99.1704     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | DONE  | 9.99.1702–03  | Adoptions     |
 | Browser check on SAED's page fetches (=mbnIsCheck=)            | DONE  | 9.99.1701     | Adoptions     |
@@ -1078,7 +1079,7 @@ CLOSED: [2026-11-20 Fri]
   jump within the list). Not sensible in a copy: signing in, the wiki's page options (Edit, Tags, History …),
   brucespringsteen.it's filter form (posts back to the server). The note would then name only what is left.
 
-** PART Entity pictures: more providers, area map with flag badge (moved from org/TODO.org)
+** DONE Entity pictures: more providers, area map with flag badge (moved from org/TODO.org)
 
 - *Who fixes it*: *ours*, against convention *C8* (=unsafeWindow.MBU.artistImage=, EH's instance; anchor =conv-c8=).
 - *Done for the providers* (9.99.1646, =feat/eh-artist-images=, 2026-11-18; mockup
@@ -1118,6 +1119,18 @@ CLOSED: [2026-11-20 Fri]
   =eh-area-chain=, =eh-flag-i=, =saed-area-chain=. =test:full= 3478/3480 on the branch (the two: a Discogs spec's
   page log counting =/ws/js=, fixed); vzell's browser check OK (2026-11-23). Still open: pictures for
   place/series/instrument beyond what they have.
+- *The rest built* (2026-11-26, =feat/entity-pictures-rest=, WIP.1; vzell chose instrument previews, the place page's
+  known picture, series previews and Wikidata P18 for a series): =_MB_POP_IMG_PROPS.instrument = []= (the IROMBOOK
+  drawing from its =image= url-rel, as EH's =insHero=; credited "IROMBOOK" by =_eiOrigin()=) and =series = ['P18']=;
+  both lookups took =url-rels=, both kinds got =pin()=, =cardAside= and a links table; a place's or a series' page
+  shows its window's record first (=_EI_KNOWN_FIRST=, =_eiKnownImages()=). Spec =pop-mb-image.spec.js= P1–P5, the
+  picture and preview specs 204/204; mutations =entity-pictures-rest.json= 10/10 (two lived at first: the fixture
+  route answered url-rels whatever was asked, so P1/P2 now pin the lookup's =inc=), =area-pictures.json= one find
+  re-pointed.
+- *Shipped* as 9.99.1704 (2026-11-26). vzell's browser check: the series (Glastonbury Festival, Wikidata image) and
+  the place page OK; "bass guitar" had no drawing, only a Wikidata item, so vzell chose Wikidata P18 as the
+  instrument's fallback; and its window showed the description's HTML tags as text (an older defect), now parsed
+  (=_mbPopDescHtml()=, =_mbPopDescText()=). Re-checked live OK. No second =test:full= at the merge (vzell's call).
 
 ** DONE Title style: guess-case word lists, title-difference classes
 
