@@ -269,7 +269,12 @@ test.describe('artist-recordings: millisecond Length precision via batched looku
         // The second batch 503s on every attempt; the first succeeds.
         const calls = await setup(page, { failBatches: [1] });
         await toggle(page).click();
-        await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');
+        // An explicit timeout, as in the wholly-failed test below: the failed
+        // batch waits out three 503 holds first. Since 9.99.1700 each hold
+        // gets up to 500 ms at random (the shared gate's jitter, as upstream),
+        // and the default 5 s ran out in 4 of 8 runs (10.6 s per test at
+        // 9.99.1699, about 11 s at 9.99.1700; DEBUG-NOTES.md 2026-11-26).
+        await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true', { timeout: 30000 });
 
         // The rows that resolved are shown rather than thrown away…
         const values = await lengthValues(page);

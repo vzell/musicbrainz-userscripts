@@ -5140,3 +5140,20 @@ Env: 2026-11-25T20:45:49+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 (=#mb-stat-tooltip= not visible within 5 s after the hover, in a 33 s test). Not related to the gate: the spec routes no
 =/ws/2= and books no slot. Alone it passed 3/3 (=--repeat-each=3=, 21:12 CET) and the whole file 14/14 (21:15 CET):
 a hover card under the full run's load. The gate spec file: 51/51.
+
+* 2026-11-26 — =npm run test:full= on =NB-3641=, feat/saed-browser-check (the browser check on page fetches; WIP.1)
+
+Env: 2026-11-26T11:05:52+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                       | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------+-------+---------+-------------+-------------------------------------------|
+| =npm run test:full=, =607a8f86= |  3578 |      14 |  25 m 34 s  | =run-test-full.py=, 11:05:52–11:31:26 CET |
+
+3577 passed, 1 failed: =artist-recordings-ms-batch.spec.js= "a partly-failed run shows what arrived, says so, and
+retries only the gap" (=aria-pressed= still "false" after the default 5 s). A regression of the SPEC from 9.99.1700,
+not of this branch: =-g "partly-failed" --repeat-each 8= failed 4/8 on =main= (=c84b52be=, 11:33 CET) and passed 8/8
+on 9.99.1699 (=930a88e6=, 11:33 CET), 10.6 s per test there against about 11 s (passing) on 9.99.1700. The failed
+batch waits out three 503 holds, and since 9.99.1700 each gets up to 500 ms at random (the gate's jitter), so the
+5 s wait runs out about half the time. The merge of 9.99.1700 skipped its =test:full= on =main= (vzell's call) and the
+branch's own run passed it by chance. Fixed on this branch with an explicit 30 s timeout (as the wholly-failed test
+beside it has): the file 28/28 (=--repeat-each=4=, 11:34 CET).
