@@ -174,11 +174,12 @@ async function open(page, { settings = {}, lookup = null, showAll = true, ws2 = 
         }
         return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
     });
-    await ctx.route(/\/ws\/2\/release\/[0-9a-f-]{36}\?/, (route) => {
+    await ctx.route(/\/ws\/2\/release\/[0-9a-f-]{36}\?/, async (route) => {
         const url = route.request().url();
         log.lookups.push({ url, at: performance.now() });
-        const r = lookup ? lookup(url) : { status: 200, body: json('ws2-pop-release-greetings.json') };
-        return route.fulfill({ status: r.status, contentType: 'application/json', body: r.body });
+        // `lookup` may return a Promise: a held answer (stale-while-revalidate specs).
+        const r = await (lookup ? lookup(url) : { status: 200, body: json('ws2-pop-release-greetings.json') });
+        return route.fulfill({ status: r.status, contentType: 'application/json', body: r.body }).catch(() => { /* page gone */ });
     });
     await ctx.route('**/ws/2/release?release-group=**', (route) => {
         log.browses.push(route.request().url());
@@ -474,13 +475,8 @@ test.describe('MusicBrainz link previews (sa_pop_mb)', () => {
         await ctrlHover(page, relLink(page));
         await expect(card(page)).toContainText('saved today');
         expect(log.lookups, 'answered from IndexedDB under the 24 h default').toHaveLength(1);
-
-        // Registered after the GM stubs' own init script, so it wins.
-        await page.context().addInitScript(() => { window.__gmValues.sa_pop_mb_ttl_hours = 1; });
-        await reloadScript(page);
-        await ctrlHover(page, relLink(page));
-        await expect(card(page)).toContainText('fetched now');
-        expect(log.lookups, 'too old for a one-hour TTL: asked again').toHaveLength(2);
+        await expect(card(page), 'under the keep time nothing is re-checked').not.toContainText('checking');
+        // Too old for a one-hour keep time: the describe "stale-while-revalidate" below.
     });
 
     test('a failure is shown, not kept, and the next hover asks again', async ({ page }) => {
@@ -4414,5 +4410,126 @@ test.describe('MusicBrainz link previews: kept answers and the shared last-write
             .toEqual([true, true, true, true, true, false, false, false]);
         expect(r.same, 'a write at the very time of the fetch counts (kept only when fetched strictly after)').toBe(true);
         expect(r.before, 'a write before the fetch: kept').toEqual([false, false, false, false, false, false, false, false]);
+    });
+});
+
+// ── Stale-while-revalidate (2026-11-26, majkinetor's Event Horizon kept/kpCheck) ──
+//
+// A kept answer older than "Keep MusicBrainz answers for" is shown at once,
+// its foot saying "· checking…", and asked again in the background; a
+// changed answer repaints, an unchanged one only renews the age, a failure
+// keeps the old one. Older than 30 days, or written before another script's
+// write (C7, mbLastWrite), it is asked with "Loading…" as before. The
+// re-check's answer is HELD by the route so the in-between state is seen.
+//   S1 stale shown at once with "checking…", one background request, the
+//      foot settles on "fetched now";
+//   S2 a changed answer repaints the card (the new title);
+//   S3 an unchanged answer renews the record: the next page load, under the
+//      keep time, asks nothing;
+//   S4 a failed re-check keeps the old answer, "checking…" gone;
+//   S5 older than 30 days: "Loading…", as before;
+//   S7 C7: a write after the record: "Loading…", never the stale answer.
+
+/** Moves the kept release lookup's record back by `ms` in IndexedDB. */
+const ageRecord = (page, ms) => page.evaluate(async ([key, by]) => {
+    const db = await new Promise((res, rej) => {
+        const r = indexedDB.open('vz-saed-detail-pages');
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+    });
+    await new Promise((res, rej) => {
+        const tx = db.transaction('pages', 'readwrite');
+        const st = tx.objectStore('pages');
+        const g = st.get(key);
+        g.onsuccess = () => { const rec = g.result; rec.at -= by; st.put(rec); };
+        tx.oncomplete = res;
+        tx.onerror = () => rej(tx.error);
+    });
+    db.close();
+}, [`mb:pop:release:${REL_ID}:${INC.slice(4)}`, ms]);
+
+/**
+ * Opens the page, keeps one answer (the first hover), ages it by `ageMs`,
+ * sets a keep time of one hour and reloads; from then on every lookup's
+ * answer waits for `release(body)`.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} ageMs
+ * @param {Object} [extraInit] - Run in the page before the reload (`localStorage` writes).
+ */
+async function openStale(page, ageMs, extraInit = null) {
+    let n = 0;
+    let release = null;
+    const held = new Promise((r) => { release = r; });
+    const log = await open(page, {
+        settings: { sa_pop_mb: true }, showAll: false,
+        lookup: (url) => (n++ === 0 ? { status: 200, body: json('ws2-pop-release-greetings.json') } : held),
+    });
+    await ctrlHover(page, relLink(page));
+    await expect(card(page)).toContainText('fetched now');
+    await ageRecord(page, ageMs);
+    await page.context().addInitScript(() => { window.__gmValues.sa_pop_mb_ttl_hours = 1; });
+    if (extraInit) await page.evaluate(extraInit);
+    await reloadScript(page);
+    return { log, release: (r) => release(r) };
+}
+
+test.describe('stale-while-revalidate: a kept answer shown while it is asked again (2026-11-26)', () => {
+    test('S1 + S3: older than the keep time: shown at once with "checking…", re-asked once, then renewed', async ({ page }) => {
+        const { log, release } = await openStale(page, 2 * 3600 * 1000);
+        await ctrlHover(page, relLink(page));
+        await expect(card(page).locator('.mb-tt-foot')).toContainText('saved today · checking…');
+        await expect(card(page)).toContainText('Greetings From Asbury Park, N.J.');
+        await expect(card(page)).not.toContainText('Loading');
+        await expect.poll(() => log.lookups.length, { message: 'one background re-check' }).toBe(2);
+        release({ status: 200, body: json('ws2-pop-release-greetings.json') });
+        await expect(card(page).locator('.mb-tt-foot')).toContainText('fetched now');
+        await expect(card(page).locator('.mb-tt-foot')).not.toContainText('checking');
+
+        // S3: renewed, so the next page load (keep time one hour) asks nothing.
+        await reloadScript(page);
+        await ctrlHover(page, relLink(page));
+        await expect(card(page).locator('.mb-tt-foot')).toContainText('saved today');
+        await expect(card(page).locator('.mb-tt-foot')).not.toContainText('checking');
+        expect(log.lookups, 'the renewed answer is fresh').toHaveLength(2);
+    });
+
+    test('S2: a changed answer repaints the card', async ({ page }) => {
+        const { log, release } = await openStale(page, 2 * 3600 * 1000);
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('Greetings From Asbury Park, N.J.');
+        await expect.poll(() => log.lookups.length).toBe(2);
+        release({ status: 200, body: json('ws2-pop-release-greetings.json').replace('"Greetings From Asbury Park, N.J."', '"Greetings (Renamed)"') });
+        await expect(card(page)).toContainText('Greetings (Renamed)');
+        await expect(card(page).locator('.mb-tt-foot')).toContainText('fetched now');
+    });
+
+    test('S4: a failed re-check keeps the old answer', async ({ page }) => {
+        const { log, release } = await openStale(page, 2 * 3600 * 1000);
+        await ctrlHover(page, relLink(page));
+        await expect.poll(() => log.lookups.length).toBe(2);
+        release({ status: 404, body: '{"error":"Not Found"}' });
+        await expect(card(page).locator('.mb-tt-foot')).not.toContainText('checking');
+        await expect(card(page)).toContainText('Greetings From Asbury Park, N.J.');
+        await expect(card(page).locator('.mb-tt-foot')).toContainText('saved today');
+    });
+
+    test('S5: older than 30 days: "Loading…" until MusicBrainz answers, as before', async ({ page }) => {
+        const { log, release } = await openStale(page, 31 * 86400000);
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('Loading');
+        await expect.poll(() => log.lookups.length).toBe(2);
+        release({ status: 200, body: json('ws2-pop-release-greetings.json') });
+        await expect(card(page).locator('.mb-tt-foot')).toContainText('fetched now');
+    });
+
+    test('S7: written before another script\'s write (C7): never shown, "Loading…"', async ({ page }) => {
+        const { log, release } = await openStale(page, 2 * 3600 * 1000, () => localStorage.setItem('mbLastWrite', String(Date.now())));
+        await ctrlHover(page, relLink(page));
+        await expect(card(page)).toContainText('Loading');
+        await expect(card(page)).not.toContainText('saved today');
+        await expect.poll(() => log.lookups.length).toBe(2);
+        release({ status: 200, body: json('ws2-pop-release-greetings.json') });
+        await expect(card(page).locator('.mb-tt-foot')).toContainText('fetched now');
     });
 });

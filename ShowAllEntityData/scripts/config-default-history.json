@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "b710c657ee32b47b69ca7e01472481e3728e0b11",
-    "revisions_walked": 1424
+    "head": "fd480b308f16df0b4de0ebcc687bf59c778b4d0d",
+    "revisions_walked": 1429
   },
   "changes": [
     {
@@ -895,6 +895,7 @@
     "sa_rel_browse_batch_enable": true,
     "sa_rels_idb_enable": true,
     "sa_rel_idb_ttl_days": 30,
+    "sa_rel_idb_recheck": true,
     "sa_rel_completion_toast_duration": 8,
     "sa_enable_relationship_debug": false,
     "sa_rel_tooltip_bg": "#fbf8f1",

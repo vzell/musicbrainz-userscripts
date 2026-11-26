@@ -17,8 +17,8 @@
     "why": "_mbLoad()'s memory: a card loaded earlier in this tab short-circuits the load, so a write made since (in Event Horizon's view, or another tab) never shows.",
     "edits": [
       {
-        "find": "        if (!force && cur && cur.status === 'done' && !_mbKeptStale(cacheKey, cur.at)) return;",
-        "replace": "        if (!force && cur && cur.status === 'done') return;"
+        "find": "        if (!force && cur && cur.status === 'done' && !_mbKeptStale(cacheKey, cur.at)) {\n",
+        "replace": "        if (!force && cur && cur.status === 'done') {\n"
       }
     ],
     "spec": "tests/fixtures/popup-mb.spec.js",

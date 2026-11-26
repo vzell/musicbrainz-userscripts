@@ -1535,6 +1535,14 @@ outstanding.
 request on artist, label, release-group, recording and area listings — and falls
 back to one request per row elsewhere.
 
+**Older answers are re-checked in the background.** Answers are kept in this
+browser (30 days by default). After the column has loaded from there, those
+kept for more than 7 days are asked again, the oldest first, at most 100 per
+page and one a second, without any loading glyph; a row whose relationships
+changed is rewritten, and the progress card says how many were re-checked and
+how many changed. Switch: *Re-check older kept relationships in the
+background*.
+
 **Two retry buttons, and they mean different things.** `🔗⟳` reloads
 everything, for when you believe the data is stale. `⚠⟳ N` recovers only what
 failed. There is one of each per table and one page-wide; a single-table page
@@ -3234,8 +3242,11 @@ Each card asks MusicBrainz once, and only if the pointer is still on the link
 when its turn comes: the script makes at most one request a second, shared
 with the Relationships column. What it got is kept in this browser for 24
 hours (*Keep MusicBrainz answers for (hours)*); the card's foot says whether
-it was *fetched now* or *saved today*. A card that could not load says so;
-hover again to retry.
+it was *fetched now* or *saved today*. After those 24 hours, and for up to 30
+days, the kept card is still shown at once, its foot saying *checking…*,
+while MusicBrainz is asked again in the background; if the answer changed,
+the card or window repaints. A card that could not load says so; hover again
+to retry.
 
 A change you make with majkinetor's Event Horizon (a rating, a tag vote, an
 alias, a collection, a vote on an edit) ends that sooner: the next card or

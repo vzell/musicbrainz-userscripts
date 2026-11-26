@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1704+2026-11-26",
-    "schema_entries": 573,
+    "schema_entries": 574,
     "sections": 54,
-    "settings": 519,
-    "settings_with_default": 514,
+    "settings": 520,
+    "settings_with_default": 515,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 341,
+      "checkbox": 342,
       "color_picker": 62,
       "divider": 54,
       "number": 53,
@@ -642,6 +642,7 @@
     "sa_rel_cell_state_glyphs": "Relationships: show a load-state glyph in each cell",
     "sa_rel_collapse_threshold": "Relationships auto-collapse threshold (unique entities)",
     "sa_rel_completion_toast_duration": "Relationships load-complete toast duration (seconds)",
+    "sa_rel_idb_recheck": "Re-check older kept relationships in the background",
     "sa_rel_idb_ttl_days": "Relationships IDB cache TTL (days)",
     "sa_rel_other_db_classes": "Other-database domain → icon CSS class",
     "sa_rel_streaming_classes": "Streaming service URL pattern → icon CSS class",
@@ -1162,6 +1163,7 @@
     "sa_rel_cell_state_glyphs": true,
     "sa_rel_collapse_threshold": 200,
     "sa_rel_completion_toast_duration": 8,
+    "sa_rel_idb_recheck": true,
     "sa_rel_idb_ttl_days": 30,
     "sa_rel_tooltip_bg": "#fbf8f1",
     "sa_rel_tooltip_color": "#2b2622",
