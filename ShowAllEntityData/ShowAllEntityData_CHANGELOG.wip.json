@@ -6,7 +6,7 @@
       {
         "label": "✨ Improve",
         "items": [
-          "Link previews: an instrument's window now shows MusicBrainz's own IROMBOOK drawing of it (no extra request) and its links, as majkinetor's Event Horizon does; a series' window shows its own picture link, else the image its Wikidata item names (asked on Space only), and its links. The card shows the picture once a window found it. A place's or a series' own page now shows the picture its preview window found (Wikidata's too) beside the name, from this browser's storage, without asking anything."
+          "Link previews: an instrument's window now shows MusicBrainz's own IROMBOOK drawing of it (no extra request), else the image its Wikidata item names, and its links, as majkinetor's Event Horizon does, and its description shows its links as links instead of HTML tags; a series' window shows its own picture link, else the image its Wikidata item names (asked on Space only), and its links. The card shows the picture once a window found it. A place's or a series' own page now shows the picture its preview window found (Wikidata's too) beside the name, from this browser's storage, without asking anything."
         ]
       }
     ]

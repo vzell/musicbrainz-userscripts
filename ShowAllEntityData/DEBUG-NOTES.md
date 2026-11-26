@@ -31964,3 +31964,15 @@ sidebar; P5 adds an empty `#sidebar` to `place-events-lineup.html` in a
 temporary copy at run time. Spec P1–P5; the picture and preview specs
 204/204; mutations 10/10; `area-pictures.json` one find re-pointed (the
 props object grew).
+
+Browser check (vzell, 2026-11-26, versions unknown): the series (Glastonbury
+Festival, Wikidata image) and the place page were OK. The instrument window
+for "bass guitar" showed no picture, rightly as built: it has no IROMBOOK
+drawing, only a Wikidata link (`debug/entity-pictures-bass-guitar-no-drawing.png`).
+vzell chose Wikidata P18 as the instrument's fallback. The same window
+showed an older defect: MusicBrainz writes an instrument's description as
+HTML ("use <a href=…>electric bass guitar</a>"), and the window escaped it,
+so the tags showed as text. `_mbPopDescHtml()` now parses it (text,
+MusicBrainz paths and https links; any other tag as its text, so a
+`javascript:` link stays text) and the card uses `_mbPopDescText()`.
+P6, P7 and three mutations pin both; the picture specs 7/7.

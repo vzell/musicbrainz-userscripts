@@ -479,11 +479,16 @@ table in their windows).
 
 **Series and instrument (2026-11-26, vzell).** `_MB_POP_IMG_PROPS.series =
 ['P18']`: a picture link first, else Wikidata's image, on Space only.
-`_MB_POP_IMG_PROPS.instrument = []`: the links only, which hold MusicBrainz's
-own IROMBOOK drawing (an `image` url-rel on `static.metabrainz.org`, shown as
-an `<img>`, never fetched; Event Horizon's `insHero` shows the same); no
-Wikidata. `_eiOrigin()` credits such a drawing "IROMBOOK"
-(`_sbIrombookFile()`). Spec `pop-mb-image.spec.js` P1–P4, mutations
+`_MB_POP_IMG_PROPS.instrument = ['P18']`: the links first, which hold
+MusicBrainz's own IROMBOOK drawing (an `image` url-rel on
+`static.metabrainz.org`, shown as an `<img>`, never fetched; Event Horizon's
+`insHero` shows the same), else Wikidata's image (vzell's browser check:
+"bass guitar" has no drawing, only its Wikidata item). `_eiOrigin()` credits
+a drawing "IROMBOOK" (`_sbIrombookFile()`). The instrument's description is
+HTML on MusicBrainz ("use <a href=…>electric bass guitar</a>"): the window
+renders it through `_mbPopDescHtml()` (text, MusicBrainz and https links,
+every other tag as its text), the card as plain text (`_mbPopDescText()`).
+Spec `pop-mb-image.spec.js` P1–P7, mutations
 `scripts/mutations/entity-pictures-rest.json`. `relations` is null before that; a ⟳ that comes while the
 url-rels reload is remembered in `_mbPopImgAgain`, so the next start skips the
 caches. Not event (event art). Areas since feat/area-pictures, below.

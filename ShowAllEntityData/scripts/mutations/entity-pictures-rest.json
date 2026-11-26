@@ -4,7 +4,7 @@
     "why": "The instrument kind would stay outside _MB_POP_IMG_PROPS: no drawing in its window or card.",
     "edits": [
       {
-        "find": "        series: ['P18'], instrument: [],\n",
+        "find": "        series: ['P18'], instrument: ['P18'],\n",
         "replace": "        series: ['P18'],\n"
       }
     ],
@@ -17,8 +17,8 @@
     "why": "vzell chose Wikidata P18 for a series without a picture link.",
     "edits": [
       {
-        "find": "        series: ['P18'], instrument: [],\n",
-        "replace": "        series: [], instrument: [],\n"
+        "find": "        series: ['P18'], instrument: ['P18'],\n",
+        "replace": "        series: [], instrument: ['P18'],\n"
       }
     ],
     "spec": "tests/fixtures/pop-mb-image.spec.js",
@@ -127,6 +127,45 @@
     ],
     "spec": "tests/fixtures/pop-mb-image.spec.js",
     "grep": "P5: a place page shows the picture its window found",
+    "expect": "fail"
+  },
+  {
+    "name": "an instrument without a drawing never asks Wikidata",
+    "why": "vzell's browser check: bass guitar has only a Wikidata item, and chose its image as the fallback.",
+    "edits": [
+      {
+        "find": "        series: ['P18'], instrument: ['P18'],\n",
+        "replace": "        series: ['P18'], instrument: [],\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P6: an instrument without a drawing",
+    "expect": "fail"
+  },
+  {
+    "name": "the description is inserted as text",
+    "why": "The window showed MusicBrainz's link tags as text.",
+    "edits": [
+      {
+        "find": "                    (d.description ? `<div class=\"mb-dp-section\">${_mbPopDescHtml(d.description)}</div>`\n",
+        "replace": "                    (d.description ? `<div class=\"mb-dp-section\">${_rgEsc(d.description)}</div>`\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P7: an instrument's HTML description",
+    "expect": "fail"
+  },
+  {
+    "name": "the description keeps any link",
+    "why": "Only MusicBrainz paths and https addresses become links; a javascript: href must not.",
+    "edits": [
+      {
+        "find": "                const ok = /^\\/[a-z-]+\\/[0-9a-f-]{36}(?:[/?#].*)?$/i.test(href) || /^https:\\/\\//i.test(href);\n",
+        "replace": "                const ok = true;\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P7: an instrument's HTML description",
     "expect": "fail"
   }
 ]

@@ -527,7 +527,11 @@ test.describe('Event Horizon\'s pictures (sa_pop_mb_eh_images, C8)', () => {
 //      once, the card shows it afterwards;
 //   P4 series with no picture: the links table, no picture box;
 //   P5 a place page shows the window's known record beside the name, the
-//      page asking nothing.
+//      page asking nothing;
+//   P6 an instrument without a drawing: its Wikidata image, on Space only
+//      (vzell's browser check, "bass guitar");
+//   P7 an instrument's HTML description: links as links (MusicBrainz paths
+//      and https only), other tags as their text.
 
 const INSTRUMENT = '63021302-86cd-4aee-80df-2270d54f4978';
 const SERIES = 'aa3694d3-a3d0-48ed-8f07-5b576de87908';
@@ -622,6 +626,42 @@ test.describe('instrument and series pictures; a place page\'s known picture (20
         await expect(dialog(page).locator('.mb-dp-spin')).toHaveCount(0, QUEUE);
         await expect(winPic(page)).toHaveCount(0);
         expect(await wdLog(page)).toEqual([]);
+    });
+
+    test('P6: an instrument without a drawing falls back to its Wikidata image, on Space only', async ({ page }) => {
+        // vzell's browser check: "bass guitar" has no IROMBOOK drawing, only its Wikidata item.
+        await open(page, {
+            pins: { instrument: withRels('ws2-pop-instrument-guitar.json', [urlRel('wikidata', 'https://www.wikidata.org/wiki/Q46185')]) },
+            responses: { [WD('Q46185', 'P18')]: claims('P18', [['normal', 'Bass guitar.jpg']]) },
+        });
+        const link = await probeLink(page, `/instrument/${INSTRUMENT}`, 'guitar');
+        await ctrlHover(page, link);
+        await expect(card(page).locator('.mb-tt-foot')).toBeVisible(QUEUE);
+        expect(await wdLog(page), 'a hover asks Wikidata nothing').toEqual([]);
+        await page.keyboard.press('Space');
+        await expect(winPic(page).locator('img')).toHaveAttribute('src',
+            'https://commons.wikimedia.org/wiki/Special:FilePath/Bass_guitar.jpg?width=330', QUEUE);
+        await expect(winPic(page).locator('figcaption')).toContainText('from Wikidata Q46185 (image)');
+        expect(await wdLog(page)).toEqual([WD('Q46185', 'P18')]);
+    });
+
+    test('P7: an instrument\'s HTML description: its links are links in the window, plain text in the card, no tag shown', async ({ page }) => {
+        const d = JSON.parse(json('ws2-pop-instrument-guitar.json'));
+        d.description = 'Bass member of the guitar family. For the electric variant use <a href="/instrument/0b9d87fa-93fa-4956-8b6a-a419566cc915">electric bass guitar</a>, '
+            + 'never <a href="javascript:alert(1)">this</a> <b>bold</b>.';
+        await open(page, { pins: { instrument: JSON.stringify(d) } });
+        const link = await probeLink(page, `/instrument/${INSTRUMENT}`, 'guitar');
+        await ctrlHover(page, link);
+        await expect(card(page).locator('.mb-tt-foot')).toBeVisible(QUEUE);
+        await expect(card(page)).toContainText('For the electric variant use electric bass guitar, never this bold.');
+        await expect(card(page)).not.toContainText('<a');
+        await page.keyboard.press('Space');
+        const desc = dialog(page).locator('.mb-dp-section').first();
+        await expect(desc.locator('a[href="/instrument/0b9d87fa-93fa-4956-8b6a-a419566cc915"]')).toHaveText('electric bass guitar', QUEUE);
+        await expect(desc).not.toContainText('<a');
+        await expect(desc.locator('a'), 'the javascript: link is text only').toHaveCount(1);
+        await expect(desc.locator('b')).toHaveCount(0);
+        await expect(desc).toContainText('never this bold.');
     });
 
     test('P5: a place page shows the picture its window found, and the page asks nothing', async ({ page }) => {

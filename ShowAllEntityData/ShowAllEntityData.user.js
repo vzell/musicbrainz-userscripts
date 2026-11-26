@@ -6221,7 +6221,8 @@
                          'An area\'s window shows its locator map with the flag on its corner, then the flag, ' +
                          'coat of arms, seal and image its Wikidata item names (five small requests). ' +
                          'A series\' window shows its own picture link, else its Wikidata image (one small ' +
-                         'request); an instrument\'s window shows MusicBrainz\'s own IROMBOOK drawing (no request). ' +
+                         'request); an instrument\'s window shows MusicBrainz\'s own IROMBOOK drawing (no request), ' +
+                         'else its Wikidata image. ' +
                          'Click it for the viewer. Asked only on Space, never on a hover; afterwards the card ' +
                          'and the own page of an area, a place or a series show it too, from this browser\'s storage.'
         },
@@ -87124,9 +87125,11 @@
         artist: ['P18', 'P154'], label: ['P154', 'P18'], place: ['P18', 'P154'],
         area: ['P242', 'P41', 'P94', 'P158', 'P18'],
         // 2026-11-26 (vzell): a series' own picture link, else Wikidata's
-        // image; an instrument's own links only, which hold MusicBrainz's
-        // IROMBOOK drawing (Event Horizon's insHero shows the same).
-        series: ['P18'], instrument: [],
+        // image; an instrument's own links first, which hold MusicBrainz's
+        // IROMBOOK drawing (Event Horizon's insHero shows the same), else
+        // Wikidata's image (vzell's browser check: "bass guitar" has no
+        // drawing, only its Wikidata item).
+        series: ['P18'], instrument: ['P18'],
     };
 
     /**
@@ -89187,6 +89190,44 @@
     }
 
     /**
+     * An entity description MusicBrainz writes as HTML (an instrument's:
+     * 'For the electric variant use <a href="/instrument/…">electric bass
+     * guitar</a>'), safe to insert: the text, and each link as a link to its
+     * MusicBrainz path or an https address; every other tag is reduced to
+     * its text. Parsed, never inserted as given (vzell's browser check
+     * 2026-11-26: the window showed the tags as text).
+     *
+     * @param {string} html
+     * @returns {string}
+     */
+    function _mbPopDescHtml(html) {
+        const doc = new DOMParser().parseFromString(`<body>${String(html || '')}</body>`, 'text/html');
+        const walk = (node) => Array.from(node.childNodes).map((n) => {
+            if (n.nodeType === 3) return _rgEsc(n.textContent);
+            if (n.nodeType !== 1) return '';
+            if (n.tagName === 'A') {
+                const href = n.getAttribute('href') || '';
+                const ok = /^\/[a-z-]+\/[0-9a-f-]{36}(?:[/?#].*)?$/i.test(href) || /^https:\/\//i.test(href);
+                return ok ? `<a href="${_rgEsc(href)}" target="_blank" rel="noopener noreferrer">${walk(n)}</a>` : walk(n);
+            }
+            return (n.tagName === 'BR' ? '<br>' : '') + walk(n);
+        }).join('');
+        return walk(doc.body);
+    }
+
+    /**
+     * The same description as plain text, for a card: what its HTML reads
+     * as, whitespace collapsed (no gap where a tag was).
+     *
+     * @param {string} html
+     * @returns {string}
+     */
+    function _mbPopDescText(html) {
+        const doc = new DOMParser().parseFromString(`<body>${String(html || '')}</body>`, 'text/html');
+        return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
      * The text of a fragment `_mbEditsHtml()` made, for a one-line summary.
      *
      * @param {string} html
@@ -91208,7 +91249,7 @@
                 return `<div class="mb-tt-title">${_rgEsc(d.name)}` +
                     `${d.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(d.disambiguation)})</span>` : ''}</div>` +
                     `<div class="mb-tt-body mb-rg-pills">${_mbPopPillsHtml([d.type])}</div><div class="mb-tt-rule"></div>` +
-                    (d.description ? `<div class="mb-tt-body">${_rgEsc(d.description)}</div>` : '') +
+                    (d.description ? `<div class="mb-tt-body">${_rgEsc(_mbPopDescText(d.description))}</div>` : '') +
                     _mbPopKvHtml([
                         ..._mbPopRelRows(d.relations, 'instrument').map(([k, v]) => [k, v.split('<br>').length > 3
                             ? `${v.split('<br>').slice(0, 3).join(', ')} +${v.split('<br>').length - 3}` : v.split('<br>').join(', ')]),
@@ -91218,7 +91259,7 @@
             windowHtml(d, t) {
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>${_mbPopWindowPicture(t)}` +
-                    (d.description ? `<div class="mb-dp-section">${_rgEsc(d.description)}</div>`
+                    (d.description ? `<div class="mb-dp-section">${_mbPopDescHtml(d.description)}</div>`
                         : '<div class="mb-dp-xsub">The description is on the instrument\'s page (Live page).</div>') +
                     `<h4>Aliases · ${(d.aliases || []).length}</h4>${(d.aliases || []).length ? _dpCompactTableHtml(t, 'aliases', [
                         { key: 'name', label: 'Alias', val: a => a.name || '', html: (a, q) => _hlEsc(a.name, q) },

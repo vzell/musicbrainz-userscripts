@@ -3040,7 +3040,8 @@ userscript lists that host, so Tampermonkey does not ask first).
   the window waits for it instead of failing, in every tab. A **series**
   window shows its own picture link, else the image its Wikidata item names
   (one small request), with its links in a table; an **instrument** window
-  shows MusicBrainz's own IROMBOOK drawing (no request) and its links. A
+  shows MusicBrainz's own IROMBOOK drawing (no request), else its Wikidata
+  image, and its links. A
   place's or a series' own page shows the picture its window found, beside
   the name, from this browser's storage.
   Switch: *Pictures in artist, label, place, area, series and instrument previews*. With majkinetor's
