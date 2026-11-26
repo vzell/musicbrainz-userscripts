@@ -472,6 +472,24 @@ hosts (kept, decided 2026-10-07).
   kind of MusicBrainz record of the engine with its own memory guard owes the
   same check. Spec: popup-mb.spec.js "kept answers and the shared last-write
   time (C7)"; mutations: `scripts/mutations/mb-last-write.json`.
+- **Stale-while-revalidate (2026-11-26; Event Horizon's `kept()`/`kpCheck()`,
+  majkinetor).** `_mbLoad(…, {swr: true})`, opted in by `_mbWsLoad()` and
+  `_mbPageLoad()` only (external readers, paged lists, `pop:img:` keep the
+  plain rule). IndexedDB is read up to `_MB_SWR_MAX_MS` (30 days): younger
+  than `_mbTtlMs()` as before; between the two the answer is `done` at once
+  and `_mbSwrRecheck()` asks again; older, "Loading…" as before. A memory
+  entry older than the keep time is re-checked the same way (a long-lived
+  tab). The re-check: one at a time (`_mbSwrChain`), each key once per page
+  (`_mbSwrSeen`), `ask(wanted, false, recheck = true)` (background in the
+  gate; a page loader reads the page again instead of `_dpRawMem`); only a
+  successful answer counts; `_mbCanon()` (keys sorted, `kpCanon`) decides
+  changed (new data) or unchanged (only `at` renewed); either way the
+  listeners repaint, and the foot's " · checking…" (`st.checking`,
+  `_dpAgeText()`) goes. A failure keeps the old answer. C7 still wins: a
+  record written before `mbLastWrite` is not shown. No extra request: the
+  expired answer used to be asked with "Loading…". Spec popup-mb.spec.js
+  "stale-while-revalidate" (S1–S7), mutations
+  `scripts/mutations/stale-while-revalidate.json`.
 - **Stepping: `_mbPopSteps(t)`** — the same kind in the same column, the
   column found by HEADER NAME (`_resolveColHeaderName()`) in every visible
   top-level `table.tbl`, so the arrows go on into the next sub-table even

@@ -2078,6 +2078,17 @@
                          + 'for the artwork cache.'
         },
 
+        sa_rel_idb_recheck: {
+            label: 'Re-check older kept relationships in the background',
+            type: 'checkbox',
+            default: true,
+            description: 'After the Relationships column has loaded from the browser\'s storage, the answers '
+                         + 'kept for more than 7 days are asked again in the background, the oldest first, at '
+                         + 'most 100 per page and one a second (stale-while-revalidate). A row whose '
+                         + 'relationships changed is rewritten; the others only count as fresh again. Off: '
+                         + 'kept answers are used until they expire (the TTL above).'
+        },
+
         sa_rel_completion_toast_duration: {
             label: 'Relationships load-complete toast duration (seconds)',
             type: 'number',
@@ -47006,15 +47017,19 @@
     }
 
     /**
-     * "fetched now" or "saved 3 days ago", for a card's foot.
+     * "fetched now" or "saved 3 days ago", for a card's foot, with
+     * " · checking…" while a kept answer is asked again (`res.checking`,
+     * `_mbSwrRecheck()`).
      *
-     * @param {object} res A `_dpGet()` outcome `'ok'`.
+     * @param {object} res A `_dpGet()` outcome `'ok'`, or `{cached, at, checking}`.
      * @returns {string}
      */
     function _dpAgeText(res) {
         if (!res.cached) return 'fetched now';
         const days = Math.floor((Date.now() - res.at) / 86400000);
-        return days < 1 ? 'saved today' : `saved ${days} day${days === 1 ? '' : 's'} ago`;
+        // A kept answer being asked again in the background (stale-while-revalidate, `_mbSwrRecheck()`).
+        const checking = res.checking ? ' · checking…' : '';
+        return (days < 1 ? 'saved today' : `saved ${days} day${days === 1 ? '' : 's'} ago`) + checking;
     }
 
     /**
@@ -84002,7 +84017,7 @@
      */
     function _mbWsLoad(cacheKey, url, opts = {}) {
         // A forced load is the window's ⟳, an explicit click: foreground in the shared gate.
-        _mbLoad(cacheKey, (wanted, force) => _rgWsGet(url, '_mbWsLoad', wanted, { foreground: !!force }), opts);
+        _mbLoad(cacheKey, (wanted, force) => _rgWsGet(url, '_mbWsLoad', wanted, { foreground: !!force }), Object.assign({ swr: true }, opts));
     }
 
     /**
@@ -84054,8 +84069,10 @@
      * @returns {void}
      */
     function _mbPageLoad(cacheKey, url, parse, opts = {}) {
-        _mbLoad(cacheKey, async (wanted, force) => {
-            const raw = await _dpGetRaw(url, _MB_LIVE, { wanted, force });
+        _mbLoad(cacheKey, async (wanted, force, recheck) => {
+            // A re-check (stale-while-revalidate) reads the page again, never
+            // the copy the Live page view keeps (`_dpRawMem`).
+            const raw = await _dpGetRaw(url, _MB_LIVE, { wanted, force: force || !!recheck });
             if (raw.outcome === 'skipped') return { skipped: true };
             if (raw.outcome !== 'ok') return { ok: false, detail: raw.detail || 'The request failed.' };
             const rec = parse(new DOMParser().parseFromString(raw.html, 'text/html'));
@@ -84065,7 +84082,79 @@
             // not be read back from there by the next try.
             _dpRawMem.delete(url);
             return { ok: false, detail: _mbIsBrowserCheck(raw.html) ? _MB_BROWSER_CHECK_NOTE : 'not the page expected' };
-        }, Object.assign({ version: _MB_POP_PAGE_VERSION }, opts));
+        }, Object.assign({ version: _MB_POP_PAGE_VERSION, swr: true }, opts));
+    }
+
+    /**
+     * How old a kept MusicBrainz answer may be and still be shown while it
+     * is asked again (stale-while-revalidate, 2026-11-26): 30 days. Older
+     * ones are asked with "Loading…", as before.
+     * @type {number}
+     */
+    const _MB_SWR_MAX_MS = 30 * 86400000;
+
+    /** The keys re-checked on this page (each once). @type {Set<string>} */
+    const _mbSwrSeen = new Set();
+
+    /** The re-checks, one after the other. @type {Promise<void>} */
+    let _mbSwrChain = Promise.resolve();
+
+    /**
+     * A JSON value as text with every object's keys sorted, so two answers
+     * that differ only in MusicBrainz's key order compare equal (Event
+     * Horizon's `kpCanon`).
+     *
+     * @param {*} v
+     * @returns {string}
+     */
+    function _mbCanon(v) {
+        const sort = (x) => (Array.isArray(x) ? x.map(sort)
+            : x && typeof x === 'object' ? Object.keys(x).sort().reduce((o, k) => { o[k] = sort(x[k]); return o; }, {}) : x);
+        try { return JSON.stringify(sort(v)); } catch (_) { return ''; }
+    }
+
+    /**
+     * Stale-while-revalidate of one kept answer (2026-11-26; majkinetor's
+     * Event Horizon `kept()`/`kpCheck()`): the old answer stays shown with
+     * "checking…" in its foot (`st.checking`), one re-check at a time asks
+     * MusicBrainz again in the background, and only a successful answer
+     * counts. A changed one replaces the data and repaints; an unchanged one
+     * only renews the age (and the foot). A failure keeps the old answer.
+     * Each key once per page. It costs no extra request: the expired answer
+     * used to be asked with "Loading…" instead.
+     *
+     * @param {string} cacheKey
+     * @param {Object} st - The `_mbPop` state, `done`.
+     * @param {function(function(): boolean, boolean, boolean): Promise<Object>} ask - Called
+     *   `(wanted, force = false, recheck = true)`: background in the gate, and
+     *   a page loader reads the page again instead of its kept copy.
+     * @param {number} version
+     * @param {?function(Object): boolean} keep
+     * @param {boolean} [notifyNow] - Repaint now to show "checking…" (false
+     *   when the caller notifies anyway).
+     * @returns {void}
+     */
+    function _mbSwrRecheck(cacheKey, st, ask, version, keep, notifyNow = true) {
+        if (_mbSwrSeen.has(cacheKey)) return;
+        _mbSwrSeen.add(cacheKey);
+        st.checking = true;
+        const notify = () => st.listeners.forEach(fn => fn());
+        if (notifyNow) notify();
+        _mbSwrChain = _mbSwrChain.then(async () => {
+            let res;
+            try { res = await ask(() => true, false, true); } catch (_) { res = null; }
+            st.checking = false;
+            if (_mbPop.get(cacheKey) !== st) return;
+            if (res && res.ok && res.data) {
+                const changed = _mbCanon(res.data) !== _mbCanon(st.data);
+                Object.assign(st, { data: changed ? res.data : st.data, at: Date.now(), cached: false });
+                if (!keep || keep(st.data)) _rgIdbPut(cacheKey, st.data, st.at, version);
+                Lib.debug('rg', `swr ${cacheKey}: ${changed ? 'changed' : 'unchanged'}`);
+            } else {
+                Lib.debug('rg', `swr ${cacheKey}: the re-check failed, the kept answer stays`);
+            }
+            notify();
+        });
     }
 
     /**
@@ -84090,14 +84179,23 @@
      *   external page keeps its own, `_extLoad()`).
      * @returns {void}
      */
-    function _mbLoad(cacheKey, ask, { force = false, repaint = null, wanted = null, version = _MB_POP_IDB_VERSION, keep = null, ttlMs = undefined } = {}) {
+    function _mbLoad(cacheKey, ask, { force = false, repaint = null, wanted = null, version = _MB_POP_IDB_VERSION, keep = null, ttlMs = undefined, swr = false } = {}) {
         const cur = _mbPop.get(cacheKey);
         if (cur && cur.status === 'loading') {
             if (repaint) cur.listeners.add(repaint);
             cur.wants.push(wanted || (() => true));
             return;
         }
-        if (!force && cur && cur.status === 'done' && !_mbKeptStale(cacheKey, cur.at)) return;
+        if (!force && cur && cur.status === 'done' && !_mbKeptStale(cacheKey, cur.at)) {
+            // Stale-while-revalidate: an answer older than the keep time is
+            // shown as it is and asked again in the background (a long-lived
+            // tab's memory too).
+            if (swr && Date.now() - cur.at >= (ttlMs ?? _mbTtlMs())) {
+                if (repaint) cur.listeners.add(repaint);
+                _mbSwrRecheck(cacheKey, cur, ask, version, keep);
+            }
+            return;
+        }
         const st = {
             status: 'loading', data: null, at: 0, cached: false, detail: '',
             listeners: new Set(repaint ? [repaint] : []), wants: [wanted || (() => true)],
@@ -84106,9 +84204,13 @@
         const notify = () => st.listeners.forEach(fn => fn());
         (async () => {
             if (!force) {
-                const rec = await _rgIdbGet(cacheKey, version, ttlMs);
+                // With `swr`, a kept answer up to 30 days old is shown at
+                // once; one older than the keep time is re-checked.
+                const ttl = ttlMs ?? _mbTtlMs();
+                const rec = await _rgIdbGet(cacheKey, version, swr ? Math.max(ttl, _MB_SWR_MAX_MS) : ttlMs);
                 if (rec) {
                     Object.assign(st, { status: 'done', data: rec.data, at: rec.at, cached: true });
+                    if (swr && Date.now() - rec.at >= ttl) _mbSwrRecheck(cacheKey, st, ask, version, keep, false);
                     notify();
                     return;
                 }
@@ -84796,7 +84898,7 @@
     function _mbPopCardShell(t, st, body, failNote = null, aside = '') {
         if (st && st.status === 'done' && st.data) {
             const main = `${body(st.data, t)}<div class="mb-tt-foot">` +
-                `${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at }))} · <kbd>Space</kbd> ${aside ? 'picture &amp; more' : 'more'} · <kbd>Esc</kbd> close</div>`;
+                `${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at, checking: st.checking }))} · <kbd>Space</kbd> ${aside ? 'picture &amp; more' : 'more'} · <kbd>Esc</kbd> close</div>`;
             return aside
                 ? `<div class="mb-pop-card mb-pop-card-pic">${aside}<div class="mb-pop-main">${main}</div></div>`
                 : `<div class="mb-pop-card">${main}</div>`;
@@ -84824,7 +84926,7 @@
      */
     function _mbPopWindowShell(t, st, body, failNote = null) {
         if (st && st.status === 'done' && st.data) {
-            return body(st.data, t) + `<div class="mb-dp-xfoot">${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at }))} · ` +
+            return body(st.data, t) + `<div class="mb-dp-xfoot">${_rgEsc(_dpAgeText({ cached: st.cached, at: st.at, checking: st.checking }))} · ` +
                 '⟳ asks MusicBrainz again</div>';
         }
         const title = `<div class="mb-dp-xtitle">${_rgEsc(t.name || t.kind)}</div>`;
@@ -172085,7 +172187,7 @@ a { color: #1565c0; }`;
      * @param {string} ckey  '${entityType}:${mbid}'
      * @returns {Promise<Object|null>}
      */
-    function _relIdbGet(ckey) {
+    function _relIdbGet(ckey, withTs = false) {
         if (!Lib.settings.sa_rels_idb_enable) return Promise.resolve(null);
         return _artIdbGet('rel-ws2', ckey)
             .then(rec => {
@@ -172095,9 +172197,71 @@ a { color: #1565c0; }`;
                     _relIdbTtlEvictCount++;
                     return null;
                 }
-                return rec.data;
+                // `withTs`: the record's age too, for the background re-check (`_relRecheckRun()`).
+                return withTs ? { data: rec.data, ts: rec.ts || 0 } : rec.data;
             })
             .catch(() => null);
+    }
+
+    /** A kept Relationships answer older than this is re-checked after the column loaded (7 days). @type {number} */
+    const _REL_SWR_AGE_MS = 7 * 86400000;
+
+    /** At most this many re-checks per page (a `let` for `__saTest.relRecheckCap()`). @type {number} */
+    let _REL_SWR_PER_PAGE = 100;
+
+    /** Bumped by every column pass: an older pass's re-check stops. @type {number} */
+    let _relRecheckGen = 0;
+
+    /** The entities re-checked on this page, `<type>:<mbid>` (each once). @type {Set<string>} */
+    const _relRecheckSeen = new Set();
+
+    /** The last re-check's counts, for `__saTest`: `{asked, changed, done}` (`done` once it has ended, or decided to do nothing). */
+    const _relRecheckStats = { asked: 0, changed: 0, done: false };
+
+    /**
+     * Stale-while-revalidate for the Relationships column (2026-11-26,
+     * majkinetor's Event Horizon `kpCheck()`; vzell: "re-check a few, in
+     * background"). After a pass has drained its own queue, the answers it
+     * took from IndexedDB older than `_REL_SWR_AGE_MS` are asked again, the
+     * oldest first, at most `_REL_SWR_PER_PAGE`, one per rate slot,
+     * background in the shared gate, with no cell state (no ◌). A changed
+     * answer (`_mbCanon()`) goes through `write(mbid, data)` (the pass's
+     * `_populateCells()`: live and master cells, findings re-stamped, the
+     * caches dropped); an unchanged one only renews its record
+     * (`_relFetchWs2()` writes it). Stops when a later pass starts, or the
+     * entity's cells left the page. Off with `sa_rel_idb_recheck`.
+     *
+     * @param {Array<{mbid: string, et: string, inc: string[], data: ?Object, ts: number}>} stale
+     * @param {function(string): boolean} present - The entity still has a cell in the page.
+     * @param {function(string, ?Object): Promise<void>} write
+     * @returns {Promise<void>}
+     */
+    async function _relRecheckRun(stale, present, write) {
+        const gen = ++_relRecheckGen;
+        Object.assign(_relRecheckStats, { asked: 0, changed: 0, done: false });
+        const list = Lib.settings.sa_rel_idb_recheck === false ? []
+            : stale.filter(x => !_relRecheckSeen.has(`${x.et}:${x.mbid}`)).sort((a, b) => a.ts - b.ts).slice(0, _REL_SWR_PER_PAGE);
+        if (!list.length) {
+            _relRecheckStats.done = true;
+            return;
+        }
+        for (const x of list) {
+            if (gen !== _relRecheckGen) break;
+            if (!present(x.mbid)) continue;
+            _relRecheckSeen.add(`${x.et}:${x.mbid}`);
+            await _relAwaitRateSlot();
+            if (gen !== _relRecheckGen) break;
+            const res = await _relFetchWs2(x.mbid, x.et, x.inc, true, { slotHeld: true });
+            _relRecheckStats.asked++;
+            if (res.outcome !== 'ok') continue;
+            if (_mbCanon(res.data) !== _mbCanon(x.data)) {
+                _relRecheckStats.changed++;
+                await write(x.mbid, res.data);
+            }
+        }
+        if (gen === _relRecheckGen) _relRecheckStats.done = true;
+        _ajLog('rel', null, `re-checked ${_relRecheckStats.asked} kept answer${_relRecheckStats.asked === 1 ? '' : 's'} older than 7 days, `
+            + `${_relRecheckStats.changed} changed`, _relRecheckStats.changed ? 'good' : '');
     }
 
     /**
@@ -175612,9 +175776,16 @@ a { color: #1565c0; }`;
         //   rate limit (1 req/s).
         // Net effect: pages visited before (IDB warm) render all icons at once;
         // first visits still show icons one per second as before.
+        // Answers taken from IndexedDB older than _REL_SWR_AGE_MS: re-checked
+        // in the background once this pass has drained (`_relRecheckRun()`).
+        const _relStale = [];
         const _phase1 = uniqueMbids.map(async mbid => {
             const _mbidEt = mbidEntityType.get(mbid) || entityType;
-            const cached = await _relIdbGet(`${_mbidEt}:${mbid}`);
+            const _rec = await _relIdbGet(`${_mbidEt}:${mbid}`, true);
+            const cached = _rec ? _rec.data : null;
+            if (_rec && Date.now() - _rec.ts > _REL_SWR_AGE_MS) {
+                _relStale.push({ mbid, et: _mbidEt, inc: _relIncOptionsForEntityType(_mbidEt), data: cached, ts: _rec.ts });
+            }
             if (cached) {
                 _relDbg(`initRelationshipsColumn: phase1 IDB hit for ${mbid}`);
                 // Also store in L1 memory cache so _relFetchWs2 sees it
@@ -175878,6 +176049,8 @@ a { color: #1565c0; }`;
             // on counting a LATER pass's outcomes into its own breaker.
             _relAutoRetry.active = false;
             _relScheduleAutoRetry();
+            // Stale-while-revalidate: the older kept answers, in the background.
+            _relRecheckRun(_relStale, m => (cellsByMbid.get(m) || []).some(td => td.isConnected), _populateCells);
             const _relElapsed = performance.now() - _relStartMs;
             // `failed` counts requests that still failed after every retry —
             // their cells carry `data-rel-error` rather than being shown as
@@ -199477,6 +199650,17 @@ a { color: #1565c0; }`;
              * @returns {?{site: string, key: string, form: string}}
              */
             relPageKey: (url) => _relPageKey(url),
+            /**
+             * The Relationships column's background re-check (`_relRecheckRun()`):
+             * `cap(n)` sets how many a page re-checks, `stats()` reads the last
+             * run's `{asked, changed}`.
+             */
+            relRecheck: {
+                /** @param {number} n @returns {void} */
+                cap: (n) => { _REL_SWR_PER_PAGE = n; },
+                /** @returns {{asked: number, changed: number, done: boolean}} */
+                stats: () => ({ ..._relRecheckStats }),
+            },
             /**
              * MusicBrainz's browser check on page fetches (`fetchHtml()`,
              * `_mbReverify()`).

@@ -368,6 +368,24 @@ The traps. Every one of them fails silently:
   filterable as an expanded column's; `relIconCounts` used to be skipped
   whenever the column was collapsed.
 
+## The background re-check of older kept answers (stale-while-revalidate, 2026-11-26)
+
+vzell: "re-check a few, in background" (Event Horizon's `kpCheck()`).
+Phase 1 reads each record with its age (`_relIdbGet(ckey, true)`) and notes
+those older than `_REL_SWR_AGE_MS` (7 days). Once the pass's queue has
+drained (after `_relScheduleAutoRetry()`), `_relRecheckRun()` asks them again,
+the oldest first, at most `_REL_SWR_PER_PAGE` (100) per page, one per rate
+slot, `_relFetchWs2(…, forceNetwork, {slotHeld})` (background in the gate),
+with NO cell state: no `data-rel-loading`, no ◌. A changed answer
+(`_mbCanon()`) goes through the pass's `_populateCells()`, the ordinary late
+write (live and master cells, findings re-stamped, caches dropped); an
+unchanged one is only renewed (`_relFetchWs2()` puts it). Each entity once
+per page (`_relRecheckSeen`); a later pass bumps `_relRecheckGen` and the
+older run stops; an entity whose cells left the page is skipped. The job
+log gets "re-checked N kept answers older than 7 days, M changed". Setting
+`sa_rel_idb_recheck` (on). Spec `rel-ws2-recheck.spec.js` (R1–R4), mutations
+`scripts/mutations/stale-while-revalidate.json`.
+
 ## The automatic retry pass, and why it is bounded four ways
 
 `org/503-handling.org` item 7 — the only change in that file that makes the

@@ -1,0 +1,171 @@
+[
+  {
+    "name": "a stale kept answer is never shown",
+    "why": "The old behaviour: 'Loading…' for every answer older than the keep time.",
+    "edits": [
+      {
+        "find": "                const rec = await _rgIdbGet(cacheKey, version, swr ? Math.max(ttl, _MB_SWR_MAX_MS) : ttlMs);\n",
+        "replace": "                const rec = await _rgIdbGet(cacheKey, version, ttlMs);\n"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "S1 \\+ S3: older than the keep time",
+    "expect": "fail"
+  },
+  {
+    "name": "a stale answer is shown but never re-checked",
+    "why": "It would stay old for 30 days.",
+    "edits": [
+      {
+        "find": "                    if (swr && Date.now() - rec.at >= ttl) _mbSwrRecheck(cacheKey, st, ask, version, keep, false);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "S1 \\+ S3: older than the keep time",
+    "expect": "fail"
+  },
+  {
+    "name": "the link previews do not opt in",
+    "why": "_mbWsLoad() without swr: the cards keep the old behaviour.",
+    "edits": [
+      {
+        "find": "Object.assign({ swr: true }, opts));",
+        "replace": "Object.assign({ swr: false }, opts));"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "S1 \\+ S3: older than the keep time",
+    "expect": "fail"
+  },
+  {
+    "name": "no 'checking…' in the foot",
+    "why": "The user cannot tell an old answer being re-checked from a fresh one.",
+    "edits": [
+      {
+        "find": "        const checking = res.checking ? ' · checking…' : '';\n",
+        "replace": "        const checking = '';\n"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "S1 \\+ S3: older than the keep time",
+    "expect": "fail"
+  },
+  {
+    "name": "a changed answer is not taken",
+    "why": "The re-check would renew the age of the old data.",
+    "edits": [
+      {
+        "find": "                const changed = _mbCanon(res.data) !== _mbCanon(st.data);\n",
+        "replace": "                const changed = false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "S2: a changed answer repaints",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed re-check drops the old answer",
+    "why": "Only a successful answer counts; a failure keeps what was shown.",
+    "edits": [
+      {
+        "find": "            if (res && res.ok && res.data) {\n                const changed",
+        "replace": "            if (true) {\n                if (!(res && res.ok && res.data)) { st.data = null; st.status = 'failed'; st.detail = 'x'; }\n                const changed"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "S4: a failed re-check keeps",
+    "expect": "fail"
+  },
+  {
+    "name": "no upper age: a year-old answer is shown",
+    "why": "Past 30 days the old answer is too old to show while re-checking.",
+    "edits": [
+      {
+        "find": "                const rec = await _rgIdbGet(cacheKey, version, swr ? Math.max(ttl, _MB_SWR_MAX_MS) : ttlMs);\n",
+        "replace": "                const rec = await _rgIdbGet(cacheKey, version, swr ? 1e13 : ttlMs);\n"
+      }
+    ],
+    "spec": "tests/fixtures/popup-mb.spec.js",
+    "grep": "S5: older than 30 days",
+    "expect": "fail"
+  },
+  {
+    "name": "the Relationships column never re-checks",
+    "why": "The column's kept answers would be used unchanged until they expire.",
+    "edits": [
+      {
+        "find": "            _relRecheckRun(_relStale, m => (cellsByMbid.get(m) || []).some(td => td.isConnected), _populateCells);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-ws2-recheck.spec.js",
+    "grep": "R1 \\+ R2: only answers older than 7 days",
+    "expect": "fail"
+  },
+  {
+    "name": "every kept answer is re-checked, however young",
+    "why": "A table loaded yesterday would re-ask every row.",
+    "edits": [
+      {
+        "find": "            if (_rec && Date.now() - _rec.ts > _REL_SWR_AGE_MS) {\n",
+        "replace": "            if (_rec) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-ws2-recheck.spec.js",
+    "grep": "R1 \\+ R2: only answers older than 7 days",
+    "expect": "fail"
+  },
+  {
+    "name": "a changed relationship answer is not written",
+    "why": "The row would keep its old icons although the record was renewed.",
+    "edits": [
+      {
+        "find": "            if (_mbCanon(res.data) !== _mbCanon(x.data)) {\n",
+        "replace": "            if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-ws2-recheck.spec.js",
+    "grep": "R1 \\+ R2: only answers older than 7 days",
+    "expect": "fail"
+  },
+  {
+    "name": "the per-page cap is ignored",
+    "why": "A large table would re-ask every old row.",
+    "edits": [
+      {
+        "find": "            : stale.filter(x => !_relRecheckSeen.has(`${x.et}:${x.mbid}`)).sort((a, b) => a.ts - b.ts).slice(0, _REL_SWR_PER_PAGE);\n",
+        "replace": "            : stale.filter(x => !_relRecheckSeen.has(`${x.et}:${x.mbid}`)).sort((a, b) => a.ts - b.ts);\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-ws2-recheck.spec.js",
+    "grep": "R3: the per-page cap",
+    "expect": "fail"
+  },
+  {
+    "name": "not the oldest first",
+    "why": "The cap should spend its requests on the oldest answers.",
+    "edits": [
+      {
+        "find": "            : stale.filter(x => !_relRecheckSeen.has(`${x.et}:${x.mbid}`)).sort((a, b) => a.ts - b.ts).slice(0, _REL_SWR_PER_PAGE);\n",
+        "replace": "            : stale.filter(x => !_relRecheckSeen.has(`${x.et}:${x.mbid}`)).slice(0, _REL_SWR_PER_PAGE);\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-ws2-recheck.spec.js",
+    "grep": "R3: the per-page cap",
+    "expect": "fail"
+  },
+  {
+    "name": "the switch is ignored",
+    "why": "sa_rel_idb_recheck off must ask nothing.",
+    "edits": [
+      {
+        "find": "        const list = Lib.settings.sa_rel_idb_recheck === false ? []\n",
+        "replace": "        const list = false ? []\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-ws2-recheck.spec.js",
+    "grep": "R4: sa_rel_idb_recheck off",
+    "expect": "fail"
+  }
+]

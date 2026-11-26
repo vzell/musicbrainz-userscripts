@@ -31976,3 +31976,31 @@ so the tags showed as text. `_mbPopDescHtml()` now parses it (text,
 MusicBrainz paths and https links; any other tag as its text, so a
 `javascript:` link stays text) and the card uses `_mbPopDescText()`.
 P6, P7 and three mutations pin both; the picture specs 7/7.
+
+## 2026-11-26 — Stale-while-revalidate: link previews and the Relationships column (feat/stale-while-revalidate, WIP.1 + WIP.2)
+
+Env: 2026-11-26T16:20–17:15+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · browser check pending
+
+Ported from majkinetor's Event Horizon (`kept()`/`kpCheck()`, EH:5340/5347
+at `8384078`). `_mbLoad()` replaced a key's entry with `loading` (data null),
+so a kept answer past `sa_pop_mb_ttl_hours` was never shown: "Loading…".
+Now, opted in by `_mbWsLoad()` and `_mbPageLoad()`, an answer up to 30 days
+old is shown at once with " · checking…" and re-asked in the background
+(`_mbSwrRecheck()`, one at a time, once per key and page), compared with
+`_mbCanon()` (keys sorted, EH's `kpCanon`); a failure keeps it, C7 still
+drops it. A page loader's re-check passes `recheck` so it reads the page
+again instead of `_dpRawMem`, which would have compared the same HTML.
+
+The Relationships column (`_relRecheckRun()`): Phase 1 notes the `rel-ws2`
+records older than 7 days; after the queue drained they are asked again,
+oldest first, at most 100 per page, with no cell state; a changed answer
+goes through `_populateCells()`. `sa_rel_idb_recheck` (on).
+
+The old spec "IndexedDB after a reload, aged by sa_pop_mb_ttl_hours" ended
+by asserting "fetched now" and two lookups, which holds before AND after the
+change, so it proved nothing about it; its last step moved into S1–S7, whose
+route HOLDS the re-check's answer so "checking…" is seen. R3/R4 wait for a
+`done` flag of the re-check instead of fixed sleeps (lint). Specs S1–S7,
+R1–R4; the preview, Relationships, settings and job popup specs 401/401;
+mutations 13/13; two finds re-pointed (`_mbLoad()`'s memory guard became a
+block).

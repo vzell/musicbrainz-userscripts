@@ -141,7 +141,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Discogs credits as MB relationships (Credit Hoarder)           | TODO  | —             | Adoptions     |
 | Query mode for the global filter (EH's language)               | DONE  | 9.99.1668–69  | Adoptions     |
 | Columns: reorder, named sets, EH's resize rule                 | TODO  | —             | Adoptions     |
-| Stale-while-revalidate: popup engine done, =rel-ws2= left      | PART  | 9.99.1643     | Adoptions     |
+| Stale-while-revalidate: popup engine done, =rel-ws2= left      | NEXT  | WIP.1–2       | Adoptions     |
 | In-page log window (=mbuLog=)                                  | DONE  | 9.99.1689     | Adoptions     |
 | In-page log: past sessions (mbuLog's history)                  | TODO  | —             | Adoptions     |
 | Switch between SAED's view and the original page (EH's V)      | DONE  | 9.99.1695–98  | Adoptions     |
@@ -940,7 +940,7 @@ CLOSED: [2026-11-20 Fri]
 - *Mind*: the multi-table clones (=cloneNode= re-wiring list in CLAUDE.md "Common pitfalls"), =stickyColumn=,
   =moveColumnFirst=, and saved-to-disk layouts.
 
-** PART Stale-while-revalidate for =_mbWsLoad= and =rel-ws2= (Event Horizon's kept answers)
+** NEXT Stale-while-revalidate for =_mbWsLoad= and =rel-ws2= (Event Horizon's kept answers)
 
 - *Who fixes it*: *ours*, against convention *C7* (=localStorage['mbLastWrite']=, Unix ms; a kept answer older than
   it is a miss; anchor =conv-c7=). SAED writes nothing to MusicBrainz, so it only READS the key.
@@ -978,6 +978,17 @@ CLOSED: [2026-11-20 Fri]
   3336-3386). Compare canonically, JSON keys sorted first, because MB's key order varies (=kpCanon=). *Mind*: only a
   SUCCESSFUL ws/2 answer is cached (=fetch-and-render-pipeline.md=), the Relationships load states and the four
   post-render cell-write duties (=filter-and-cache-invariants.md=).
+- *Built* (2026-11-26, =feat/stale-while-revalidate=, WIP.1 + WIP.2; vzell: "show old, re-check" and "re-check a few,
+  in background"; EH's =kept()=/=kpCheck()= now at EH:5340/5347, anchors =eh-kept=, =eh-kpcheck=, =saed-swr=).
+  WIP.1, the previews: =_mbLoad(…, {swr: true})= from =_mbWsLoad()= and =_mbPageLoad()=; a kept answer between the keep
+  time and 30 days (=_MB_SWR_MAX_MS=) is shown at once with " · checking…" and re-asked by =_mbSwrRecheck()= (one at
+  a time, once per key and page, background, a page loader bypassing =_dpRawMem=), compared with =_mbCanon()=; a
+  failure keeps it; C7 still drops it. No extra request. WIP.2, the Relationships column: =_relRecheckRun()= after
+  the pass drained, the =rel-ws2= answers older than 7 days, oldest first, 100 per page, no cell state, a changed one
+  through =_populateCells()=; setting =sa_rel_idb_recheck= (on). Specs =popup-mb.spec.js= S1–S7 (the old TTL test's
+  last step moved there: it passed before and after), =rel-ws2-recheck.spec.js= R1–R4; the preview, Relationships,
+  settings and job popup specs 401/401; mutations =stale-while-revalidate.json=; =mb-last-write.json= and
+  =mb-window-3f.json= one find each re-pointed. Not covered: =ms-rec-len=, "Recording of", the external readers.
 
 ** DONE In-page log window behind =Lib.*= (=mbuLog=) (moved from org/TODO.org)
 
