@@ -1417,7 +1417,11 @@ Backspace, Alt+← and the kinds-path title need nothing new.
   has no mousedown.
 - **Failures.** `_mbPageLoad()` names MusicBrainz's "Verifying your browser"
   page (`_mbIsBrowserCheck()`, `_MB_BROWSER_CHECK_NOTE`) for every page
-  card, instead of "not the page expected". Logged out, MusicBrainz hides
+  card, instead of "not the page expected". Since 2026-11-26 the check is
+  known by its `<title>` or `<noscript>` sentence only, as upstream's
+  `mbnIsCheck()`, never by `/__meb_verify` (a beacon ordinary pages carry);
+  "Show all" fetches pass it in a hidden frame (fetch-and-render-pipeline.md,
+  "A browser check is never a page"), the cards do not. Logged out, MusicBrainz hides
   every editor and sends no notes (`editorHidden`, `notesHidden`), and the
   window says so.
 - **Glyph.** `_mbKindIconUrl()` gives an `edits` target its subject's icon.

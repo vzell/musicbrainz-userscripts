@@ -82,6 +82,13 @@ tried again after a pause, up to three times; if the server sends a
 `Retry-After` header that wait is honoured, up to 30 seconds. Most bursts pass
 without you noticing.
 
+**MusicBrainz's browser check is passed for you.** Once a day, or when your
+internet address changes, MusicBrainz answers with its "Verifying your browser"
+page instead of the page asked for. The script notices, lets MusicBrainz verify
+the browser in a hidden frame, and asks for the page again. If that does not
+work, the page counts as failed (below): open any MusicBrainz page in another
+tab, then load the missing pages.
+
 **A fetch that still cannot finish says so, and stops at the page that failed.**
 The status line turns orange:
 

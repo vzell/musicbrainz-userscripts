@@ -328,6 +328,10 @@
 //   _mbGateAnswerState() and _mbGateSlot(): a 503 with "X-RateLimit-Who: search-shed" holds only
 //   searches (scool/shot), up to MBN_JITTER (500 ms) at random on every hold, and the hold grows
 //   with hot only without a Retry-After and not on "X-RateLimit-Who: global".
+//   Added 2026-11-26: MusicBrainz's browser check on page fetches is PORTED from his
+//   mbnIsCheck() and mbnReverify() at 8384078 (_mbIsBrowserCheck(), _mbReverify()): the check
+//   page known by its <title> or <noscript> text, passed once in a hidden same-origin frame
+//   marked data-mbn-check, then the page asked again.
 // ============================================================================================================================================
 
 (function() {
@@ -7812,6 +7816,18 @@
         : _isIaHost ? 'archive.org'
         : _isSfmHost ? 'www.setlist.fm'
         : null;
+
+    // MusicBrainz's browser check is passed in a hidden frame
+    // (`_mbReverify()`, and majkinetor's `mbnReverify()`), both marked
+    // `data-mbn-check`. The header has no `@noframes`, so Tampermonkey runs
+    // this script in that frame too: a whole second SAED for a page nobody
+    // sees, for the few seconds the frame lives. Leave at once.
+    try {
+        if (!_foreignHost && window.top !== window && window.frameElement
+            && window.frameElement.hasAttribute('data-mbn-check')) {
+            return;
+        }
+    } catch (_) { /* a cross-origin parent: not our frame */ }
 
     // springsteenlyrics.com support has its own switch (`sa_enable_springsteenlyrics`,
     // default on since 2026-10-26), so a user can keep the script off another
@@ -83458,13 +83474,22 @@
      * proof-of-work page posting to `/__meb_verify`, 1394 bytes) rather than
      * the page asked for. A script without a browser gets it for most pages
      * since 2026-10-01 (DEBUG-NOTES.md); the user's own session has passed it,
-     * but a fresh one may not have (org/mb-edit-history.org, "Probe").
+     * but a fresh one may not have (org/mb-edit-history.org, "Probe"), and a
+     * session whose `__meb_verified` cookie expired (24 h, bound to the IP)
+     * gets it for every page.
+     *
+     * Known by its `<title>` or its `<noscript>` sentence, in the first 3,000
+     * characters, as majkinetor's `mbnIsCheck()` knows it
+     * (`dev/net/mb-gate.mjs` at `8384078`). Not by `/__meb_verify`, which
+     * this matched until 2026-11-26: ordinary pages carry a beacon posting there
+     * too (Falcon #551), so such a page would have been taken for the check.
      *
      * @param {string} html
      * @returns {boolean}
      */
     function _mbIsBrowserCheck(html) {
-        return /\/__meb_verify|<title>Verifying your browser<\/title>/.test(String(html || '').slice(0, 4096));
+        return /<title>\s*Verifying your browser\s*<\/title>|JavaScript is required to access this page/i
+            .test(String(html || '').slice(0, 3000));
     }
 
     /**
@@ -167119,10 +167144,17 @@ a { color: #1565c0; }`;
      * user-facing wording has to say that rather than invent a status —
      * "HTTP 0" would be worse than useless.
      *
+     * A `browserCheck` rejection (MusicBrainz answered with its "Verifying
+     * your browser" page, HTTP 200, and the hidden frame could not pass it)
+     * says so instead of "HTTP 200", which would read as a success.
+     *
      * @param   {?Error} err
      * @returns {string} e.g. `"HTTP 503"`, or `"the request failed"`.
      */
     function _httpFailureDetail(err) {
+        if (err && err.browserCheck) {
+            return 'MusicBrainz asked this browser to verify itself: open any MusicBrainz page in another tab';
+        }
         const status = err && err.status;
         return (typeof status === 'number' && status > 0)
             ? `HTTP ${status}`
@@ -167326,6 +167358,111 @@ a { color: #1565c0; }`;
     const _HTML_FETCH_BACKOFF_MS = [2000, 5000];
 
     /**
+     * How long the hidden frame of `_mbReverify()` may take to leave
+     * MusicBrainz's browser check, in milliseconds: 20 s, as upstream's
+     * `mbnReverify()`. A `let` only so that `__saTest.browserCheck.timeoutMs()`
+     * can shorten it for the spec of a check that never passes.
+     * @type {number}
+     */
+    let _MB_CHECK_TIMEOUT_MS = 20000;
+
+    /**
+     * The one browser-check pass of this page: `busy` is the pending promise
+     * that every request hitting the check meanwhile shares (one frame, not
+     * one per request), `failedAt` the time the last pass failed (no new frame
+     * for 60 s after it, so a check that cannot be passed never loops).
+     * @type {{busy: ?Promise<boolean>, failedAt: number}}
+     */
+    const _mbgCheck = { busy: null, failedAt: 0 };
+
+    /**
+     * Whether a request to `url` can be answered with MusicBrainz's browser
+     * check: this page is on musicbrainz.org (or a subdomain: beta, test) and
+     * the request goes to this page's own host. Every other site this script
+     * runs on fetches its own pages through `fetchHtml()` too, and is never
+     * tested or given a frame.
+     *
+     * @param {string} url
+     * @returns {boolean}
+     */
+    function _mbOnCheckHost(url) {
+        try {
+            if (!/(^|\.)musicbrainz\.org$/i.test(location.hostname)) return false;
+            return new URL(String(url), location.href).host === location.host;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
+     * Passes MusicBrainz's "Verifying your browser" check again, the way
+     * majkinetor's `mbnReverify()` does (`dev/net/mb-gate.mjs` at `8384078`,
+     * #733, #1103): one fresh hidden 1×1 frame at `url` on this page's own
+     * host, where MusicBrainz's own script solves the proof of work and renews
+     * the `__meb_verified` cookie for the whole browser. Resolves `true` once
+     * a load of the frame is no longer the check, `false` after
+     * `_MB_CHECK_TIMEOUT_MS` or within 60 s of a failed pass.
+     *
+     * The frame is marked `data-mbn-check`, upstream's mark, so this script
+     * (and his) leave at once inside it (the early return after
+     * `_foreignHost`); it goes into `_saBody()`, because Event Horizon swaps
+     * `document.body`. Logged to the Activity log, and as a `check` row of the
+     * shared gate's trace, which String Theory's Network log shows as
+     * "browser check passed in N s" (a no-op with the gate off).
+     *
+     * @param {string} url - A same-origin GET; the page that got the check.
+     * @returns {Promise<boolean>}
+     */
+    function _mbReverify(url) {
+        if (_mbgCheck.busy) return _mbgCheck.busy;
+        if (Date.now() - _mbgCheck.failedAt < 60000) return Promise.resolve(false);
+        let src;
+        try { src = new URL(String(url), location.href).href; } catch (_) { return Promise.resolve(false); }
+        const t0 = Date.now();
+        Lib.warn('fetch', 'MusicBrainz asked to verify the browser again ("Verifying your browser"): passing it in a hidden frame');
+        _mbgCheck.busy = new Promise((resolve) => {
+            const fr = document.createElement('iframe');
+            fr.setAttribute('aria-hidden', 'true');
+            fr.setAttribute('data-mbn-check', '');
+            fr.tabIndex = -1;
+            fr.style.cssText = 'position:fixed;width:1px;height:1px;left:-9999px;top:0;border:0;opacity:0;pointer-events:none';
+            let done = false;
+            const finish = (ok) => {
+                if (done) return;
+                done = true;
+                fr.remove();
+                _mbgCheck.busy = null;
+                const ms = Date.now() - t0;
+                _mbGateTrace({ e: 'check', ok: ok ? 1 : 0, w: ms });
+                if (ok) {
+                    Lib.info('fetch', `The browser check passed in ${ms} ms: asking again`);
+                } else {
+                    _mbgCheck.failedAt = Date.now();
+                    Lib.warn('fetch', `The hidden frame did not pass the browser check in ${Math.round(ms / 1000)} s: `
+                        + 'open any MusicBrainz page in another tab, then press the button again');
+                }
+                resolve(ok);
+            };
+            // The first load is the check; it posts its answer and is
+            // redirected to the page, which is the second.
+            fr.onload = () => {
+                let still;
+                try {
+                    const d = fr.contentDocument;
+                    still = !d || _mbIsBrowserCheck(d.documentElement ? d.documentElement.outerHTML : '');
+                } catch (_) {
+                    still = true;
+                }
+                if (!still) finish(true);
+            };
+            _sleepInterruptible(_MB_CHECK_TIMEOUT_MS, () => done).then(() => finish(false));
+            fr.src = src;
+            _saBody().appendChild(fr);
+        });
+        return _mbgCheck.busy;
+    }
+
+    /**
      * Fetches HTML content from a URL using the browser's native fetch() API.
      *
      * All URLs fetched here are same-origin MusicBrainz pages, so CORS is not
@@ -167374,6 +167511,20 @@ a { color: #1565c0; }`;
      * the retries — a genuinely-down site still fails after three attempts
      * total, not three per page (org/503-handling.org open question 4).
      *
+     * ── MusicBrainz's browser check ─────────────────────────────────────────
+     *
+     * Once the browser's `__meb_verified` cookie has expired (24 h, bound to
+     * the IP), musicbrainz.org answers a page request with its "Verifying your
+     * browser" page: HTTP 200, 1,396 bytes, no table. Taken as the page, it
+     * added no rows and the run called itself complete (measured 2026-11-26:
+     * "Loaded 3 pages (200 rows)" of 300; a check on the page-count request
+     * gave "Loaded 1 page (0 rows)"). So on musicbrainz.org
+     * (`_mbOnCheckHost()`) an OK answer is tested (`_mbIsBrowserCheck()`);
+     * a check is passed once in a hidden frame (`_mbReverify()`, majkinetor's
+     * `mbnReverify()`) and the page asked again, outside the three attempts.
+     * A second check, a frame that cannot pass it, or a POST rejects with
+     * `browserCheck: true`, and the caller counts the page as failed.
+     *
      * @param {string} url - The URL to fetch (must be same-origin).
      * @param {?RequestInit} [init=null] - Extra `fetch()` options (method,
      *   headers, body), merged over `{ credentials: 'same-origin' }`. Only a
@@ -167387,13 +167538,29 @@ a { color: #1565c0; }`;
     async function fetchHtml(url, init = null) {
         Lib.debug('fetch', `Initiating fetch for URL: ${url}${init?.method ? ` (${init.method})` : ''}`);
         let lastErr = null;
+        let reverified = false;
         for (let attempt = 1; attempt <= _HTML_FETCH_TRIES; attempt++) {
             let retryAfterMs = 0;
             try {
                 // Logged in the shared gate's trace (String Theory's Network log), never paced by it.
                 const res = await _mbGateLogFetch(url, init ? { credentials: 'same-origin', ...init } : { credentials: 'same-origin' },
                     { reason: 'pages' });
-                if (res.ok) return await res.text();
+                if (res.ok) {
+                    const text = await res.text();
+                    if (!_mbOnCheckHost(url) || !_mbIsBrowserCheck(text)) return text;
+                    // MusicBrainz's browser check, not the page: pass it once
+                    // in a hidden frame and ask again; a second check, or a
+                    // frame that could not pass it, fails the page, so the run
+                    // says INCOMPLETE and 🔄 offers the rest.
+                    const err = new Error(`MusicBrainz answered ${url} with its browser check`);
+                    err.status = res.status;
+                    err.browserCheck = true;
+                    const method = String((init && init.method) || 'GET').toUpperCase();
+                    if (reverified || method !== 'GET' || stopRequested || !(await _mbReverify(url))) throw err;
+                    reverified = true;
+                    attempt--;  // the retry after a passed check is not one of the three
+                    continue;
+                }
                 const err = new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
                 err.status = res.status;
                 lastErr = err;
@@ -198651,6 +198818,22 @@ a { color: #1565c0; }`;
              * reasonable time (the 30 s quiet reset, the 60 s cap). The
              * functions are the shipping ones.
              */
+            /**
+             * MusicBrainz's browser check on page fetches (`fetchHtml()`,
+             * `_mbReverify()`).
+             */
+            browserCheck: {
+                /** @param {string} html @returns {boolean} `_mbIsBrowserCheck()`. */
+                isCheck: (html) => _mbIsBrowserCheck(html),
+                /**
+                 * Sets how long the hidden frame may take (`_MB_CHECK_TIMEOUT_MS`),
+                 * and forgets a failed pass, so a spec of a check that never
+                 * passes takes a second instead of 20.
+                 * @param {number} ms
+                 * @returns {void}
+                 */
+                timeoutMs: (ms) => { _MB_CHECK_TIMEOUT_MS = ms; _mbgCheck.failedAt = 0; },
+            },
             mbGate: {
                 /** @returns {boolean} `_mbGateActive()`. */
                 active: () => _mbGateActive(),

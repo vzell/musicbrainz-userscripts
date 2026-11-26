@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-26",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "When MusicBrainz answered a \"Show all\" page with its \"Verifying your browser\" page (once a day, after the browser's check expired), that page was taken for the list page: its rows were silently missing and the run called itself complete (\"Loaded 3 pages (200 rows)\" of 300), and on the request for the page count the whole list came out as one empty page. Now the script lets MusicBrainz verify the browser in a hidden frame and asks for the page again, as majkinetor's scripts do; if that does not work, the page counts as failed, the status line says INCOMPLETE and why, and ↻ Load the missing pages carries on. The link previews' cards also no longer take an ordinary page for the check because of a beacon address it contains."
+        ]
+      }
+    ]
+  }
+]

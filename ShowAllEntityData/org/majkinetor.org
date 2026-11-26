@@ -25,7 +25,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   *shipped* as 9.99.1699 (=feat/saed-log-icon= with the refresh; vzell's browser check OK, the HUD confirmed hidden).
   Adoption 2 (=search-shed=, the hold jitter, upstream's hot rule) *shipped* as 9.99.1700 (measured first: 11 of
   21 503s in case D were sheds; vzell's browser check saw a real shed hold only searches; item "The shared gate at
-  eight a second").
+  eight a second"). Adoption 3, [[#saed-browser-check][the browser check on SAED's page fetches]], is *built* on
+  =feat/saed-browser-check= (WIP.1; measured first: a check page silently lost a page's rows, or the whole list on
+  the count request); waiting for =test:full= and vzell's browser check.
 
 - *Now (2026-11-25, latest):* "Switch between SAED's view and the original page (EH's V)" *shipped* as
   9.99.1695–9.99.1698 (=feat/original-page-toggle= merged after vzell's browser checks, =test:full= 3560/3560).
@@ -143,7 +145,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
-| Browser check on SAED's page fetches (=mbnIsCheck=)            | TODO  | —             | Adoptions     |
+| Browser check on SAED's page fetches (=mbnIsCheck=)            | NEXT  | WIP.1         | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
 | Posts to majkinetor: fifteen posted; #938 closed               | DONE  | —             | On the record |
 
@@ -1158,7 +1160,7 @@ CLOSED: [2026-11-20 Fri]
   (barcode, format kind and track count agree where both are known). Costs one search request per such release:
   behind a button or setting.
 
-** TODO The browser check on SAED's own page fetches (=mbnIsCheck=, =mbnReverify=)
+** NEXT The browser check on SAED's own page fetches (=mbnIsCheck=, =mbnReverify=)
 :PROPERTIES:
 :CUSTOM_ID: saed-browser-check
 :END:
@@ -1184,6 +1186,20 @@ CLOSED: [2026-11-20 Fri]
 - *Tests*: a fixture spec for the check page as page N (fails before), the hidden frame stubbed; mutations for the
   test and the retry.
 - Third of the three adoptions recommended on 2026-11-25.
+- *Built* (2026-11-26, =feat/saed-browser-check=, WIP.1; vzell: "yes", plan approved). *Measured first*
+  (2026-11-26T10:51:34+01:00 · NB-3641 · Playwright 1.62.1, Chromium 151.0.7922.34 · GM stubs · SAED 9.99.1700):
+  the prediction held and was worse. A check page on page 2 of 3: "Loaded 3 pages (200 rows)", no warning; a check
+  on =fetchMaxPageGeneric()='s count request: "Loaded 1 page (0 rows)", no warning. Built: =_mbIsBrowserCheck()= as
+  =mbnIsCheck()= (title or noscript, first 3,000 characters; the beacon dropped, anchor =saed-check-beacon= now
+  =absent=); =_mbOnCheckHost()= (musicbrainz.org only); =_mbReverify()= as =mbnReverify()= (one hidden frame marked
+  =data-mbn-check= in =_saBody()=, shared, 20 s, 60 s pause after a failure, a =check= row in the gate's trace);
+  =fetchHtml()= reverifies once and asks again outside its three attempts, else rejects with =browserCheck=, which
+  =_httpFailureDetail()= words as "MusicBrainz asked this browser to verify itself"; and the script leaves at once
+  inside a =data-mbn-check= frame (his too). Spec =html-fetch-browser-check.spec.js= B1–B4 (B1 and B3 failed before,
+  as measured), 4/4 ×3; neighbours 54/54 and =resume-from-failed-page= 7/7; mutations =mb-browser-check.json= 11/11
+  (3 =expect: pass= with reasons). Anchors =saed-fetchhtml-check= (was =saed-fetchhtml-nocheck=), =saed-reverify=.
+  Design: docs/claude/fetch-and-render-pipeline.md, "A browser check is never a page". Not covered: the popup cards
+  (a frame on hover would break "first contact on Space"; they keep =_MB_BROWSER_CHECK_NOTE=).
 
 ** TODO Smaller adoptions
 

@@ -1,0 +1,145 @@
+[
+  {
+    "name": "fetchHtml takes a check page as the page",
+    "why": "The defect: page N adds no rows and the run calls itself complete.",
+    "edits": [
+      {
+        "find": "                    if (!_mbOnCheckHost(url) || !_mbIsBrowserCheck(text)) return text;\n",
+        "replace": "                    return text;\n"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-browser-check.spec.js",
+    "grep": "B1: a check page on page 2 is passed",
+    "expect": "fail"
+  },
+  {
+    "name": "musicbrainz.org is not a check host",
+    "why": "The host guard keeps the test off other sites; wrong the other way, it turns the check off on MusicBrainz.",
+    "edits": [
+      {
+        "find": "            return new URL(String(url), location.href).host === location.host;\n",
+        "replace": "            return false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-browser-check.spec.js",
+    "grep": "B1: a check page on page 2 is passed",
+    "expect": "fail"
+  },
+  {
+    "name": "no frame: a check fails the page at once",
+    "why": "Without the hidden frame, every expired cookie costs the user a failed run.",
+    "edits": [
+      {
+        "find": "                    if (reverified || method !== 'GET' || stopRequested || !(await _mbReverify(url))) throw err;\n",
+        "replace": "                    throw err;\n"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-browser-check.spec.js",
+    "grep": "B1: a check page on page 2 is passed",
+    "expect": "fail"
+  },
+  {
+    "name": "no second ask after a passed check",
+    "why": "The check page itself would be returned as the page after the frame passed it.",
+    "edits": [
+      {
+        "find": "                    reverified = true;\n                    attempt--;  // the retry after a passed check is not one of the three\n                    continue;\n",
+        "replace": "                    return text;\n"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-browser-check.spec.js",
+    "grep": "B1: a check page on page 2 is passed",
+    "expect": "fail"
+  },
+  {
+    "name": "the frame stays in the page",
+    "why": "A 1x1 frame per check left behind, each with a loaded MusicBrainz page.",
+    "edits": [
+      {
+        "find": "                fr.remove();\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-browser-check.spec.js",
+    "grep": "B1: a check page on page 2 is passed",
+    "expect": "fail"
+  },
+  {
+    "name": "the check page is read as a one-page count",
+    "why": "fetchMaxPageGeneric() reads a check page as a listing with no pager: 'Loaded 1 page (0 rows)'.",
+    "edits": [
+      {
+        "find": "                    if (!_mbOnCheckHost(url) || !_mbIsBrowserCheck(text)) return text;\n",
+        "replace": "                    if (!_mbOnCheckHost(url) || !_mbIsBrowserCheck(text) || /all=1/.test(url)) return text;\n"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-browser-check.spec.js",
+    "grep": "B3: a check page on the page-count request",
+    "expect": "fail"
+  },
+  {
+    "name": "the beacon is the check again",
+    "why": "Upstream (Falcon #551): ordinary pages carry a /__meb_verify beacon; such a page would be taken for the check.",
+    "edits": [
+      {
+        "find": "        return /<title>\\s*Verifying your browser\\s*<\\/title>|JavaScript is required to access this page/i\n",
+        "replace": "        return /\\/__meb_verify|<title>\\s*Verifying your browser\\s*<\\/title>|JavaScript is required to access this page/i\n"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-browser-check.spec.js",
+    "grep": "B4: the detector knows the check page",
+    "expect": "fail"
+  },
+  {
+    "name": "the failure says HTTP 200",
+    "why": "'page 2 of 3 failed (HTTP 200)' reads as a success; the tooltip must name the check.",
+    "edits": [
+      {
+        "find": "        if (err && err.browserCheck) {\n",
+        "replace": "        if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-browser-check.spec.js",
+    "grep": "B2: a check the frame cannot pass",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed frame is taken as passed",
+    "why": "No spec can tell: the page is asked again, gets the check a second time and fails exactly as before, one request later.",
+    "edits": [
+      {
+        "find": "                if (!still) finish(true);\n",
+        "replace": "                finish(true);\n"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-browser-check.spec.js",
+    "grep": "B2: a check the frame cannot pass",
+    "expect": "pass"
+  },
+  {
+    "name": "SAED runs inside the check frame",
+    "why": "No spec sees what runs in a frame that lives a few hundred milliseconds; the guard saves a second SAED's start-up, nothing a fixture measures.",
+    "edits": [
+      {
+        "find": "            && window.frameElement.hasAttribute('data-mbn-check')) {\n",
+        "replace": "            && window.frameElement.hasAttribute('data-mbn-check-never')) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-browser-check.spec.js",
+    "grep": "B1: a check page on page 2 is passed",
+    "expect": "pass"
+  },
+  {
+    "name": "no pause after a failed pass",
+    "why": "Only a second check within 60 s of a failed pass could show it; B2's resume comes after MusicBrainz serves pages again.",
+    "edits": [
+      {
+        "find": "        if (Date.now() - _mbgCheck.failedAt < 60000) return Promise.resolve(false);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-browser-check.spec.js",
+    "grep": "B2: a check the frame cannot pass",
+    "expect": "pass"
+  }
+]
