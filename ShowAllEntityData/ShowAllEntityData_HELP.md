@@ -960,6 +960,7 @@ back).
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
 | ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |
+| ⚠️     | The same page linked twice in Relationships (once loaded)       | Relationships                               |
 | ⚠️     | Old springsteenlyrics.com address in the annotation             | Annotation                                  |
 | ⚠️     | MB-Event: no Brucebase link (once looked up)                    | Brucebase year: MB-Event                    |
 | ⚠️     | Brucebase entry with a comma after its date                     | Brucebase detail pages: Date                |

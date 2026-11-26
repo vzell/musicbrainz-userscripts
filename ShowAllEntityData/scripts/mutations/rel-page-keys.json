@@ -1,0 +1,223 @@
+[
+  {
+    "name": "Apple's storefront counts",
+    "why": "/us/ and /gb/ of one album would be two pages again (the old grouping).",
+    "edits": [
+      {
+        "find": "const m = /^\\/(?:[a-z]{2}\\/)?(album|artist|label|song|music-video|playlist)\\/(?:[^/]+\\/)?(?:id)?([0-9]+|pl\\.",
+        "replace": "const m = /^\\/(album|artist|label|song|music-video|playlist)\\/(?:[^/]+\\/)?(?:id)?([0-9]+|pl\\."
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "K1-K5: forms of one page are rel-same-page",
+    "expect": "fail"
+  },
+  {
+    "name": "an album link with ?i= is not its song",
+    "why": "MusicBrainz's URLCleanup turns album?i=N into the song N; the two forms would be two pages.",
+    "edits": [
+      {
+        "find": "                return i ? ['song', i] : [m[1], m[2]];\n",
+        "replace": "                return [m[1], m[2]];\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "KEYS: every platform rule keys forms",
+    "expect": "fail"
+  },
+  {
+    "name": "itunes.apple.com is music.apple.com",
+    "why": "MusicBrainz takes the legacy iTunes link beside the Apple Music one (Falcon); merging them flags a link it expects.",
+    "edits": [
+      {
+        "find": "        ['itunes', h => h === 'itunes.apple.com',\n",
+        "replace": "        ['apple', h => h === 'itunes.apple.com',\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "KEYS: every platform rule keys forms",
+    "expect": "fail"
+  },
+  {
+    "name": "listen.tidal.com is another site",
+    "why": "The old host grouping never saw tidal.com and listen.tidal.com as one page.",
+    "edits": [
+      {
+        "find": "        ['tidal', h => /^(?:listen\\.)?tidal\\.com$/.test(h),",
+        "replace": "        ['tidal', h => /^tidal\\.com$/.test(h),"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "K1-K5: forms of one page are rel-same-page",
+    "expect": "fail"
+  },
+  {
+    "name": "Tidal's /browse/ counts",
+    "why": "tidal.com/browse/album/N is tidal.com/album/N (URLCleanup).",
+    "edits": [
+      {
+        "find": "const m = /^\\/(?:[a-z]{2}\\/)?(?:browse\\/|store\\/)?(album|artist|track|video|playlist)",
+        "replace": "const m = /^\\/(?:[a-z]{2}\\/)?(album|artist|track|video|playlist)"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "K1-K5: forms of one page are rel-same-page",
+    "expect": "fail"
+  },
+  {
+    "name": "Deezer's locale counts",
+    "why": "deezer.com/en/album/N is deezer.com/album/N.",
+    "edits": [
+      {
+        "find": "const m = /^\\/(?:[a-z]{2}(?:-[a-z]{2})?\\/)?(album|artist|label|track|playlist)\\/([0-9]+)",
+        "replace": "const m = /^\\/(album|artist|label|track|playlist)\\/([0-9]+)"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "KEYS: every platform rule keys forms",
+    "expect": "fail"
+  },
+  {
+    "name": "Spotify's intl- prefix counts",
+    "why": "open.spotify.com/intl-de/album/X is open.spotify.com/album/X.",
+    "edits": [
+      {
+        "find": "const m = /^\\/(?:intl-[a-z-]+\\/)?(album|artist|track|playlist)",
+        "replace": "const m = /^\\/(album|artist|track|playlist)"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "KEYS: every platform rule keys forms",
+    "expect": "fail"
+  },
+  {
+    "name": "open.qobuz.com is another site",
+    "why": "open.qobuz.com/album/X is the Qobuz album X (Falcon #671).",
+    "edits": [
+      {
+        "find": "        ['qobuz', h => /^(?:open\\.|play\\.)?qobuz\\.com$/.test(h),",
+        "replace": "        ['qobuz', h => /^qobuz\\.com$/.test(h),"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "KEYS: every platform rule keys forms",
+    "expect": "fail"
+  },
+  {
+    "name": "Beatport's locale counts",
+    "why": "beatport.com/de/release/x/N is beatport.com/release/y/N.",
+    "edits": [
+      {
+        "find": "const m = /^\\/(?:[a-z]{2}\\/)?(release|artist|label|track)\\/[^/]+\\/([0-9]+)",
+        "replace": "const m = /^\\/(release|artist|label|track)\\/[^/]+\\/([0-9]+)"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "KEYS: every platform rule keys forms",
+    "expect": "fail"
+  },
+  {
+    "name": "a Discogs slug counts",
+    "why": "discogs.com/release/7-Title is discogs.com/release/7.",
+    "edits": [
+      {
+        "find": "(release|master|artist|label)\\/([0-9]+)(?:-[^/]*)?\\/?$/.exec(p);",
+        "replace": "(release|master|artist|label)\\/([0-9]+)\\/?$/.exec(p);"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "K1-K5: forms of one page are rel-same-page",
+    "expect": "fail"
+  },
+  {
+    "name": "Amazon stores are one site",
+    "why": "vzell 2026-11-26: amazon.de and amazon.com are different stores; one ASIN in both is not a duplicate.",
+    "edits": [
+      {
+        "find": "        if (am) return { site: host, key: `${host}:${am[1].toUpperCase()}`, form };\n",
+        "replace": "        if (am) return { site: 'amazon', key: `amazon:${am[1].toUpperCase()}`, form };\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "K1-K5: forms of one page are rel-same-page",
+    "expect": "fail"
+  },
+  {
+    "name": "an Amazon product's slug counts",
+    "why": "amazon.de/Title/dp/ASIN/ref=x is amazon.de/gp/product/ASIN.",
+    "edits": [
+      {
+        "find": " || /\\/(?:dp|gp\\/product)\\/([A-Z0-9]{10})(?:[/?#]|$)/i.exec(u.pathname));",
+        "replace": ");"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "KEYS: every platform rule keys forms",
+    "expect": "fail"
+  },
+  {
+    "name": "rel-multi-site counts forms, not pages",
+    "why": "Apple's two storefronts of one album would be 'two pages on one site' again.",
+    "edits": [
+      {
+        "find": "            .filter(s => s.pages.length >= 2 && !ignore.includes(s.host) && !ignore.includes(s.site))\n",
+        "replace": "            .filter(s => s.pages.reduce((n, p) => n + p.forms.length, 0) >= 2 && !ignore.includes(s.host) && !ignore.includes(s.site))\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "K1-K5: forms of one page are rel-same-page",
+    "expect": "fail"
+  },
+  {
+    "name": "the ignore list silences rel-same-page too",
+    "why": "A duplicate stays a duplicate on an allowed site; the list is for several pages.",
+    "edits": [
+      {
+        "find": "            if (p.forms.length >= 2) out.push({ host: s.host, name: s.name, urls: p.forms });\n",
+        "replace": "            if (p.forms.length >= 2 && !String(Lib.settings.sa_findings_rel_multi_site_ignore || '').includes(s.host)) out.push({ host: s.host, name: s.name, urls: p.forms });\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "K7: the ignore list silences rel-multi-site only",
+    "expect": "fail"
+  },
+  {
+    "name": "the column's write does not re-stamp rel-same-page",
+    "why": "The re-stamp is gated by the ids it names; with rel-multi-site off, a late rel-same-page would never appear.",
+    "edits": [
+      {
+        "find": "_queueFindingsRestamp(td.closest('tr'), ['rel-multi-site', 'rel-same-page']));",
+        "replace": "_queueFindingsRestamp(td.closest('tr'), ['rel-multi-site']));"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "K8: with \"Several links to one site\" off",
+    "expect": "fail"
+  },
+  {
+    "name": "rel-same-page never tests",
+    "why": "The finding itself.",
+    "edits": [
+      {
+        "find": "            test: cell => _findCellRelSamePages(cell).length > 0,\n",
+        "replace": "            test: () => false,\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "K1-K5: forms of one page are rel-same-page",
+    "expect": "fail"
+  },
+  {
+    "name": "the popup marks the hovered icon by key",
+    "why": "The box lists forms; marking by key would mark none.",
+    "edits": [
+      {
+        "find": "            if (pk) hereUrl = pk.form;\n",
+        "replace": "            if (pk) hereUrl = pk.key;\n"
+      }
+    ],
+    "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
+    "grep": "K6: the popup box of rel-same-page",
+    "expect": "fail"
+  }
+]

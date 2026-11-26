@@ -31870,3 +31870,29 @@ not be forced: with `__meb_verified` deleted (logged in), MusicBrainz kept
 serving the real pages (page 18 of 747 of the recordings), so it does not
 answer a missing cookie alone with the check. Both paths rest on spec B1/B2.
 Merged as 9.99.1701 without a second `test:full` (vzell's call).
+
+## 2026-11-26 — Canonical page keys in the Relationships column: the new finding rel-same-page (feat/link-page-keys, WIP.1)
+
+Env: 2026-11-26T12:20–12:58+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · browser check pending
+
+`rel-multi-site` grouped a Relationships cell's links by host and called
+host + path one page. So Apple Music's /us/ and /gb/ storefront of one
+album, or a Discogs release with and without its slug, were "two pages on
+one site", while tidal.com and listen.tidal.com, or open. and www.qobuz.com,
+were never compared (two hosts). Ported majkinetor's canonical keys (First
+Contact `linkKey()`, Falcon `platformPageKey()` #671, ISRC Scout
+`normalizeProviderUrl()`, at `8384078`) as `_relPageKey()` over
+`_REL_PAGE_RULES`, with vzell's choices: a separate finding, Amazon stores
+stay sites (an Amazon product is store + ASIN), iTunes its own platform as
+Falcon has it.
+
+`rel-multi-site` now counts PAGES per site; `rel-same-page` flags a page in
+2+ forms and ignores the ignore list. A mutant lived at first: leaving
+`rel-same-page` out of `_relWriteResult()`'s re-stamp list changed nothing,
+because `_queueFindingsRestamp()`'s list only gates (one enabled id is
+enough) and the row is re-stamped for every finding; it matters only with
+`rel-multi-site` off, which K8 now pins. Five finds of two older mutation
+lists (`link-site-uvd.json`, `rel-multi-site-and-ip.json`) were re-pointed
+to the new grouping and still fail as they should. Spec 10/10, mutations
+17/17, the relationships/findings/settings specs 302/302, lint at
+baseline.

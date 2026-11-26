@@ -144,7 +144,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Switch between SAED's view and the original page (EH's V)      | DONE  | 9.99.1695–98  | Adoptions     |
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
-| Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
+| Links: canonical page keys; Discogs MB column barcode          | NEXT  | WIP.1         | Adoptions     |
 | Browser check on SAED's page fetches (=mbnIsCheck=)            | DONE  | 9.99.1701     | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
 | Posts to majkinetor: fifteen posted; #938 closed               | DONE  | —             | On the record |
@@ -1147,7 +1147,7 @@ CLOSED: [2026-11-20 Fri]
 - *Shipped in 9.99.1677* (the word lists) *and 9.99.1678* (the classes), 2026-11-23: test:full 3456/3456 on the
   branch, vzell's browser check OK.
 
-** TODO Links: canonical page keys for =rel-multi-site=; Discogs MusicBrainz column barcode fallback
+** NEXT Links: canonical page keys for =rel-multi-site=; Discogs MusicBrainz column barcode fallback
 
 - *Who fixes it*: *ours*.
 
@@ -1159,6 +1159,19 @@ CLOSED: [2026-11-20 Fri]
 - Discogs MB column: when =/ws/2/url= finds nothing, fall back to a barcode query plus FC's =sameAlbum= check
   (barcode, format kind and track count agree where both are known). Costs one search request per such release:
   behind a button or setting.
+- *Decided* (vzell, 2026-11-26, plan approved on =feat/link-page-keys=): a *separate* finding for one page in two
+  forms; Amazon stores stay separate sites; the barcode fallback in the same branch, its data from the Discogs API
+  on a click (the rows carry no barcode: title, format, label, catalog number, country, year), never automatic;
+  keys first, then a mockup of the candidate cell.
+- *Phase 1 built* (2026-11-26, WIP.1): =_relPageKey()= / =_REL_PAGE_RULES= (Apple storefront, slug and =?i==
+  song; iTunes its own platform; Deezer and Qobuz locales; Tidal =listen.= and =/browse/=; Spotify =intl-=;
+  Beatport; Discogs locale and slug; an Amazon product by store + ASIN), =_relCellPages()=; =rel-multi-site= now
+  counts pages per site, the new =rel-same-page= ("The same page linked twice in Relationships", settings
+  =sa_findings_rel_same_page=, =sa_findings_tint_rel_same_page=) one page in 2+ forms, the ignore list not applied.
+  Spec =rel-multi-site-finding.spec.js= 10/10 (K1–K8, KEYS); mutations =rel-page-keys.json= 17/17 (K8 added for a
+  mutant that lived: the late re-stamp's id list only gates, so it shows only with =rel-multi-site= off), the two
+  older lists re-pointed and green; relationships, findings and settings specs 302/302. Anchors =fc-linkkey=,
+  =falcon-pagekey=, =is-normalize-url=, =saed-page-keys=. Phase 2 (the barcode fallback) waits for its mockup.
 
 ** DONE The browser check on SAED's own page fetches (=mbnIsCheck=, =mbnReverify=)
 :PROPERTIES:

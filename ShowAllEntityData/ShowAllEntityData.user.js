@@ -3035,11 +3035,30 @@
             label: 'Find Relationships cells with more than one link to the same site',
             type: 'checkbox',
             default: true,
-            description: 'An entity whose Relationships column shows two or more different URLs on the same site ' +
-                         '(host without "www.": two Discogs pages, two amazon.de products, …) is a WARNING ' +
+            description: 'An entity whose Relationships column shows two or more different pages on the same site ' +
+                         '(host without "www.": two Discogs releases, two amazon.de products, …) is a WARNING ' +
                          '("Several links to one site in Relationships"). amazon.de and amazon.com, or en. and ' +
-                         'de.wikipedia, are different sites. Known once the column has loaded (the Relationships ' +
-                         'column must be on); the ⚠️ menu count grows while it loads.'
+                         'de.wikipedia, are different sites; two forms of ONE page (a storefront, a slug, another ' +
+                         'address of the platform) are the next setting\'s finding. Known once the column has loaded ' +
+                         '(the Relationships column must be on); the ⚠️ menu count grows while it loads.'
+        },
+
+        sa_findings_rel_same_page: {
+            label: 'Find Relationships cells that link the same page twice',
+            type: 'checkbox',
+            default: true,
+            description: 'An entity whose Relationships column links one page in two or more forms (Apple Music\'s ' +
+                         '/us/ and /gb/ storefront of one album, a Discogs release with and without its title in the ' +
+                         'address, tidal.com and listen.tidal.com) is a WARNING ("The same page linked twice in ' +
+                         'Relationships"). amazon.de and amazon.com are different stores, not one page. Known once the ' +
+                         'column has loaded (the Relationships column must be on).'
+        },
+
+        sa_findings_tint_rel_same_page: {
+            label: 'Highlight Relationships cells that link the same page twice as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Relationships cell light yellow with a ⚠️ when it links one page in two or more forms.'
         },
 
         sa_findings_tint_rel_multi_discogs: {
@@ -77381,41 +77400,155 @@
     }
 
     /**
-     * The sites a Relationships cell (`td.mb-rel-cell`, the `rel-multi-site`
-     * finding) links to more than once: each icon's raw target URL from its
-     * hidden `.mb-rel-filter-key` (`_relAppendIcon()`), grouped by host
-     * without "www.", each URL as host + path without a trailing slash, so a
-     * `?…`/`#…` or "/" variant of one URL counts once. The HOST is the site,
-     * not the site kind (`_siteFamilyOf()`): en. and de.wikipedia, amazon.de
-     * and amazon.com are one link each to different sites, which is how
-     * MusicBrainz expects them. Hosts listed in
-     * `sa_findings_rel_multi_site_ignore` never count. The spans are written
+     * The platform pages `_relPageKey()` knows by their id, whatever form
+     * the address takes: `[platform, host test, path → [kind, id] | null]`.
+     * Taken from majkinetor's First Contact (`linkKey()`), Falcon
+     * (`platformPageKey()`, #671) and ISRC Scout (`normalizeProviderUrl()`,
+     * MusicBrainz's URLCleanup rules), at `8384078`. itunes.apple.com is a
+     * platform of its own (MusicBrainz takes a music.apple.com link beside
+     * the legacy one, Falcon); an Amazon store keeps its domain in the
+     * platform (vzell 2026-11-26: amazon.de and amazon.com are different
+     * sites, one link each, as MusicBrainz expects).
+     * @type {Array<Array<*>>}
+     */
+    const _REL_PAGE_RULES = [
+        ['apple', h => /^(?:geo\.|classical\.)?music\.apple\.com$/.test(h),
+            (p, q) => {
+                const m = /^\/(?:[a-z]{2}\/)?(album|artist|label|song|music-video|playlist)\/(?:[^/]+\/)?(?:id)?([0-9]+|pl\.[A-Za-z0-9-]+)\/?$/.exec(p);
+                if (!m) return null;
+                const i = m[1] === 'album' && /^[0-9]+$/.test(q.get('i') || '') ? q.get('i') : null;
+                return i ? ['song', i] : [m[1], m[2]];
+            }],
+        ['itunes', h => h === 'itunes.apple.com',
+            p => { const m = /^\/(?:[a-z]{2}\/)?(album|artist|label|song|music-video|playlist)\/(?:[^/]+\/)?(?:id)?([0-9]+)\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+        ['deezer', h => /^deezer\.com$/.test(h),
+            p => { const m = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(album|artist|label|track|playlist)\/([0-9]+)\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+        ['tidal', h => /^(?:listen\.)?tidal\.com$/.test(h),
+            p => { const m = /^\/(?:[a-z]{2}\/)?(?:browse\/|store\/)?(album|artist|track|video|playlist)\/([0-9a-f-]+)\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+        ['spotify', h => h === 'open.spotify.com',
+            p => { const m = /^\/(?:intl-[a-z-]+\/)?(album|artist|track|playlist)\/([A-Za-z0-9]{22})\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+        ['qobuz', h => /^(?:open\.|play\.)?qobuz\.com$/.test(h),
+            p => {
+                let m = /^\/(?:[a-z]{2}-[a-z]{2}\/)?album\/(?:[^/]+\/)?([A-Za-z0-9]+)\/?$/.exec(p);
+                if (m) return ['album', m[1]];
+                m = /^\/(?:[a-z]{2}-[a-z]{2}\/)?(interpreter|artist|label)\/(?:.*\/)?([0-9]+)\/?$/.exec(p);
+                return m ? [m[1] === 'label' ? 'label' : 'artist', m[2]] : null;
+            }],
+        ['beatport', h => h === 'beatport.com',
+            p => { const m = /^\/(?:[a-z]{2}\/)?(release|artist|label|track)\/[^/]+\/([0-9]+)\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+        ['discogs', h => h === 'discogs.com',
+            p => { const m = /^\/(?:[a-z]{2}(?:_[A-Za-z]{2})?\/)?(release|master|artist|label)\/([0-9]+)(?:-[^/]*)?\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+    ];
+
+    /**
+     * One Relationships link as a PAGE: the same page in another form (a
+     * storefront, a locale, a slug, another host of the platform) gets the
+     * same `key`.
+     *
+     * - `form`: the URL as host (no "www.") + path without a trailing slash,
+     *   what the finding details list and the hovered icon is matched by;
+     * - `site`: the platform for the pages of `_REL_PAGE_RULES` (so
+     *   tidal.com and listen.tidal.com are one site), an Amazon store's own
+     *   domain, else the host;
+     * - `key`: `<platform>:<kind>:<id>` for a known page, `<store>:<ASIN>`
+     *   for an Amazon product, else the `form`.
+     *
+     * @param {string} url
+     * @returns {?{site: string, key: string, form: string}} `null` when not
+     *   an http(s) URL.
+     */
+    function _relPageKey(url) {
+        let u;
+        try { u = new URL(String(url || '')); } catch (_) { return null; }
+        if (!/^https?:$/.test(u.protocol)) return null;
+        const host = u.hostname.toLowerCase().replace(/^www\./, '');
+        const path = u.pathname.replace(/\/+$/, '');
+        const form = `https://${host}${path}`;
+        for (const [platform, onHost, read] of _REL_PAGE_RULES) {
+            if (!onHost(host)) continue;
+            const hit = read(u.pathname, u.searchParams);
+            // Spotify's ids are case-sensitive base 62; the others are not.
+            if (hit) return { site: platform, key: `${platform}:${hit[0]}:${platform === 'spotify' ? hit[1] : hit[1].toLowerCase()}`, form };
+            return { site: platform, key: form, form };
+        }
+        const am = /^(music\.)?amazon\.[a-z.]+$/.test(host)
+            && (/^\/albums\/([A-Z0-9]{10})(?:[/?#]|$)/i.exec(u.pathname) || /\/(?:dp|gp\/product)\/([A-Z0-9]{10})(?:[/?#]|$)/i.exec(u.pathname));
+        if (am) return { site: host, key: `${host}:${am[1].toUpperCase()}`, form };
+        return { site: host, key: form, form };
+    }
+
+    /**
+     * A Relationships cell's links as pages per site (`_relPageKey()`): each
+     * icon's raw target URL from its hidden `.mb-rel-filter-key`
+     * (`_relAppendIcon()`), grouped by site and, within a site, by page; a
+     * `?…`/`#…` or "/" variant of one URL is one form. The spans are written
      * into the live cells AND mirrored onto the master rows by
      * `_relWriteResult()`, so this reads source-row data.
      *
      * @param   {?HTMLTableCellElement} cell
-     * @returns {Array<{host: string, name: string, urls: string[]}>} One entry
-     *   per site with 2+ distinct URLs, in cell order; `name` from
+     * @returns {Array<{site: string, host: string, name: string, pages: Array<{key: string, forms: string[]}>}>}
+     *   In cell order; `host` is the site's first link's host, `name` from
      *   `_relSiteName()`.
      */
-    function _findCellRelSiteDupes(cell) {
+    function _relCellPages(cell) {
         if (!cell || !cell.classList.contains('mb-rel-cell')) return [];
+        const bySite = new Map();
+        cell.querySelectorAll('.mb-rel-filter-key').forEach(k => {
+            const pk = _relPageKey(k.textContent);
+            if (!pk) return;
+            let s = bySite.get(pk.site);
+            if (!s) {
+                const host = pk.form.slice(8).split('/')[0];
+                s = { site: pk.site, host, name: _relSiteName(host), pages: new Map() };
+                bySite.set(pk.site, s);
+            }
+            let forms = s.pages.get(pk.key);
+            if (!forms) { forms = []; s.pages.set(pk.key, forms); }
+            if (!forms.includes(pk.form)) forms.push(pk.form);
+        });
+        return Array.from(bySite.values(), s => ({ ...s, pages: Array.from(s.pages, ([key, forms]) => ({ key, forms })) }));
+    }
+
+    /**
+     * The sites a Relationships cell (`td.mb-rel-cell`, the `rel-multi-site`
+     * finding) links to with more than one PAGE (`_relCellPages()`): two
+     * forms of one page (a storefront, a slug, another host of the platform)
+     * are the other finding, `rel-same-page`. A site is the host without
+     * "www.", or the platform of a known page (`_REL_PAGE_RULES`), not the
+     * site kind (`_siteFamilyOf()`): en. and de.wikipedia, amazon.de and
+     * amazon.com are one link each to different sites, which is how
+     * MusicBrainz expects them. Hosts listed in
+     * `sa_findings_rel_multi_site_ignore` never count.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {Array<{host: string, name: string, urls: string[]}>} One entry
+     *   per site with 2+ pages, in cell order, `urls` one form per page.
+     */
+    function _findCellRelSiteDupes(cell) {
         const ignore = String(Lib.settings.sa_findings_rel_multi_site_ignore || '').toLowerCase()
             .split(/[\s,]+/).map(h => h.replace(/^www\./, '')).filter(Boolean);
-        const byHost = new Map();
-        cell.querySelectorAll('.mb-rel-filter-key').forEach(k => {
-            let u;
-            try { u = new URL(k.textContent); } catch (_) { return; }
-            if (!/^https?:$/.test(u.protocol)) return;
-            const host = u.hostname.toLowerCase().replace(/^www\./, '');
-            if (ignore.includes(host)) return;
-            const key = `https://${host}${u.pathname.replace(/\/+$/, '')}`;
-            if (!byHost.has(host)) byHost.set(host, []);
-            const urls = byHost.get(host);
-            if (!urls.includes(key)) urls.push(key);
-        });
-        return Array.from(byHost, ([host, urls]) => ({ host, name: _relSiteName(host), urls }))
-            .filter(d => d.urls.length >= 2);
+        return _relCellPages(cell)
+            .filter(s => s.pages.length >= 2 && !ignore.includes(s.host) && !ignore.includes(s.site))
+            .map(s => ({ host: s.host, name: s.name, urls: s.pages.map(p => p.forms[0]) }));
+    }
+
+    /**
+     * The pages a Relationships cell (the `rel-same-page` finding) links in
+     * more than one form (`_relCellPages()`): Apple Music's /us/ and /gb/
+     * storefront of one album, a Discogs release with and without its slug,
+     * tidal.com and listen.tidal.com. Always a duplicate, so the ignore list
+     * of `rel-multi-site` does not apply.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {Array<{host: string, name: string, urls: string[]}>} One entry
+     *   per such page, `urls` its forms.
+     */
+    function _findCellRelSamePages(cell) {
+        const out = [];
+        _relCellPages(cell).forEach(s => s.pages.forEach(p => {
+            if (p.forms.length >= 2) out.push({ host: s.host, name: s.name, urls: p.forms });
+        }));
+        return out;
     }
 
     /**
@@ -77427,6 +77560,17 @@
      */
     function _relSiteDupesDetail(cell) {
         return _findCellRelSiteDupes(cell).map(d => `${d.name} (${d.host}): ${d.urls.join(', ')}`).join('\n');
+    }
+
+    /**
+     * The `rel-same-page` finding's detail for one cell: one line per page
+     * linked in more than one form, "Apple Music (music.apple.com): url, url".
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {string}
+     */
+    function _relSamePagesDetail(cell) {
+        return _findCellRelSamePages(cell).map(d => `${d.name} (${d.host}): ${d.urls.join(', ')}`).join('\n');
     }
 
     /**
@@ -80888,13 +81032,27 @@
         {
             id: 'rel-multi-site', level: 'warn', glyph: '🔗', scope: 'cell',
             label: 'Several links to one site in Relationships',
-            tip: 'The Relationships column shows more than one URL on the same site for this entity (two Discogs pages, two amazon.de products, …). One release, release group, artist or label usually has ONE page per site; two are often a duplicate or a link to the wrong kind of page (a release linked from a release group). The cell\'s tooltip names every site involved. Known once the column has loaded, so the count grows while it loads.',
+            tip: 'The Relationships column shows more than one page on the same site for this entity (two Discogs releases, two amazon.de products, …). One release, release group, artist or label usually has ONE page per site; two are often a duplicate or a link to the wrong kind of page (a release linked from a release group). Two forms of ONE page (another storefront or locale, a slug, another address of the same platform) are the other finding, "The same page linked twice". The cell\'s tooltip names every site involved. Known once the column has loaded, so the count grows while it loads.',
             enabled: () => Lib.settings.sa_findings_rel_multi_discogs !== false && !!Lib.settings.sa_enable_relationships_column,
             cols: name => name === 'Relationships',
             rowGate: row => !!row.querySelector('td.mb-rel-cell .mb-rel-filter-key'),
             test: cell => _findCellRelSiteDupes(cell).length > 0,
             detail: cell => _relSiteDupesDetail(cell),
             tint: _findingTintSetting('sa_findings_tint_rel_multi_discogs'),
+        },
+        // One page linked in two forms (2026-11-26, majkinetor's linkKey /
+        // platformPageKey): late data like rel-multi-site, re-stamped by
+        // _relWriteResult() with it, read from the same filter-key spans.
+        {
+            id: 'rel-same-page', level: 'warn', glyph: '🔗', scope: 'cell',
+            label: 'The same page linked twice in Relationships',
+            tip: 'The Relationships column links the same page more than once, in different forms: Apple Music\'s /us/ and /gb/ storefront of one album, a Discogs release with and without its title in the address, tidal.com and listen.tidal.com, a Qobuz page in two locales. MusicBrainz needs it once; the other link is a duplicate to remove. amazon.de and amazon.com are different stores, not forms of one page. The cell\'s tooltip names every form. Known once the column has loaded, so the count grows while it loads.',
+            enabled: () => Lib.settings.sa_findings_rel_same_page !== false && !!Lib.settings.sa_enable_relationships_column,
+            cols: name => name === 'Relationships',
+            rowGate: row => !!row.querySelector('td.mb-rel-cell .mb-rel-filter-key'),
+            test: cell => _findCellRelSamePages(cell).length > 0,
+            detail: cell => _relSamePagesDetail(cell),
+            tint: _findingTintSetting('sa_findings_tint_rel_same_page'),
         },
         // An Annotation cell (report/AnnotationsWorks and the other
         // annotation reports, an annotation search) linking springsteenlyrics.com
@@ -171780,7 +171938,7 @@ a { color: #1565c0; }`;
         // stampFindings() saw empty: re-stamp each live row written (its
         // master with it), batched. A write to master rows only (the row is
         // filtered out) waits for the next fetch or disk load.
-        const _restamp = () => cells.forEach(td => _queueFindingsRestamp(td.closest('tr'), ['rel-multi-site']));
+        const _restamp = () => cells.forEach(td => _queueFindingsRestamp(td.closest('tr'), ['rel-multi-site', 'rel-same-page']));
         if (!data) {
             _dbg(`_relWriteResult: no data for ${mbid}`);
             rest.forEach(_markDone);
@@ -172066,6 +172224,7 @@ a { color: #1565c0; }`;
         if (ids.length) {
             const details = {};
             if (ids.includes('rel-multi-site')) details['rel-multi-site'] = _relSiteDupesDetail(td);
+            if (ids.includes('rel-same-page')) details['rel-same-page'] = _relSamePagesDetail(td);
             const { text, cmp } = _findingTitle(ids, details);
             _title = `${text}\n\n${_title}`;
             if (td.title !== _title) _setTipCmp(td, _title, cmp);
@@ -173486,8 +173645,10 @@ a { color: #1565c0; }`;
     /**
      * The box that says which findings a Relationships cell carries
      * (`data-mb-findings`): each finding's ⚠️/❌ and label, and for
-     * `rel-multi-site` every site linked more than once with its URLs, the
-     * hovered icon's URL marked "◂ this icon". Built from `_FINDING_BY_ID`
+     * `rel-multi-site` every site linked more than once with its URLs (for
+     * `rel-same-page` every page linked in more than one form, with its
+     * forms), the hovered icon's URL marked "◂ this icon" (its `form`,
+     * `_relPageKey()`). Built from `_FINDING_BY_ID`
      * and the cell's icons, never from the cell's title (the reload hint may
      * be there).
      *
@@ -173502,17 +173663,18 @@ a { color: #1565c0; }`;
         let hereUrl = '';
         const hereKey = here && here.querySelector('.mb-rel-filter-key');
         if (hereKey) {
-            try {
-                const u = new URL(hereKey.textContent);
-                hereUrl = `https://${u.hostname.toLowerCase().replace(/^www\./, '')}${u.pathname.replace(/\/+$/, '')}`;
-            } catch (_) { /* not a URL: nothing to mark */ }
+            const pk = _relPageKey(hereKey.textContent);
+            if (pk) hereUrl = pk.form;
         }
         return ids.map((id) => {
             const f = _FINDING_BY_ID.get(id);
             const head = `<div class="mb-tt-title">${f.level === 'error' ? '❌' : '⚠️'} ${_mbttEscape(f.label)}</div>`;
-            if (id !== 'rel-multi-site') return head;
-            return head + _findCellRelSiteDupes(cell).map(d =>
-                `<div class="mb-rel-fd-site"><b>${_mbttEscape(d.name)}</b> <span class="mb-tt-dim">${_mbttEscape(d.host)} · ${d.urls.length} links</span></div>` +
+            const list = id === 'rel-multi-site' ? _findCellRelSiteDupes(cell)
+                : id === 'rel-same-page' ? _findCellRelSamePages(cell) : null;
+            if (!list) return head;
+            const unit = id === 'rel-same-page' ? 'forms of one page' : 'links';
+            return head + list.map(d =>
+                `<div class="mb-rel-fd-site"><b>${_mbttEscape(d.name)}</b> <span class="mb-tt-dim">${_mbttEscape(d.host)} · ${d.urls.length} ${unit}</span></div>` +
                 d.urls.map(u => `<div class="mb-rel-fd-url${u === hereUrl ? ' mb-rel-here' : ''}">${_mbttEscape(u)}` +
                     `${u === hereUrl ? '<span class="mb-rel-here-tag">◂ this icon</span>' : ''}</div>`).join('')
             ).join('');
@@ -192215,7 +192377,7 @@ a { color: #1565c0; }`;
      * `_recDupRegroupSoon()`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'rec-dup', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS, ..._BB_TAG_IDS];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'rel-same-page', 'rec-dup', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS, ..._BB_TAG_IDS];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
@@ -198813,11 +198975,12 @@ a { color: #1565c0; }`;
                 return Math.max(0, _relNextSlotAt - _steadyNow());
             },
             /**
-             * The shared cross-tab request gate (`mbu:mb-gate`, `_mbGate*`),
-             * for the formula checks a behavioural spec cannot reach in
-             * reasonable time (the 30 s quiet reset, the 60 s cap). The
-             * functions are the shipping ones.
+             * A Relationships link as a page (`_relPageKey()`): the key the
+             * `rel-multi-site` and `rel-same-page` findings group by.
+             * @param {string} url
+             * @returns {?{site: string, key: string, form: string}}
              */
+            relPageKey: (url) => _relPageKey(url),
             /**
              * MusicBrainz's browser check on page fetches (`fetchHtml()`,
              * `_mbReverify()`).
@@ -198834,6 +198997,12 @@ a { color: #1565c0; }`;
                  */
                 timeoutMs: (ms) => { _MB_CHECK_TIMEOUT_MS = ms; _mbgCheck.failedAt = 0; },
             },
+            /**
+             * The shared cross-tab request gate (`mbu:mb-gate`, `_mbGate*`),
+             * for the formula checks a behavioural spec cannot reach in
+             * reasonable time (the 30 s quiet reset, the 60 s cap). The
+             * functions are the shipping ones.
+             */
             mbGate: {
                 /** @returns {boolean} `_mbGateActive()`. */
                 active: () => _mbGateActive(),

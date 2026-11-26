@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-11-26",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New ⚠️ finding \"The same page linked twice in Relationships\": the Relationships column now knows when two links are one page in different forms (Apple Music's /us/ and /gb/ storefront of one album, a Discogs release with and without its title in the address, tidal.com and listen.tidal.com, a Qobuz page in two locales, Deezer, Spotify and Beatport likewise), as majkinetor's scripts do. Such a link is a duplicate to remove. \"Several links to one site in Relationships\" now counts only really different pages, so those forms no longer show up there, and amazon.de and amazon.com stay different stores. Both findings have their own switch and highlight in ⚙️ Settings, and the tooltip names every form."
+        ]
+      }
+    ]
+  }
+]
