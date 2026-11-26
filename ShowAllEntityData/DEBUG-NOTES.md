@@ -31920,3 +31920,16 @@ grep is now a plain phrase. Spec 4/4 with the column's spec 26/26,
 mutations 13/13 (the per-press cap `expect: pass`), two finds of
 `discogs-mb-column.json` re-pointed (the strip selector and the 📊 value
 function changed shape).
+
+Live probe for the browser check (`scripts/probe-rel-page-keys.py`, the
+same rules in Python; 2026-11-26T13:56:54–13:58:47+01:00, NB-3641, n/a
+browser; MusicBrainz answered many `503 global`, the probe retries): of
+Bruce Springsteen's first 500 releases, ONE links a page twice —
+release `c9c1961b-43ce-4609-9ebc-975d6adbe1e0` (Darkness on the Edge of
+Town, XW 1978-06-02; release group `b613123b-a234-3f48-9c45-e05bf4e6b9e7`)
+has `play.qobuz.com/album/0884977798753` and
+`qobuz.com/us-en/album/darkness-…/0884977798753`: two hosts, which the old
+host grouping never compared. Three releases link two different Discogs
+releases (rel-multi-site, unchanged). Of his first 300 release groups none
+links a page twice. Output `debug/probe-rel-page-keys-bruce-*.json` (not in
+git). `test:full` on `d58b3ef8`: 3587/3587 (tests/MEASUREMENTS.org).
