@@ -593,6 +593,44 @@ once `fetchHtml()` retries, failing ONE attempt of a request proves nothing** �
 the retry absorbs it and the run comes back clean. A test that wants a final
 failure has to exhaust all three attempts.
 
+### A browser check is never a page (2026-11-26)
+
+Once the browser's `__meb_verified` cookie has expired (24 h, bound to the IP),
+musicbrainz.org answers a page request with its "Verifying your browser" page:
+HTTP 200, 1,396 bytes, no table (`debug/af1-rg-die-traktor.html`). Taken as
+the page, it was the same lie in a third form, measured before the fix:
+"Loaded 3 pages (200 rows)" of 300, and a check on `fetchMaxPageGeneric()`'s
+request "Loaded 1 page (0 rows)", neither with a warning.
+
+- **`fetchHtml()` tests every OK answer on musicbrainz.org**
+  (`_mbOnCheckHost()`: this page on musicbrainz.org or a subdomain, the URL on
+  its host; the other sites' pages are never tested) with
+  `_mbIsBrowserCheck()`: the `<title>` or the `<noscript>` sentence in the
+  first 3,000 characters, as majkinetor's `mbnIsCheck()`. Never
+  `/__meb_verify`: ordinary pages carry a beacon posting there (Falcon #551).
+- **A check is passed once, then the page is asked again** (`_mbReverify()`,
+  his `mbnReverify()` at `8384078`): one hidden 1×1 frame at the page's URL,
+  in `_saBody()`, marked `data-mbn-check`; concurrent callers share it
+  (`_mbgCheck.busy`); it gives up after `_MB_CHECK_TIMEOUT_MS` (20 s) and makes
+  no new frame for 60 s after a failure. The ask after a passed check is not
+  one of the three attempts.
+- **A second check, a failed frame or a POST rejects with `browserCheck:
+  true`**, so the caller counts the page as failed and the INCOMPLETE line, its
+  tooltip (`_httpFailureDetail()`: "MusicBrainz asked this browser to verify
+  itself") and 🔄 resume take over.
+- **Inside a `data-mbn-check` frame the script leaves at once** (the early
+  return after `_foreignHost`): the header has no `@noframes`, and a second
+  SAED would start in every check frame, his included.
+- Logged in the Activity log (`fetch`) and, with the shared gate on, as a
+  `check` row of its trace, which String Theory's Network log shows as
+  "browser check passed in N s".
+
+Not covered: the popup engine's MusicBrainz pages (`_dpGetRaw()`) still name
+the check in the card (`_MB_BROWSER_CHECK_NOTE`), because a frame on a hover
+would break "first contact on Space"; the `/ws/js` area chain falls back to the
+climb. Spec `tests/fixtures/html-fetch-browser-check.spec.js` (B1–B4), mutation
+list `scripts/mutations/mb-browser-check.json`.
+
 ## A multi-table group's columns come from the FIRST group unless it carries its own
 
 `renderGroupedTable()` builds one `templateHead` from the first table and

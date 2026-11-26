@@ -31815,3 +31815,58 @@ The `who` shows in String Theory's log at the end of each expanded
 `answer` line ("rate limit global"), not in the Result column. Merged as
 9.99.1700 without a second `test:full` (vzell's call; the branch's run was
 3573/3574, one unrelated hover flake).
+
+## 2026-11-26 — MusicBrainz's browser check taken for a page: fetchHtml() passes it in a hidden frame (feat/saed-browser-check, WIP.1)
+
+Env: 2026-11-26T10:51:34–11:04:38+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · SAED 9.99.1700 + branch · browser check pending
+
+Once the browser's `__meb_verified` cookie (24 h, bound to the IP) has
+expired, musicbrainz.org answers a page request with its "Verifying your
+browser" page: HTTP 200, 1,396 bytes, no table
+(`debug/af1-rg-die-traktor.html`). `fetchHtml()` returned any OK text.
+Measured on unfixed code with the new spec
+(`tests/fixtures/html-fetch-browser-check.spec.js`, artist-events and
+artist-releasegroups shells, 3 pages each):
+
+- a check page on page 2: "Loaded 3 pages (200 rows)", no warning: page 2's
+  rows silently gone;
+- a check page on `fetchMaxPageGeneric()`'s count request: "Loaded 1 page
+  (0 rows)", no warning: the check was read as a one-page listing.
+
+Ported from majkinetor's gate at `8384078` (`mbnIsCheck()`,
+`mbnReverify()`, #733/#1103): `_mbIsBrowserCheck()` now knows the page by
+its `<title>` or `<noscript>` sentence only (the `/__meb_verify` beacon is
+on ordinary pages too, Falcon #551); `fetchHtml()` tests an OK answer on
+musicbrainz.org (`_mbOnCheckHost()`), passes a check once in a hidden
+frame (`_mbReverify()`, marked `data-mbn-check`, in `_saBody()`, shared,
+20 s, a 60 s pause after a failure, a `check` row in the gate's trace) and
+asks again outside its three attempts; otherwise it rejects with
+`browserCheck: true`, which the run reports as a failed page ("MusicBrainz
+asked this browser to verify itself"), with the resume. The header has no
+`@noframes`, so the script now leaves at once inside any `data-mbn-check`
+frame (ours and his), instead of starting a second SAED there.
+
+Spec B1–B4 4/4, ×3 12/12; the neighbours (`html-fetch-transient`, the
+three popup specs that serve a check page) 54/54;
+`resume-from-failed-page` 7/7; mutations `mb-browser-check.json` 11/11
+(three `expect: pass`: a failed frame taken as passed fails the page one
+request later anyway; the frame guard and the 60 s pause have no fixture
+signal), the userscript restored and hash-verified. The spec's status
+poll runs in the page (`waitForFunction`), so lint stays at baseline.
+
+`test:full` on the branch (`607a8f86`, 11:05:52–11:31:26 CET, NB-3641):
+3577/3578. The failure, `artist-recordings-ms-batch.spec.js` "a
+partly-failed run…", is 9.99.1700's, not this branch's: 4/8 failures on
+`main`, 8/8 passes on 9.99.1699. Its failed batch waits out three 503
+holds, each up to 500 ms longer since the gate's jitter; the default 5 s
+`toHaveAttribute` ran out about half the time. Fixed in the spec (30 s, as
+its wholly-failed sibling); the file 28/28. 9.99.1700 was merged without
+its `test:full` on `main`, and the branch's own run had passed it by
+chance (tests/MEASUREMENTS.org, 2026-11-26).
+
+Browser check (vzell, 2026-11-26, his browser, versions unknown): "Show all
+Events" on Bruce Springsteen's events loaded every page. A real check could
+not be forced: with `__meb_verified` deleted (logged in), MusicBrainz kept
+serving the real pages (page 18 of 747 of the recordings), so it does not
+answer a missing cookie alone with the check. Both paths rest on spec B1/B2.
+Merged as 9.99.1701 without a second `test:full` (vzell's call).
