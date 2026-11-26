@@ -32004,3 +32004,15 @@ route HOLDS the re-check's answer so "checking…" is seen. R3/R4 wait for a
 R1–R4; the preview, Relationships, settings and job popup specs 401/401;
 mutations 13/13; two finds re-pointed (`_mbLoad()`'s memory guard became a
 block).
+
+`test:full` for this branch (2026-11-26T17:00+01:00, NB-3641) was stopped
+after 50 failures, all `page.goto: net::ERR_CONNECTION_CLOSED` in specs that
+load a LIVE musicbrainz.org page as their shell (`loadFromDiskFixture()`
+without `pageFixtureFile`: gf-query-mode, filter-sliced, findings-rec-dup,
+…). From this WSL machine every TLS handshake to musicbrainz.org failed
+(`curl -4`/`-6`: SSL_ERROR_SYSCALL) while google.com and github.com
+answered and vzell's Windows browser opened the site: MusicBrainz refusing
+this machine's automated clients after a day of runs and probes. Not the
+branch. vzell's browser check OK; merged as 9.99.1705–06 without a
+`test:full` (vzell's call). Worth knowing: those specs are network-bound
+although they live under tests/fixtures/.

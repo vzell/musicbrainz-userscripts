@@ -30,7 +30,8 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   vzell's browser check: no regression, a real check could not be forced). The links adoption (canonical page keys:
   the new ⚠️ "The same page linked twice in Relationships"; barcode candidates in the Discogs MusicBrainz column)
   *shipped* as 9.99.1702–03 (vzell's browser check OK; item "Links: canonical page keys …"). The rest of entity
-  pictures (instrument and series previews, a place page's known picture) *shipped* as 9.99.1704.
+  pictures (instrument and series previews, a place page's known picture) *shipped* as 9.99.1704;
+  stale-while-revalidate (link previews, the Relationships column) as 9.99.1705–06.
 
 - *Now (2026-11-25, latest):* "Switch between SAED's view and the original page (EH's V)" *shipped* as
   9.99.1695–9.99.1698 (=feat/original-page-toggle= merged after vzell's browser checks, =test:full= 3560/3560).
@@ -141,7 +142,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Discogs credits as MB relationships (Credit Hoarder)           | TODO  | —             | Adoptions     |
 | Query mode for the global filter (EH's language)               | DONE  | 9.99.1668–69  | Adoptions     |
 | Columns: reorder, named sets, EH's resize rule                 | TODO  | —             | Adoptions     |
-| Stale-while-revalidate: popup engine done, =rel-ws2= left      | NEXT  | WIP.1–2       | Adoptions     |
+| Stale-while-revalidate: popup engine done, =rel-ws2= left      | DONE  | 9.99.1705–06  | Adoptions     |
 | In-page log window (=mbuLog=)                                  | DONE  | 9.99.1689     | Adoptions     |
 | In-page log: past sessions (mbuLog's history)                  | TODO  | —             | Adoptions     |
 | Switch between SAED's view and the original page (EH's V)      | DONE  | 9.99.1695–98  | Adoptions     |
@@ -940,7 +941,7 @@ CLOSED: [2026-11-20 Fri]
 - *Mind*: the multi-table clones (=cloneNode= re-wiring list in CLAUDE.md "Common pitfalls"), =stickyColumn=,
   =moveColumnFirst=, and saved-to-disk layouts.
 
-** NEXT Stale-while-revalidate for =_mbWsLoad= and =rel-ws2= (Event Horizon's kept answers)
+** DONE Stale-while-revalidate for =_mbWsLoad= and =rel-ws2= (Event Horizon's kept answers)
 
 - *Who fixes it*: *ours*, against convention *C7* (=localStorage['mbLastWrite']=, Unix ms; a kept answer older than
   it is a miss; anchor =conv-c7=). SAED writes nothing to MusicBrainz, so it only READS the key.
@@ -989,6 +990,11 @@ CLOSED: [2026-11-20 Fri]
   last step moved there: it passed before and after), =rel-ws2-recheck.spec.js= R1–R4; the preview, Relationships,
   settings and job popup specs 401/401; mutations =stale-while-revalidate.json=; =mb-last-write.json= and
   =mb-window-3f.json= one find each re-pointed. Not covered: =ms-rec-len=, "Recording of", the external readers.
+- *Shipped* as 9.99.1705–06 (2026-11-26; vzell's browser check OK). Its =test:full= could not run: from 17:00 CET
+  musicbrainz.org cut every TLS handshake from this WSL machine (curl, Python, Playwright's Chromium; Google and
+  GitHub fine, vzell's Windows browser fine), and the specs that load a live page shell (filters, query mode, rec-dup)
+  failed on =page.goto=; stopped after 50 such failures. Merged without it (vzell's call); the touched areas' specs
+  were 401/401 before.
 
 ** DONE In-page log window behind =Lib.*= (=mbuLog=) (moved from org/TODO.org)
 
