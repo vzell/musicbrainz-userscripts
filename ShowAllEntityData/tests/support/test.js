@@ -17,7 +17,10 @@ const SAVE_HTML_DIR = path.join(__dirname, '..', '..', 'test-results', 'rendered
 // bytes, and MusicBrainz's scripts still run. Its URLs carry content hashes,
 // so a cached file never goes stale. Gitignored; only the first fetch of a
 // file on a machine reaches the network. SA_NO_STATIC_CACHE=1 turns it off.
-const STATIC_MB_RE = /^https:\/\/static\.metabrainz\.org\//;
+// musicbrainz.org's own /static/ too since 2026-11-26 (the entity icons a card or
+// window draws): with musicbrainz.org refused, they never loaded and six specs
+// waited for an element that never came (test/fixture-shells).
+const STATIC_MB_RE = /^https:\/\/(?:static\.metabrainz\.org|musicbrainz\.org\/static)\//;
 const STATIC_MB_CACHE = path.join(__dirname, '..', '.cache', 'static-mb');
 const STATIC_MB_HEADERS = ['content-type', 'access-control-allow-origin', 'timing-allow-origin', 'cache-control'];
 const FIXTURE_PROJECTS = new Set(['chromium-fixtures', 'chromium-mobile']);
@@ -31,6 +34,63 @@ const FIXTURE_PROJECTS = new Set(['chromium-fixtures', 'chromium-mobile']);
 // "Test timeout … page.goto", DEBUG-NOTES.md 2026-11-04). Answered here with
 // the CDN's own 404, no request.
 const STATIC_MB_SCRUBBED_RE = /-SCRUBBED\.[A-Za-z0-9]+(?:[?#]|$)/;
+
+/** musicbrainz.org and its subdomains (not static.metabrainz.org, which `serveStaticMb()` answers from disk). */
+const LIVE_MB_RE = /^https:\/\/(?:[a-z0-9-]+\.)?musicbrainz\.org\//;
+/** Where the live-request guard writes its records, one JSON line per request, a file per worker. */
+const LIVE_DIR = path.join(__dirname, '..', '..', 'test-results', 'live-requests');
+
+/**
+ * The fixture projects' live-request guard (2026-11-26, test/fixture-shells):
+ * registered on the context before any spec code, so it sees only what no
+ * spec route answered. Records every such request to musicbrainz.org (`live`)
+ * and, unless `SA_LIVE_GUARD=report`, aborts a top-level page load: a fixture
+ * spec must never depend on the live site (on 2026-11-26 musicbrainz.org
+ * refused this machine and 50 such specs failed on `page.goto`). A frame's
+ * load and any other request (ws/2, an image) is only recorded and passed on,
+ * or refused with `SA_BLOCK_MB=1` (a run that proves the suite needs no
+ * musicbrainz.org at all). `scripts/report-live-requests.py` reads the
+ * records.
+ *
+ * @param {import('@playwright/test').Route} route
+ * @param {Array<Object>} live - This test's records.
+ * @returns {Promise<void>}
+ */
+async function liveGuard(route, live) {
+    const req = route.request();
+    let kind = 'request';
+    try {
+        if (req.isNavigationRequest()) kind = req.frame().parentFrame() ? 'frame' : 'page';
+    } catch {
+        // A service worker's request has no frame: an ordinary request.
+    }
+    live.push({ kind, type: req.resourceType(), method: req.method(), url: req.url() });
+    if (kind === 'page' && process.env.SA_LIVE_GUARD !== 'report') {
+        await route.abort('blockedbyclient').catch(() => {});
+        return;
+    }
+    if (process.env.SA_BLOCK_MB) {
+        await route.abort('connectionrefused').catch(() => {});
+        return;
+    }
+    await route.fallback();
+}
+
+/**
+ * What a test's live-request records come to at its teardown: the error
+ * message when a top-level page load reached the guard (unless
+ * `SA_LIVE_GUARD=report`), else null.
+ *
+ * @param {Array<{kind: string, url: string}>} live
+ * @returns {?string}
+ */
+function liveVerdict(live) {
+    const pages = live.filter(r => r.kind === 'page');
+    if (!pages.length || process.env.SA_LIVE_GUARD === 'report') return null;
+    return `live musicbrainz.org page load in a fixture spec: ${pages.map(r => r.url).join(', ')} ` +
+        '(give it a shell: tests/fixtures/shells/index.json, scripts/capture-fixture-shells.js; ' +
+        'docs/claude/testing-playwright.md, "Fixture specs never load a live page")';
+}
 
 /**
  * Answers a static.metabrainz.org GET from the disk cache, or fetches it,
@@ -120,10 +180,26 @@ const test = base.test.extend({
     // abort it, so MusicBrainz's current bundle cannot re-render a fixture)
     // still wins, and this one answers only what nothing else handles.
     context: async ({ context }, use, testInfo) => {
-        if (FIXTURE_PROJECTS.has(testInfo.project.name) && !process.env.SA_NO_STATIC_CACHE) {
+        const live = [];
+        const fixtures = FIXTURE_PROJECTS.has(testInfo.project.name);
+        // First of all: the live-request guard, so every later route wins (`liveGuard()`).
+        if (fixtures) await context.route(LIVE_MB_RE, (route) => liveGuard(route, live));
+        if (fixtures && !process.env.SA_NO_STATIC_CACHE) {
             await context.route(STATIC_MB_RE, serveStaticMb);
         }
         await use(context);
+        if (!live.length) return;
+        try {
+            fs.mkdirSync(LIVE_DIR, { recursive: true });
+            const spec = path.relative(path.join(__dirname, '..', '..'), testInfo.file);
+            const title = testInfo.titlePath.slice(1).join(' › ');
+            fs.appendFileSync(path.join(LIVE_DIR, `w${testInfo.workerIndex}.jsonl`),
+                live.map(r => JSON.stringify({ spec, title, project: testInfo.project.name, ...r })).join('\n') + '\n');
+        } catch {
+            // The report is a convenience; the failure below is what counts.
+        }
+        const verdict = liveVerdict(live);
+        if (verdict) throw new Error(verdict);
     },
     page: async ({ page }, use, testInfo) => {
         await use(page);
@@ -159,4 +235,4 @@ const test = base.test.extend({
     },
 });
 
-module.exports = { test, expect: base.expect };
+module.exports = { test, expect: base.expect, liveGuard, liveVerdict, LIVE_MB_RE };

@@ -1,0 +1,9 @@
+{
+  "about": "Page shells for fixture specs that would otherwise load the live page (tests/support/shells.js, loadUserscriptPage). URL -> file relative to ShowAllEntityData/. Inventory: scripts/report-live-requests.py; capture: node scripts/capture-fixture-shells.js.",
+  "shells": {
+    "https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases": "tests/fixtures/shells/artist-releases-bodeans.html",
+    "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f": "tests/fixtures/shells/artist-overview-springsteen.html",
+    "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events": "tests/fixtures/shells/artist-events-springsteen.html",
+    "https://musicbrainz.org/artist/f93dbc64-6f08-4033-bcc7-8a0bb4689849/recordings": "tests/fixtures/shells/artist-recordings-petty.html"
+  }
+}

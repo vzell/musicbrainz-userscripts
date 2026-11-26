@@ -280,6 +280,56 @@ change — a stale comment is still a defect.
 
 ## Fixture specs are network-free; settle-waits count writes
 
+### Fixture specs never load a live page (2026-11-26, test/fixture-shells)
+
+On 2026-11-26 musicbrainz.org refused every TLS handshake from NB-3641 (curl,
+Python and Playwright's Chromium; vzell's Windows browser was fine) for over
+an hour, and 50 "fixture" specs failed on `page.goto`:
+`loadFromDiskFixture()` without `pageFixtureFile`, and `loadUserscriptPage()`
+without `fixtureFile`, navigated to the LIVE page and took only the table
+data from `saved-data/`. The inventory run found four such pages, loaded by
+22 spec files.
+
+- **Shells.** `tests/fixtures/shells/index.json` maps a URL to a saved page
+  (`tests/support/shells.js`, `shellFor()`: the exact URL, then without its
+  query; a listed file not on disk counts as none). In a fixture project
+  (`chromium-fixtures`, `chromium-mobile`) `loadUserscriptPage()` routes a
+  URL that has no `fixtureFile` to its shell, with the sandbox routes of a
+  fixture (archive.org images, `/ws/js`, the browser-check stub) but NOT
+  `FIXTURE_SETTINGS_OVERRIDE`: those specs keep the settings they were
+  written with. `tests/live/` is untouched.
+- **Capture.** `node scripts/capture-fixture-shells.js [--all] [--dry-run]`
+  captures every listed file that is missing (logged out, the browser check
+  solved by a first load, `snapshot.js`'s `scrub()`), and refuses a page that
+  is still the check or still holds a Mapbox token. Run it where
+  musicbrainz.org answers.
+- **No MusicBrainz CSS in a shell.** The scrub turns the hashed stylesheet
+  names into `-SCRUBBED`, which `serveStaticMb()` answers 404, as for every
+  other fixture shell. Two specs written against the live CSS needed a
+  change: `sticky-column-batched` (transparent and white are one rest colour,
+  as its neighbour's `norm` already said) and `filter-sliced` (the status
+  line sits in a sticky heading below the fold, where Playwright's hover
+  keeps calling it "outside of the viewport": scroll it in and move the
+  mouse to its centre).
+- **The guard.** `tests/support/test.js`'s `context` fixture registers
+  `liveGuard()` on `^https://(…\.)?musicbrainz\.org/` before any spec code, so
+  it sees only what no spec route answered. A top-level page load is aborted
+  and the test fails at teardown (`liveVerdict()`) naming the URL and the way
+  out; a frame's load and any other request (ws/2, an image, a page the
+  userscript fetches) is recorded and passed on. `SA_LIVE_GUARD=report` only
+  records; `SA_BLOCK_MB=1` also refuses every other request, which is how a
+  run proves the suite needs no musicbrainz.org at all.
+- **musicbrainz.org's own `/static/`** (the entity icons a card or window
+  draws) is answered from the same disk cache as static.metabrainz.org
+  (`serveStaticMb()`, `tests/.cache/static-mb/`, gitignored): the first run on
+  a machine fills it from the live site, every later one, blocked or not,
+  reads it. Six popup and tracklist specs failed under `SA_BLOCK_MB=1` until
+  then: the icon never loaded and the element they wait for never came.
+- **The report.** Records go to `test-results/live-requests/w<worker>.jsonl`;
+  `python3 scripts/report-live-requests.py [--json OUT] [--check]` lists the
+  pages that need a shell and the other live requests by pattern. Spec
+  `live-guard.spec.js` (G1–G7); mutations `scripts/mutations/live-guard.json`.
+
 **The userscript's `@require`d libraries come from `node_modules`.** iro and
 pako are exact-pinned devDependencies, injected by `addRequiredLibs()`
 (`tests/support/loadPage.js`), never `addScriptTag({ url })` to a CDN: on

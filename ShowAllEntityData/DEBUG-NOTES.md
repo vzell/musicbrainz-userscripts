@@ -32016,3 +32016,39 @@ this machine's automated clients after a day of runs and probes. Not the
 branch. vzell's browser check OK; merged as 9.99.1705–06 without a
 `test:full` (vzell's call). Worth knowing: those specs are network-bound
 although they live under tests/fixtures/.
+
+## 2026-11-26 — Fixture specs no longer load a live page: saved shells and a network guard (test/fixture-shells)
+
+Env: 2026-11-26T17:53–19:10+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · capture: logged out, 18:19 CET
+
+From about 17:00 to 18:13 CET musicbrainz.org cut every TLS handshake from
+this machine (curl -4/-6, Python, Playwright's Chromium) while google.com,
+github.com and vzell's Windows browser were fine. 50 "fixture" specs failed
+on `page.goto`: they loaded the LIVE page as their shell and only the table
+data from `saved-data/`. The fix:
+
+- a guard in `tests/support/test.js` (`liveGuard()`, `liveVerdict()`), first
+  route of every fixture context: an unrouted top-level musicbrainz.org page
+  load is aborted and fails the test at teardown; other requests are
+  recorded (`test-results/live-requests/`, `scripts/report-live-requests.py`);
+  `SA_LIVE_GUARD=report`, `SA_BLOCK_MB=1`;
+- the inventory, one `test:full` in report mode (84 failures, all the
+  refusal's): four pages, loaded by 22 spec files (BoDeans' releases by 17);
+- four shells captured at 18:19 CET when the site answered again
+  (`scripts/capture-fixture-shells.js`, `tests/fixtures/shells/`), found by
+  `shellFor()` in `loadUserscriptPage()` for a fixture-project URL without a
+  `fixtureFile`, WITHOUT `FIXTURE_SETTINGS_OVERRIDE` (those specs keep their
+  settings);
+- two specs had relied on MusicBrainz's live CSS (the shells have none, as
+  every fixture shell): `sticky-column-batched` (transparent = white rest
+  colour) and `filter-sliced` (a sticky heading below the fold, where
+  Playwright's hover says "outside of the viewport" even after scrolling:
+  scroll it in and move the mouse to its centre);
+- musicbrainz.org's own `/static/` (entity icons) now comes from the same
+  disk cache as static.metabrainz.org: under `SA_BLOCK_MB=1` six popup and
+  tracklist specs had waited for an icon that never loaded.
+
+The run with the guard on and musicbrainz.org blocked: 3600/3607 before the
+icon cache, 0 live page loads; the 7 then 8/8 with it. The 21 inventoried
+spec files 166/166 blocked. Guard spec G1–G7; mutations
+`live-guard.json` 4/4.
