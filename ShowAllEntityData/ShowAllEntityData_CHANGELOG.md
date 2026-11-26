@@ -4,9 +4,16 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1874 versions; the month pages hold all of them.
+This page shows the newest 100 of 1875 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1704 — 2026-11-26
+
+**✨ Improve**
+
+- Link previews: an instrument's window now shows MusicBrainz's own IROMBOOK drawing of it (no extra request), else the image its Wikidata item names, and its links, as majkinetor's Event Horizon does, and its description shows its links as links instead of HTML tags; a series' window shows its own picture link, else the image its Wikidata item names (asked on Space only), and its links. The card shows the picture once a window found it. A place's or a series' own page now shows the picture its preview window found (Wikidata's too) beside the name, from this browser's storage, without asking anything.
+
 
 ## 9.99.1703 — 2026-11-26
 
@@ -846,17 +853,6 @@ This page shows the newest 100 of 1874 versions; the month pages hold all of the
 
 - A YouTube player embedded as "youtube.com/embed/playlist?list=…" (Brucebase's release pages) was taken for a video named "playlist"; it is the playlist.
 - Brucebase On The Tracks: a take written "THE HEIST - V2 - take 14" or "JUNGLELAND - V1 (August 1, 1974)" is now split into title and version too (song pages and the new release pages).
-
-
-## 9.99.1604 — 2026-11-13
-
-**✨ Improve**
-
-- Brucebase: the shows in a person's lists link the wiki's "on stage" pages, which the wiki forwards to the show; these links now preview the show itself, card and window.
-
-**🚀 Feature**
-
-- A new WARNING on the Brucebase detail pages, "Brucebase entry with a comma after its date": an entry the wiki lists as "2015-04-30, Story Chapel, …" instead of "2015-04-30 Story Chapel, …". It is still read; the Date cell is tinted, its tooltip quotes the entry, and the lists being the linked pages' titles, that page's title is the one to fix. Settings "Find Brucebase entries with a comma after their date" and its highlight (both on).
 
 
 ---
