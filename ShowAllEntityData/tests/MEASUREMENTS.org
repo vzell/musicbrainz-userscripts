@@ -5179,3 +5179,17 @@ Env: 2026-11-26T15:26:31+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18
 3592 passed, 1 failed: =settings-dialog.spec.js= "the row follows its checkbox live" pinned the old label of
 =sa_pop_mb_image= ("Pictures in artist, label, place and area previews"), which this branch renamed. The spec now
 names the new label; the file 31/31 (15:53 CET).
+
+* 2026-11-26 — =SA_BLOCK_MB=1 npm run test:full= on =NB-3641=, test/fixture-shells (no musicbrainz.org at all)
+
+Env: 2026-11-26T19:04:50+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1-microsoft-standard-WSL2) · Playwright 1.62.1 bundled Chromium (headless), chromium-mobile with Pixel 7 emulation, no Tampermonkey (GM stubs).
+
+| Selection                                   | Tests | Workers | Wall clock  | Basis                                     |
+|---------------------------------------------+-------+---------+-------------+-------------------------------------------|
+| =SA_BLOCK_MB=1 npm run test:full=, =944c731b= |  3607 |      14 |  25 m 47 s  | =run-test-full.py=, 19:04:50–19:30:37 CET |
+
+3606 passed with every musicbrainz.org request the specs did not route refused, and the live-request guard on:
+0 top-level page loads (=scripts/report-live-requests.py=). 1 failed: =bb-story.spec.js= "a story link's window names
+its kind…" (a deep-equal on 5 rows got 1), a Brucebase spec with no musicbrainz.org in it; alone 3/3, its file 9/9
+blocked (19:33 CET): a load flake. The earlier runs of the day: report mode 3519/3603 (17:53, the 84 failures all the
+refusal's), blocked before the =/static/= cache 3600/3607 (18:35).
