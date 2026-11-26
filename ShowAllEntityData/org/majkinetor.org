@@ -724,8 +724,12 @@ OFF by default: it flagged 959 of Bob Dylan's 2,301 releases and slowed typing b
 - *Optional, costs requests*: "barcode already on another MB release" (PC =pcBarcodeOnMb= 9692, one search per
   barcode) and "Discogs master missing on the RG" (from the RG's url-rels). Only behind a button or setting.
 
-** TODO Findings from Apollo / Group Therapy / First Contact / Credit Hoarder
+** DONE Findings from Apollo / Group Therapy / First Contact / Credit Hoarder
+CLOSED: [2026-11-26 Thu]
 
+- *Closed* (2026-11-26): every batch shipped or was decided against (1: 9.99.1657, 2: 9.99.1659, 3: 9.99.1660,
+  4: 9.99.1666; First Contact's two guesses NOT). One candidate stays parked, not open work: a join BETWEEN two
+  artists without its space (Apollo's =joinNeed()=), until a real example turns up (batch 1's probe found none).
 - *Who fixes it*: *ours*. *Permission (2026-11-17)*: "1-6 - Yes you can use anything from my repo, no need to ask.
   Do whatever you want with it." ([[https://github.com/majkinetor/musicbrainz-userscripts/issues/938#issuecomment-6946881795][#938]]).
 - The candidates, all =FINDINGS= entries (=add-finding= skill), and where each went:
@@ -789,7 +793,10 @@ vzell picked this one of the three (2026-11-19, plan mode): it is the only one w
   - a near miss: https://musicbrainz.org/release/3ce46b79-5e8c-470a-bcdc-45f301d09f60 (12" Vinyl, pressed at Pitman,
     manufactured, printed in): no ⚠️ row at all.
 
-*** NEXT Batch 4: a ℗ notice no relationship has; First Contact's guesses NOT (=feat/apollo-findings-4=)
+*** DONE Batch 4: a ℗ notice no relationship has; First Contact's guesses NOT (9.99.1666)
+
+Shipped as 9.99.1666 (=feat/apollo-findings-4=, merge =92b0cac9=); the heading kept NEXT until 2026-11-26, the status
+table already said DONE.
 
 The two left from batch 3, both about the whole release, so no table cell carries them. Probe first, then a mockup
 of where a release-wide finding shows: https://claude.ai/artifact/7X3bbpdfmSuqr4jU85Q4Bn (source
