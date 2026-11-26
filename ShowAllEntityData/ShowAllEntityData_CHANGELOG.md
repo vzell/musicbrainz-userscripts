@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1875 versions; the month pages hold all of them.
+This page shows the newest 100 of 1877 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1706 — 2026-11-26
+
+**✨ Improve**
+
+- The Relationships column now re-checks older answers in the background: after it has loaded from the browser's storage, the answers kept for more than 7 days are asked again, the oldest first, at most 100 per page and one a second, without any loading glyph; a row whose relationships changed is rewritten, and the progress card says how many were re-checked and how many changed. Switch: "Re-check older kept relationships in the background" (on).
+
+
+## 9.99.1705 — 2026-11-26
+
+**✨ Improve**
+
+- MusicBrainz link previews: a kept answer older than "Keep MusicBrainz answers for" (24 hours) is no longer replaced by "Loading…". For up to 30 days the old card or window is shown at once, its foot saying "checking…", while MusicBrainz is asked again in the background, as majkinetor's Event Horizon does with its kept answers; if the answer changed, it repaints. A change another script reports (Event Horizon, Group Therapy, Falcon, Apollo) still drops the kept answer at once.
+
 
 ## 9.99.1704 — 2026-11-26
 
@@ -828,31 +842,6 @@ This page shows the newest 100 of 1875 versions; the month pages hold all of the
 
 - The Brucebase window's History section: chips for the kinds of change (All, Source, Title, Page name, Tags, Metadata, Files, each with its count; several at once) filter the revisions at once; a tag change in the list shows as pills (+ tour\_lohadnk, − album\_thepromise); From and To on every row compare any two revisions, the older always on the left and the revisions between them tinted; every comparison shows the tags of both (added +, removed struck, or "the same in both") and a changed page title or page name. The list is read 100 revisions a page, and a revision that changed only tags no longer reads the page's text twice (9.99.1606's History section).
 - "✎ Page history" is now in the ☰ menu of every Brucebase page with the toolbar, Recent changes and the year pages included (their own history: the 2026 page is at revision 310). Links to Brucebase story pages (the Storyteller words of a show) preview them, with the story's words and the History section, so a story page's title changes and renames can be seen too.
-
-
-## 9.99.1606 — 2026-11-13
-
-**🚀 Feature**
-
-- Every Brucebase preview window on brucebase.wikidot.com ends with a folded "History" section: the page's revisions, newest first (number, date, who, the kind of change, the comment), and what the revision you click changed — the old lines and the new ones side by side, the changed words marked, the unchanged lines folded ("Everything" shows them), a revision that changed only tags or the title saying so. You need not be signed in: the wiki answers its history to everyone (probed signed in and signed out). Nothing is read until the section opens; then 20 revisions ("Load 20 more" for older ones) and the two texts the change needs, one request a second, kept until you leave the page. ✎ in the window's title bar and H open it; on a page that has a window, the ☰ menu's "✎ Page history" opens it for the page itself. Setting: Page history in the Brucebase window (on).
-
-**📝 Docs**
-
-- Help: the window's History section; two places still named the event preview setting by its old label.
-
-
-## 9.99.1605 — 2026-11-13
-
-**🚀 Feature**
-
-- Brucebase release and playlist pages get a button, "Release": a table per edition and disc (song, running time, where the track comes from, the page's footnote on it; a box set's films each a table of their own), the personnel, the related releases, a live release's recording dates (the show's date and place, linked), the takes On The Tracks and how often each song was played live. Above them the facts the page states (released, label, produced, recorded, mixed, mastered, design, photography), each edition's running time, the overview, footnotes and history, tags, media, the lyrics' pages and the artwork typed by its file names; the wiki's page folded below. Nothing is fetched.
-- Brucebase bootleg pages get "Bootleg": the tracklist, a table per disc with each song's time and, where the page marks them, the sides; the label, catalog number, time, format, source and sound in a Bootleg card, the notes and the Front, Back and Disc artwork. The wiki writes bootlegs as free text — lists, numbered lines, "Disc 1: (43:31)", "//" after a side's last song — and all of it is read.
-- Links to Brucebase release, playlist and bootleg pages preview them (Ctrl+hover): their facts and tracks; Space opens the window with the overview, personnel and related releases. The settings are now called "Detail pages: events, songs, venues, people, releases and bootlegs as tables" and "Preview event, venue, people, release and bootleg pages on hover".
-
-**🐛 Fix**
-
-- A YouTube player embedded as "youtube.com/embed/playlist?list=…" (Brucebase's release pages) was taken for a video named "playlist"; it is the playlist.
-- Brucebase On The Tracks: a take written "THE HEIST - V2 - take 14" or "JUNGLELAND - V1 (August 1, 1974)" is now split into title and version too (song pages and the new release pages).
 
 
 ---
