@@ -31896,3 +31896,27 @@ lists (`link-site-uvd.json`, `rel-multi-site-and-ip.json`) were re-pointed
 to the new grouping and still fail as they should. Spec 10/10, mutations
 17/17, the relationships/findings/settings specs 302/302, lint at
 baseline.
+
+## 2026-11-26 — Barcode candidates in the Discogs MusicBrainz column (feat/link-page-keys, WIP.2)
+
+Env: 2026-11-26T13:00–13:55+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · browser check pending
+
+Phase 2 of the links item, to the approved mockup
+(https://claude.ai/artifact/NjNP8w1rWxkDfmfJteshY5). A Discogs release no
+MusicBrainz release links: 🔎 asks `api.discogs.com/releases/<id>` (the
+rows carry no barcode), then one `/ws/2/release?query=barcode:(…)` with
+every 8–14-digit form, and keeps a hit First Contact's `sameAlbum()` passes
+(barcode core, media kinds, track count, each where both sides know it).
+Two deviations from the mockup: ⧉ sits beside the candidate (a hover card
+cannot be clicked), and the search uses the column's own pacing
+(`_relAwaitRateSlot()` + `_extGet()`), since the shared gate's storage
+belongs to musicbrainz.org, not discogs.com.
+
+Two lessons from the run: the spec's first expectation listed a 15-digit
+form ("005099751969227") that the code rightly drops (8–14 digits); and a
+mutation `grep` of "BC1 + BC5: …" selected no test, because Playwright
+reads `--grep` as a regular expression and "+" is a quantifier; the
+grep is now a plain phrase. Spec 4/4 with the column's spec 26/26,
+mutations 13/13 (the per-press cap `expect: pass`), two finds of
+`discogs-mb-column.json` re-pointed (the strip selector and the 📊 value
+function changed shape).

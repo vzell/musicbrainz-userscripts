@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-11-26",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "discogs.com, the MusicBrainz column (with murdos' importer): a Discogs release that no MusicBrainz release links yet can now be looked for by its barcode, as majkinetor's First Contact does. 🔎 beside ▶ MB counts such releases; a press asks Discogs for each one's barcode, formats and tracks and searches MusicBrainz by the barcode, and a MusicBrainz release whose barcode, kind of media and track count agree shows as a candidate: the release icon in a dashed box with ≈ (≈2 for two). It is not a link: its card says what agreed, a click opens the release on MusicBrainz, and ⧉ copies the Discogs address to add it there yourself. At most 25 releases a press (60 with a Discogs token), never automatic, each answer kept for 7 days; 📊 \"» MB links: candidate\" keeps only the candidates."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-11-26",
     "sections": [

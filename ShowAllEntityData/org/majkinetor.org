@@ -1171,7 +1171,18 @@ CLOSED: [2026-11-20 Fri]
   Spec =rel-multi-site-finding.spec.js= 10/10 (K1–K8, KEYS); mutations =rel-page-keys.json= 17/17 (K8 added for a
   mutant that lived: the late re-stamp's id list only gates, so it shows only with =rel-multi-site= off), the two
   older lists re-pointed and green; relationships, findings and settings specs 302/302. Anchors =fc-linkkey=,
-  =falcon-pagekey=, =is-normalize-url=, =saed-page-keys=. Phase 2 (the barcode fallback) waits for its mockup.
+  =falcon-pagekey=, =is-normalize-url=, =saed-page-keys=.
+- *Phase 2 built* (2026-11-26, WIP.2). Mockup https://claude.ai/artifact/NjNP8w1rWxkDfmfJteshY5 (source
+  =debug/mockup-dg-barcode-candidates.html=), vzell: "recommendations approved" (look A dashed ≈; 🔎 N beside ▶ MB,
+  never automatic; open on MusicBrainz + copy the Discogs address; 📊 "» MB links: candidate"; 25 a press, 60 with
+  a token; "≈2" for several; 7 days). Built: =_dgBcAsk()= (Discogs' release record, then one barcode search with
+  every 8–14-digit form, =_dgBcSameAlbum()= from First Contact's =sameAlbum()=/=bcCore=/=fmtKind=), =_dgBcRun()=,
+  =_dgBcCandHtml()= (never =a.mb-dg-mb-link=), store key =release/<id>/barcode=. *Deviations*: the copy is a ⧉
+  button beside the candidate, not in the card (a hover card cannot be clicked); the MusicBrainz search goes
+  through =_relAwaitRateSlot()= + =_extGet()= like the column's lookups, not =_mbGateFetch()= (on discogs.com the
+  shared gate's storage is not reachable). Spec =discogs-mb-barcodes.spec.js= 4/4 (BC1–BC5), with
+  =discogs-mb-column.spec.js= 26/26; mutations =dg-mb-barcodes.json= 13/13 (the cap =expect: pass=, 25+ releases
+  would cost 25 s of Discogs' spacing), =discogs-mb-column.json= two finds re-pointed, green.
 
 ** DONE The browser check on SAED's own page fetches (=mbnIsCheck=, =mbnReverify=)
 :PROPERTIES:
