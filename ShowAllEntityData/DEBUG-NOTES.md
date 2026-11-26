@@ -31863,3 +31863,10 @@ holds, each up to 500 ms longer since the gate's jitter; the default 5 s
 its wholly-failed sibling); the file 28/28. 9.99.1700 was merged without
 its `test:full` on `main`, and the branch's own run had passed it by
 chance (tests/MEASUREMENTS.org, 2026-11-26).
+
+Browser check (vzell, 2026-11-26, his browser, versions unknown): "Show all
+Events" on Bruce Springsteen's events loaded every page. A real check could
+not be forced: with `__meb_verified` deleted (logged in), MusicBrainz kept
+serving the real pages (page 18 of 747 of the recordings), so it does not
+answer a missing cookie alone with the check. Both paths rest on spec B1/B2.
+Merged as 9.99.1701 without a second `test:full` (vzell's call).

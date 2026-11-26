@@ -25,9 +25,9 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
   *shipped* as 9.99.1699 (=feat/saed-log-icon= with the refresh; vzell's browser check OK, the HUD confirmed hidden).
   Adoption 2 (=search-shed=, the hold jitter, upstream's hot rule) *shipped* as 9.99.1700 (measured first: 11 of
   21 503s in case D were sheds; vzell's browser check saw a real shed hold only searches; item "The shared gate at
-  eight a second"). Adoption 3, [[#saed-browser-check][the browser check on SAED's page fetches]], is *built* on
-  =feat/saed-browser-check= (WIP.1; measured first: a check page silently lost a page's rows, or the whole list on
-  the count request); waiting for =test:full= and vzell's browser check.
+  eight a second"). Adoption 3, [[#saed-browser-check][the browser check on SAED's page fetches]], *shipped* as
+  9.99.1701 (measured first: a check page silently lost a page's rows, or the whole list on the count request;
+  vzell's browser check: no regression, a real check could not be forced).
 
 - *Now (2026-11-25, latest):* "Switch between SAED's view and the original page (EH's V)" *shipped* as
   9.99.1695–9.99.1698 (=feat/original-page-toggle= merged after vzell's browser checks, =test:full= 3560/3560).
@@ -145,7 +145,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
-| Browser check on SAED's page fetches (=mbnIsCheck=)            | NEXT  | WIP.1         | Adoptions     |
+| Browser check on SAED's page fetches (=mbnIsCheck=)            | DONE  | 9.99.1701     | Adoptions     |
 | Smaller adoptions                                              | TODO  | —             | Adoptions     |
 | Posts to majkinetor: fifteen posted; #938 closed               | DONE  | —             | On the record |
 
@@ -1160,7 +1160,7 @@ CLOSED: [2026-11-20 Fri]
   (barcode, format kind and track count agree where both are known). Costs one search request per such release:
   behind a button or setting.
 
-** NEXT The browser check on SAED's own page fetches (=mbnIsCheck=, =mbnReverify=)
+** DONE The browser check on SAED's own page fetches (=mbnIsCheck=, =mbnReverify=)
 :PROPERTIES:
 :CUSTOM_ID: saed-browser-check
 :END:
@@ -1200,6 +1200,13 @@ CLOSED: [2026-11-20 Fri]
   (3 =expect: pass= with reasons). Anchors =saed-fetchhtml-check= (was =saed-fetchhtml-nocheck=), =saed-reverify=.
   Design: docs/claude/fetch-and-render-pipeline.md, "A browser check is never a page". Not covered: the popup cards
   (a frame on hover would break "first contact on Space"; they keep =_MB_BROWSER_CHECK_NOTE=).
+- *Shipped* as 9.99.1701 (2026-11-26). vzell's browser check (versions unknown): "Show all Events" on Bruce
+  Springsteen's events loaded every page (no regression). Forcing a check failed: with =__meb_verified= deleted
+  (logged in), MusicBrainz went on serving the real pages (page 18 of 747), so it does not check on a missing
+  cookie alone; Local Overrides were not tried through (the content script's =fetch= is hard to find among ~1,000
+  requests). Both paths rest on the spec (B1, B2). =test:full= on the branch 3577/3578: the one failure was
+  9.99.1700's jitter against a 5 s wait in =artist-recordings-ms-batch.spec.js=, fixed here. No second =test:full=
+  at the merge (vzell's call).
 
 ** TODO Smaller adoptions
 
