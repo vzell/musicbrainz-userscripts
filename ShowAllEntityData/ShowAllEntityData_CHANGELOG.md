@@ -4,9 +4,23 @@ Every version, newest first, with the technical details behind each change. For 
 
 **Months:** [November 2026](ShowAllEntityData_CHANGELOG/2026-11.md) · [October 2026](ShowAllEntityData_CHANGELOG/2026-10.md) · [September 2026](ShowAllEntityData_CHANGELOG/2026-09.md) · [August 2026](ShowAllEntityData_CHANGELOG/2026-08.md) · [July 2026](ShowAllEntityData_CHANGELOG/2026-07.md) · [June 2026](ShowAllEntityData_CHANGELOG/2026-06.md) · [May 2026](ShowAllEntityData_CHANGELOG/2026-05.md) · [April 2026](ShowAllEntityData_CHANGELOG/2026-04.md) · [March 2026 (1 of 2)](ShowAllEntityData_CHANGELOG/2026-03-1.md) · [March 2026 (2 of 2)](ShowAllEntityData_CHANGELOG/2026-03-2.md) · [February 2026](ShowAllEntityData_CHANGELOG/2026-02.md) · [January 2026](ShowAllEntityData_CHANGELOG/2026-01.md)
 
-This page shows the newest 100 of 1872 versions; the month pages hold all of them.
+This page shows the newest 100 of 1874 versions; the month pages hold all of them.
 
 ---
+
+## 9.99.1703 — 2026-11-26
+
+**🚀 Feature**
+
+- discogs.com, the MusicBrainz column (with murdos' importer): a Discogs release that no MusicBrainz release links yet can now be looked for by its barcode, as majkinetor's First Contact does. 🔎 beside ▶ MB counts such releases; a press asks Discogs for each one's barcode, formats and tracks and searches MusicBrainz by the barcode, and a MusicBrainz release whose barcode, kind of media and track count agree shows as a candidate: the release icon in a dashed box with ≈ (≈2 for two). It is not a link: its card says what agreed, a click opens the release on MusicBrainz, and ⧉ copies the Discogs address to add it there yourself. At most 25 releases a press (60 with a Discogs token), never automatic, each answer kept for 7 days; 📊 "» MB links: candidate" keeps only the candidates.
+
+
+## 9.99.1702 — 2026-11-26
+
+**🚀 Feature**
+
+- New ⚠️ finding "The same page linked twice in Relationships": the Relationships column now knows when two links are one page in different forms (Apple Music's /us/ and /gb/ storefront of one album, a Discogs release with and without its title in the address, tidal.com and listen.tidal.com, a Qobuz page in two locales, Deezer, Spotify and Beatport likewise), as majkinetor's scripts do. Such a link is a duplicate to remove. "Several links to one site in Relationships" now counts only really different pages, so those forms no longer show up there, and amazon.de and amazon.com stay different stores. Both findings have their own switch and highlight in ⚙️ Settings, and the tooltip names every form.
+
 
 ## 9.99.1701 — 2026-11-26
 
@@ -843,21 +857,6 @@ This page shows the newest 100 of 1872 versions; the month pages hold all of the
 **🚀 Feature**
 
 - A new WARNING on the Brucebase detail pages, "Brucebase entry with a comma after its date": an entry the wiki lists as "2015-04-30, Story Chapel, …" instead of "2015-04-30 Story Chapel, …". It is still read; the Date cell is tinted, its tooltip quotes the entry, and the lists being the linked pages' titles, that page's title is the one to fix. Settings "Find Brucebase entries with a comma after their date" and its highlight (both on).
-
-
-## 9.99.1603 — 2026-11-13
-
-**🚀 Feature**
-
-- Brucebase venue pages get a button, "Venue": the performances, cancelled shows and appearances at the venue as tables, its description, region, count, map link and pictures above, the wiki's page folded below.
-- Brucebase pages of people and bands get "Person": every performance with Bruce Springsteen as one table — the wiki splits long lists into pages (Steven Van Zandt's 1,517 shows over six), and every page is read, one request each — with an As column saying in which band; the count per band; appearances; the recordings by song and role; their bands or members (in reading order: "The E Street Band"); songs co-written with Bruce. The biography, tags and pictures are above. The setting is now called "Detail pages: events, songs, venues and people as tables".
-
-
-## 9.99.1602 — 2026-11-13
-
-**🚀 Feature**
-
-- Brucebase song pages get a button, "Song": the credits (each release, who played what), the performances counted by tour (only the tours it was played on, with its share of the shows), every performance, multiple performances on one date, snippets, the official live downloads and its takes On The Tracks (title, take, running time, the bootlegs and releases it is on), as tables you can filter and sort. Above them: where the song comes from, Released on Album, the lyrics and notes (folded), a Song card (how often and when last played live, released on, live downloads, takes), its tags, media and links; the wiki's page folded below. An On The Tracks page gets "Versions": its takes as one table. Nothing is fetched. The setting is now called "Detail pages: events and songs as tables".
 
 
 ---

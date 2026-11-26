@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "ddff36462249264f77cd3afd8c6301b609b9fb53",
-    "revisions_walked": 1421
+    "head": "b710c657ee32b47b69ca7e01472481e3728e0b11",
+    "revisions_walked": 1424
   },
   "changes": [
     {
@@ -990,6 +990,8 @@
     "sa_findings_no_medium_image": true,
     "sa_findings_tint_no_medium_image": true,
     "sa_findings_rel_multi_discogs": true,
+    "sa_findings_rel_same_page": true,
+    "sa_findings_tint_rel_same_page": true,
     "sa_findings_tint_rel_multi_discogs": true,
     "sa_findings_rel_multi_site_ignore": "",
     "sa_findings_bb_mbev_link_mismatch": true,
