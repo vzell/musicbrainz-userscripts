@@ -99,7 +99,13 @@ test.describe('sticky column: writes first, then reads', () => {
         test.setTimeout(120000);
         await open(page);
         const row = page.locator('table.tbl tbody tr').nth(3);
-        const cellBgs = () => row.evaluate((tr) => Array.from(tr.cells).map((td) => getComputedStyle(td).backgroundColor));
+        // Transparent and white are one colour here, as in the test above
+        // (`norm`): the restore writes the stored rest colour, white for a cell
+        // that painted none (the saved shell has no MusicBrainz CSS).
+        const cellBgs = () => row.evaluate((tr) => Array.from(tr.cells).map((td) => {
+            const c = getComputedStyle(td).backgroundColor;
+            return (c === 'rgba(0, 0, 0, 0)' || c === 'transparent') ? 'rgb(255, 255, 255)' : c;
+        }));
         const rest = await cellBgs();
         await row.locator('td').nth(2).hover();
         const hovered = await cellBgs();

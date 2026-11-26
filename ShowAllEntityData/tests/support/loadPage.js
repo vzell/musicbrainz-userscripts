@@ -2,6 +2,7 @@
 
 const path = require('path');
 const { buildGmStubsScript } = require('./gmStubs');
+const { shellFor } = require('./shells');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
@@ -240,6 +241,19 @@ const MB_BROWSER_CHECK_STUB =
     'if (msg) msg.remove();\n';
 
 /**
+ * Whether the running test is in a fixture project (chromium-fixtures,
+ * chromium-mobile), where no page may come from the live site.
+ * @returns {boolean}
+ */
+function _inFixtureProject() {
+    try {
+        return /^chromium-(?:fixtures|mobile)$/.test(require('@playwright/test').test.info().project.name);
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Loads ShowAllEntityData.user.js onto `page`, matching the exact
  * `@require` order declared in the userscript header (iro, pako,
  * VZ_MBLibrary), after stubbing every `@grant`ed GM_* API.
@@ -307,8 +321,17 @@ async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOv
         }),
     });
 
-    if (fixtureFile) {
-        await page.route(url, (route) => route.fulfill({ path: fixtureFile, contentType: 'text/html' }));
+    // A fixture spec without its own fixture gets the saved shell of its URL
+    // (tests/fixtures/shells/index.json, `shellFor()`; 2026-11-26): it used
+    // to load the live page, and on a day musicbrainz.org refused this
+    // machine 50 such specs failed on `page.goto`. Only the page and the
+    // sandbox routes below: these specs keep the settings they always had,
+    // never FIXTURE_SETTINGS_OVERRIDE. A URL with no shell reaches the
+    // live-request guard (tests/support/test.js), which fails the test.
+    const shell = !fixtureFile && _inFixtureProject() ? shellFor(url) : null;
+    const pageFile = fixtureFile || shell;
+    if (pageFile) {
+        await page.route(url, (route) => route.fulfill({ path: pageFile, contentType: 'text/html' }));
         // See ARCHIVE_ORG_RE: a fixture must not wait on the Internet Archive.
         await page.route(ARCHIVE_ORG_RE, (route) => (route.request().resourceType() === 'image'
             ? route.abort('blockedbyclient')

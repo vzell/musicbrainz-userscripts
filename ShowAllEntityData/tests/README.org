@@ -32,6 +32,17 @@ aborts every request to those two hosts and proves it.
 =python3 scripts/check-vendored-libs.py= (network, by hand) compares the
 pinned files with what the =@require= URLs serve today.
 
+musicbrainz.org itself is out of the loop since 2026-11-26 too: a fixture spec
+that names no fixture page gets a saved shell (=tests/fixtures/shells/=), and a
+guard fails any fixture test whose page would still load from the live site.
+=SA_BLOCK_MB=1 npm run test:full= refuses every other musicbrainz.org request
+as well and proves the suite needs none; =SA_LIVE_GUARD=report= only records,
+and =python3 scripts/report-live-requests.py= lists what was recorded (in
+=test-results/live-requests/=). A missing shell: add its URL to
+=tests/fixtures/shells/index.json= and run
+=node scripts/capture-fixture-shells.js= where musicbrainz.org answers.
+docs/claude/testing-playwright.md, "Fixture specs never load a live page".
+
 =npm test= leaves out the two =@slow= fixture specs, which is why it is two
 minutes rather than five. Run =npm run test:full= before merging anything —
 see "The fixture =@slow= tag" below for what is being skipped and why that is

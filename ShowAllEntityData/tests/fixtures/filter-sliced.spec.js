@@ -368,7 +368,16 @@ test.describe('time-sliced typing filter', () => {
         await page.locator('#mb-global-filter-input').press('e');
         await page.evaluate(() => window.__release());
         await expect(page.locator('#mb-filter-status-display')).toContainText('GLOBAL:"Home"', { timeout: 15000 });
-        await page.locator('#mb-filter-status-display').hover();
+        // The status line sits in the sticky heading, below the fold of the
+        // saved shell (no MusicBrainz CSS, tests/fixtures/shells/), where
+        // Playwright's hover keeps calling it "outside of the viewport" even
+        // once it is in view: scroll it in, then move the mouse to its centre.
+        const box = await page.locator('#mb-filter-status-display').evaluate((el) => {
+            el.scrollIntoView({ block: 'center' });
+            const b = el.getBoundingClientRect();
+            return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+        });
+        await page.mouse.move(box.x, box.y);
         await expect(pop.locator('.mb-tt-ajlog')).toContainText('“Hom” compared, then replaced by “Home”');
         await expect(pop.locator('.mb-tt-ajlog')).toContainText('“Home”:');
     });

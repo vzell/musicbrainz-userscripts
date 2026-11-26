@@ -725,6 +725,11 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   **`npm run test:full` is the merge gate**. The two `@slow` specs
   (`rel-auto-retry-failed` ~295 s, `resume-from-failed-page` ~84 s) spend
   their time in the rate gates and backoffs under test — do not shorten them.
+  **No fixture test loads a live page** (2026-11-26): a URL without a
+  `fixtureFile` gets its saved shell (`tests/fixtures/shells/index.json`), and
+  a guard fails the test otherwise; a new such URL needs an index entry and
+  `node scripts/capture-fixture-shells.js` (docs/claude/testing-playwright.md,
+  "Fixture specs never load a live page").
 - **Announce every `npm run test:full` run as it starts**, in one line with
   the start time in Berlin time, host, branch and short HEAD SHA, and when it should
   finish, e.g. "The suite started at 13:37:39 CEST on `petri`, on `main` at

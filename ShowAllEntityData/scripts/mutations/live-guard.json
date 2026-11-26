@@ -1,0 +1,58 @@
+[
+  {
+    "name": "the guard records nothing",
+    "why": "No report, and no verdict at teardown: a live page load would pass unseen.",
+    "file": "tests/support/test.js",
+    "edits": [
+      {
+        "find": "    live.push({ kind, type: req.resourceType(), method: req.method(), url: req.url() });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/live-guard.spec.js",
+    "grep": "G1-G4: the guard aborts",
+    "expect": "fail"
+  },
+  {
+    "name": "the guard lets a page load through",
+    "why": "A fixture spec would depend on the live site again.",
+    "file": "tests/support/test.js",
+    "edits": [
+      {
+        "find": "    if (kind === 'page' && process.env.SA_LIVE_GUARD !== 'report') {\n",
+        "replace": "    if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/live-guard.spec.js",
+    "grep": "G1-G4: the guard aborts",
+    "expect": "fail"
+  },
+  {
+    "name": "no shell lookup",
+    "why": "Every inventoried spec loads the live page again, and the guard fails it.",
+    "file": "tests/support/loadPage.js",
+    "edits": [
+      {
+        "find": "    const shell = !fixtureFile && _inFixtureProject() ? shellFor(url) : null;\n",
+        "replace": "    const shell = null;\n"
+      }
+    ],
+    "spec": "tests/fixtures/gf-query-mode.spec.js",
+    "grep": "every rule of the language",
+    "expect": "fail"
+  },
+  {
+    "name": "the shell lookup ignores the query fallback",
+    "why": "A spec that loads its URL with ?page= would miss its shell.",
+    "file": "tests/support/shells.js",
+    "edits": [
+      {
+        "find": "    const rel = idx[url] || idx[bare];\n",
+        "replace": "    const rel = idx[url];\n"
+      }
+    ],
+    "spec": "tests/fixtures/live-guard.spec.js",
+    "grep": "G7: shellFor",
+    "expect": "fail"
+  }
+]
