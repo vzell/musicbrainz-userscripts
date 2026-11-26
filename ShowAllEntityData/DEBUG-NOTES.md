@@ -31853,3 +31853,13 @@ three popup specs that serve a check page) 54/54;
 request later anyway; the frame guard and the 60 s pause have no fixture
 signal), the userscript restored and hash-verified. The spec's status
 poll runs in the page (`waitForFunction`), so lint stays at baseline.
+
+`test:full` on the branch (`607a8f86`, 11:05:52–11:31:26 CET, NB-3641):
+3577/3578. The failure, `artist-recordings-ms-batch.spec.js` "a
+partly-failed run…", is 9.99.1700's, not this branch's: 4/8 failures on
+`main`, 8/8 passes on 9.99.1699. Its failed batch waits out three 503
+holds, each up to 500 ms longer since the gate's jitter; the default 5 s
+`toHaveAttribute` ran out about half the time. Fixed in the spec (30 s, as
+its wholly-failed sibling); the file 28/28. 9.99.1700 was merged without
+its `test:full` on `main`, and the branch's own run had passed it by
+chance (tests/MEASUREMENTS.org, 2026-11-26).
