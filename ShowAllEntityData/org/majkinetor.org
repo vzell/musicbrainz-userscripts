@@ -3376,3 +3376,50 @@ Schedule: the chips read Hold none and Hot 0, because a shed doesn’t touch the
 
 That completes the browser check: an ordinary 503 marked global, a shed marked search-shed, and the Activity log line for each. Say “merge” and I’ll merge feat/gate-search-shed into main as 9.99.1700, record this observation and push.
 
+** DONE What would we gain from the following missing adoptions in @org/majkinetor.org
+*** question
+
+What would we gain from the following missing adoptions in @org/majkinetor.org
+
+| Stale-while-revalidate: popup engine done, =rel-ws2= left      | PART  | 9.99.1643     | Adoptions     |
+| Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
+| Links: canonical page keys; Discogs MB column barcode          | TODO  | —             | Adoptions     |
+| Browser check on SAED's page fetches (=mbnIsCheck=)            | TODO  | —             | Adoptions     |
+| Smaller adoptions                                              | TODO  | —             | Adoptions     |
+
+*** answer
+
+Briefly, in the order I'd do them:
+
+1. The browser check on SAED's page fetches: the biggest gain, because it can prevent silent data loss.
+- When MusicBrainz's browser-check cookie expires mid-session, it answers a page request with its 1.4 KB "Verifying your browser" page instead of the page asked for.
+- SAED's "Show all" fetch (fetchHtml()) accepts any 2xx answer as the page. On a 390-page fetch, one such answer could drop that page's rows with no warning.
+- majkinetor moved all his scripts' page requests through the check after #1103, so he has seen this happen.
+- Gain: a correct row count, or at least a page marked as failed so the 🔄 resume indicator can reload it.
+- Cost: medium. A fixture spec first measures what happens today. The fix detects the check page, passes the check once in a hidden frame, and retries the page.
+
+2. Links: canonical page keys and the Discogs barcode fallback: better data-quality findings.
+- Canonical keys: the duplicate-site check today counts music.apple.com/us/album/1 and /gb/album/1 as two different pages, and amazon.de and amazon.com links likewise. With his normalisers (Apple storefronts, Amazon TLDs, Tidal, Qobuz locales), "the same page linked twice in other forms" becomes its own finding, apart from "two pages on one site".
+  - Gain: fewer false duplicates, and real ones found.
+  - Cost: small to medium.
+- Barcode fallback: on a Discogs release with no MusicBrainz match by URL, SAED would try a barcode search and check that the format and track count agree.
+  - Gain: more matches in the MusicBrainz column.
+  - Cost: one search request per miss, so behind a button or a setting.
+
+3. Stale-while-revalidate: speed and freshness. Today a cached answer is served until it expires, or is dropped after another script reports an edit.
+- Revalidating: SAED would show a cached answer at once, re-ask the old ones one at a time in the background, and repaint only what changed.
+  - Gain: instant and fresh at the same time.
+  - Cost: medium to large. It touches the Relationships load states and the four duties of a cell written after the render.
+- The Relationships cache (rel-ws2): dropping its 30-day cache after an edit re-asks the whole table, and MusicBrainz's own relationship editor reports no edits. That is why it was left out, and the trade-off hasn't changed.
+
+4. Entity pictures, the rest: little left. The area map, the flag badge, the area chain and the flags have all shipped. What remains is pictures for places, series and instruments beyond what they already have. The gain is small and it adds requests to Wikidata, which refuses after 10–19 of them.
+
+5. Smaller adoptions, a mixed bag:
+- Image maximiser: gets the large version of Apple, Deezer, Spotify, Bandcamp, Tidal, Qobuz and Amazon covers in the viewer and the previews. You'd see the gain on the non-MusicBrainz sites.
+- Idle-mutation guards: skip DOM writes that change nothing, so our own and String Theory's observers wake up less often. This is a small performance gain beside his scripts.
+- Theme detection: follow String Theory's light or dark mode when it is present.
+- Wayback links: "latest" and "calendar" links in the preview cards and the Relationships column, which help with dead links.
+- Not worth it: settings sync, pending edits per relationship, and the release-group credit matrix are optional extras with little gain. The scrollbar gutter was already tried and dropped.
+
+My recommendation: the browser check next, starting by measuring today's behaviour. It is the only item about correctness, and it was already one of the three adoptions recommended on 2026-11-25. After it, the canonical link keys, which are cheap and visible.
+
