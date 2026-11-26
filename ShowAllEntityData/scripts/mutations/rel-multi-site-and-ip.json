@@ -73,8 +73,8 @@
     "why": "1c: every host counts, so the x.bandcamp.com cell is the second flagged one.",
     "edits": [
       {
-        "find": "            if (ignore.includes(host)) return;",
-        "replace": "            if (ignore.includes(host) || host !== 'discogs.com') return;"
+        "find": "            .filter(s => s.pages.length >= 2 && !ignore.includes(s.host) && !ignore.includes(s.site))\n",
+        "replace": "            .filter(s => s.pages.length >= 2 && !ignore.includes(s.host) && !ignore.includes(s.site) && s.host === 'discogs.com')\n"
       }
     ],
     "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
@@ -86,8 +86,12 @@
     "why": "amazon.de/amazon.com and music./itunes.apple.com are different sites; grouping by _siteFamilyOf() flags them.",
     "edits": [
       {
-        "find": "            if (!byHost.has(host)) byHost.set(host, []);\n            const urls = byHost.get(host);",
-        "replace": "            const fam = _siteFamilyOf(host);\n            if (!byHost.has(fam)) byHost.set(fam, []);\n            const urls = byHost.get(fam);"
+        "find": "            let s = bySite.get(pk.site);\n",
+        "replace": "            const fam = _siteFamilyOf(pk.form.slice(8).split('/')[0]);\n            let s = bySite.get(fam);\n"
+      },
+      {
+        "find": "                bySite.set(pk.site, s);\n",
+        "replace": "                bySite.set(fam, s);\n"
       }
     ],
     "spec": "tests/fixtures/rel-multi-site-finding.spec.js",
@@ -99,8 +103,8 @@
     "why": "A listed host must never count.",
     "edits": [
       {
-        "find": "            if (ignore.includes(host)) return;",
-        "replace": ""
+        "find": "            .filter(s => s.pages.length >= 2 && !ignore.includes(s.host) && !ignore.includes(s.site))\n",
+        "replace": "            .filter(s => s.pages.length >= 2)\n"
       }
     ],
     "spec": "tests/fixtures/rel-multi-site-finding.spec.js",

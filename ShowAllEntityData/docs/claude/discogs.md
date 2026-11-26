@@ -698,6 +698,39 @@ of ours.
   `_rowTextCache`; `_dgMbScheduleRefresh()` (≤ every 1.5 s) drops the 📊
   caches of those tables and the filter cache, repaints ▶ MB and re-runs an
   active filter. The precedent is "Recording of" (`_recOfApply()`).
+- **Barcode candidates** (2026-11-26, `feat/link-page-keys` phase 2; mockup
+  https://claude.ai/artifact/NjNP8w1rWxkDfmfJteshY5, source
+  `debug/mockup-dg-barcode-candidates.html`, every recommendation approved;
+  First Contact's `sameAlbum()`/`bcCore`/`fmtKind`). A release cell whose
+  `release` type came back empty (`_dgBcTodo()`), on 🔎 only
+  (`.mb-dgbc-col-hdr-btn` beside ▶ MB, on a table with release rows; "🔎 N",
+  "■ k / N" while it runs, a click stops): `_dgBcAsk()` reads
+  `api.discogs.com/releases/<id>` through `_extGet()` (Discogs' spacing, the
+  token's headers), takes the Barcode identifier, the media kinds (qty ×
+  `_dgBcKind()`) and the track count, then ONE `/ws/2/release?query=
+  barcode:(<forms>)` (the digits, the core, 0+core, 00+core, 8–14 digits)
+  after `_relAwaitRateSlot()`, anonymous, outside the shared gate (the gate's
+  storage is musicbrainz.org's, this page is discogs.com), and keeps each hit
+  `_dgBcSameAlbum()` passes. At most `_DG_BC_PER_PRESS` (25) a press, 60 with
+  a Discogs token. The answer (`match`, `nomatch`, `nobarcode`, with
+  `cands`) goes to our store under `release/<id>/barcode`, 7 days
+  (`_DG_BC_TTL_MS`; `_dgMbLoadOwn()` reads it beside the links); a failed
+  request stores nothing. The cell (`_dgBcCandHtml()`): `a.mb-dg-mb-cand`
+  (dashed violet box, `.mb-dg-mb-eq` "≈"/"≈N"), its `data-mbtt` card, `href`
+  the release or, for several, the barcode search; `button.mb-dg-mb-copy` ⧉
+  copies the Discogs resource (`navigator.clipboard`, no new grant) — the
+  mockup put both actions in the card, but a hover card cannot be clicked.
+  NEVER `a.mb-dg-mb-link`, so Picard, the count and `data-mb-dg-n` ignore it;
+  `data-mb-dg-cand` on the td, "candidate <mbid>" in `.mb-dg-mb-ids`, and
+  📊 `dgmbcount:candidate` (`_findCellDgMbCount()`, ranked after the
+  numbers, ringed by `_highlightDgMbCountMatch()`). `.mb-dg-mb-eq` and
+  `.mb-dg-mb-copy` are in `_CLEAN_STRIP_SEL`. Job popup provider `dgbc`.
+  A click on the running button ("■ k / N") stops the run; the popup then
+  says "Stopped after k of N" with the job phase `stopped` (added to
+  `_AJ_PHASES`), never "finished" (vzell's browser check: a run he stopped
+  for a screenshot read "4 / 60 … finished, DONE").
+  Spec `tests/fixtures/discogs-mb-barcodes.spec.js` (BC1–BC6), mutations
+  `scripts/mutations/dg-mb-barcodes.json`.
 - **📊:** section `dgMbCount` "MusicBrainz - Links" (🧠, kind `dgmbcount`,
   `_findCellDgMbCount()` reads `data-mb-dg-n`/`-state`), entries "» MB links:
   N", "pending", "error"; a ticked one rings the matched icons with the

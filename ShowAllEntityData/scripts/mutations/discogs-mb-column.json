@@ -17,8 +17,8 @@
         "why": "The column's text is the hidden MBIDs; a box's 'R?' must never match a filter (_CLEAN_STRIP_SEL).",
         "edits": [
             {
-                "find": "        '.mb-dg-mb-search,.mb-dg-mb-n,' +",
-                "replace": "        '' +"
+                "find": "        '.mb-dg-mb-search,.mb-dg-mb-n,.mb-dg-mb-eq,.mb-dg-mb-copy,' +",
+                "replace": "        '.mb-dg-mb-eq,.mb-dg-mb-copy,' +"
             }
         ],
         "spec": "tests/fixtures/discogs-mb-column.spec.js",
@@ -95,8 +95,8 @@
         "why": "The 'MusicBrainz - Links' entries count each row's links (_findCellDgMbCount()).",
         "edits": [
             {
-                "find": "        return String(parseInt(cell.dataset.mbDgN, 10) || 0);",
-                "replace": "        return '0';"
+                "find": "        return String(n);\n    }\n\n    /**\n     * Extracts the \"(cancelled)\" marker",
+                "replace": "        return '0';\n    }\n\n    /**\n     * Extracts the \"(cancelled)\" marker"
             }
         ],
         "spec": "tests/fixtures/discogs-mb-column.spec.js",

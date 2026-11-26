@@ -66,8 +66,9 @@ const ONE = [rel('discogs', 'https://www.discogs.com/release/9')];
  *
  * @param {import('@playwright/test').Page} page
  * @param {Object} [settings]
+ * @param {Array<Array<Object>>} [answers] - The lookups' relations by arrival order (then `ONE`).
  */
-async function open(page, settings = {}) {
+async function open(page, settings = {}, answers = ANSWERS) {
     let k = 0;
     await loadUserscriptPage(page, {
         url: RG_URL, fixtureFile: RG_SHELL, testMode: true,
@@ -78,7 +79,7 @@ async function open(page, settings = {}) {
         },
     });
     await page.route('**/ws/2/**', (route) => {
-        const relations = ANSWERS[k++] || ONE;
+        const relations = answers[k++] || ONE;
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ relations }) });
     });
     await page.route('https://musicbrainz.org/release-group/**', (route) => route.fulfill({ path: RG_SHELL, contentType: 'text/html' }));
@@ -213,5 +214,148 @@ test.describe('finding: Several links to one site in Relationships', () => {
         await expect(notes.first().locator('.mb-rel-fd-site')).toHaveCount(2);
         await expect(notes.first().locator('.mb-rel-fd-url.mb-rel-here')).toHaveText(/^https:\/\/amazon\.de\/gp\/product\/B0000001/);
         await expect(page.locator('#mb-dp-notes')).not.toContainText('outside the icons');
+    });
+});
+
+// ── rel-same-page: one page in two forms (2026-11-26) ───────────────────────
+//
+// Canonical page keys (`_relPageKey()`, from majkinetor's First Contact
+// `linkKey()`, Falcon `platformPageKey()` and ISRC Scout
+// `normalizeProviderUrl()`): a storefront, a locale, a slug or another host
+// of the platform is the same page. Guarantees pinned:
+//   - K1/K2: Apple's /us/ and /gb/ of one album, tidal.com and
+//     listen.tidal.com/browse of one album: rel-same-page, NOT rel-multi-site
+//     (the old host+path grouping called the first two pages, and never saw
+//     the second, two hosts);
+//   - K3/K5: Discogs /release/7, /release/7-Some-Title and /release/8: both
+//     findings, each with its own detail (pages vs forms);
+//   - K4: amazon.de and amazon.com with ONE ASIN: neither (stores stay sites);
+//   - K6: the popup box of the new finding marks the hovered form;
+//   - K7: the ignore list silences rel-multi-site only;
+//   - KEYS: `__saTest.relPageKey()` over pairs of every platform rule.
+
+const SAME = 'rel-same-page';
+const SAME_LABEL = 'The same page linked twice in Relationships';
+const SAME_ANSWERS = [
+    [rel('streaming', 'https://music.apple.com/us/album/some-title/1440833098'), rel('streaming', 'https://music.apple.com/gb/album/1440833098'),
+        rel('streaming', 'https://tidal.com/album/5'), rel('streaming', 'https://listen.tidal.com/browse/album/5')],
+    [rel('discogs', 'https://www.discogs.com/release/7'), rel('discogs', 'https://www.discogs.com/release/7-Some-Title'),
+        rel('discogs', 'https://www.discogs.com/release/8')],
+    [rel('amazon asin', 'https://www.amazon.de/dp/B0SAME0001'), rel('amazon asin', 'https://www.amazon.com/gp/product/B0SAME0001')],
+    [rel('streaming', 'https://x.bandcamp.com/album/a'), rel('purchase for download', 'https://x.bandcamp.com/album/b')],
+];
+
+/** @returns {Promise<Array<{text: string, ids: string[]}>>} Each Relationships cell's link text and findings. */
+const cellsOf = (page) => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl tbody td.mb-rel-cell')).map((td) => ({
+    text: Array.from(td.querySelectorAll('.mb-rel-filter-key')).map((k) => k.textContent).join(' '),
+    ids: (td.dataset.mbFindings || '').split(' ').filter(Boolean).sort(),
+})));
+
+const cellWith = (cells, needle) => cells.find((c) => c.text.includes(needle));
+
+test.describe('finding: The same page linked twice in Relationships', () => {
+    let pageErrors;
+    test.beforeEach(({ page }) => {
+        pageErrors = [];
+        page.on('pageerror', (e) => pageErrors.push(String(e.stack || e.message)));
+    });
+    test.afterEach(() => {
+        expect(pageErrors, `uncaught page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
+    });
+
+    test('K1-K5: forms of one page are rel-same-page; other pages stay rel-multi-site; Amazon stores are sites', async ({ page }) => {
+        await open(page, {}, SAME_ANSWERS);
+        await expect.poll(async () => (await findingRow(page, 'warn', SAME) || {}).count,
+            { timeout: 15000, message: 'the apple+tidal cell and the discogs cell' }).toBe(2);
+        expect((await findingRow(page, 'warn', SAME)).label).toBe(SAME_LABEL);
+        await expect.poll(async () => (await findingRow(page, 'warn', ID) || {}).count,
+            { timeout: 15000, message: 'the discogs cell (7 and 8) and the bandcamp cell' }).toBe(2);
+
+        const cells = await cellsOf(page);
+        expect(cellWith(cells, 'apple.com').ids, 'K1/K2: storefronts and tidal hosts are forms').toEqual([SAME]);
+        expect(cellWith(cells, 'discogs.com/release/7-').ids, 'K3/K5: both findings').toEqual([ID, SAME].sort());
+        expect(cellWith(cells, 'B0SAME0001').ids, 'K4: two stores, one ASIN: neither').toEqual([]);
+        expect(cellWith(cells, 'bandcamp').ids, 'control: two pages on one host').toEqual([ID]);
+
+        const tipOf = (needle) => page.locator('table.tbl tbody td.mb-rel-cell', { has: page.locator(`.mb-rel-filter-key:text("${needle}")`) })
+            .first().evaluate((td) => td.getAttribute('data-mb-tip') || td.title);
+        const appleTip = await tipOf('music.apple.com/gb');
+        expect(appleTip).toContain(`⚠️ ${SAME_LABEL}`);
+        expect(appleTip).toContain('Apple Music (music.apple.com): https://music.apple.com/us/album/some-title/1440833098, https://music.apple.com/gb/album/1440833098');
+        expect(appleTip).toContain('Tidal (tidal.com): https://tidal.com/album/5, https://listen.tidal.com/browse/album/5');
+        expect(appleTip).not.toContain(LABEL);
+        const dgTip = await tipOf('discogs.com/release/8');
+        expect(dgTip, 'K5: the pages, one form each').toContain('Discogs (discogs.com): https://discogs.com/release/7, https://discogs.com/release/8');
+        expect(dgTip, 'K5: the forms of release 7').toContain('Discogs (discogs.com): https://discogs.com/release/7, https://discogs.com/release/7-Some-Title');
+    });
+
+    test('K6: the popup box of rel-same-page lists the forms and marks the hovered one', async ({ page }) => {
+        await open(page, {}, SAME_ANSWERS);
+        await expect.poll(async () => (await findingRow(page, 'warn', SAME) || {}).count, { timeout: 15000 }).toBe(2);
+        await page.mouse.move(0, 0);
+        const cell = page.locator('table.tbl tbody td.mb-rel-cell', { has: page.locator('.mb-rel-filter-key:text("listen.tidal.com")') }).first();
+        await cell.scrollIntoViewIfNeeded();
+        await cell.locator('a:has(.mb-rel-filter-key:text("listen.tidal.com"))').hover();
+        const tip = page.locator('#mb-stat-tooltip');
+        await expect(tip).toBeVisible();
+        await expect(tip.locator('.mb-tt-title').first()).toHaveText(`⚠️ ${SAME_LABEL}`);
+        await expect(tip.locator('.mb-rel-fd-site')).toHaveCount(2);
+        await expect(tip.locator('.mb-rel-fd-site').nth(1)).toContainText('2 forms of one page');
+        await expect(tip.locator('.mb-rel-fd-url.mb-rel-here')).toHaveText(/^https:\/\/listen\.tidal\.com\/browse\/album\/5/);
+    });
+
+    test('K7: the ignore list silences rel-multi-site only', async ({ page }) => {
+        await open(page, { sa_findings_rel_multi_site_ignore: 'discogs.com x.bandcamp.com' }, SAME_ANSWERS);
+        await expect.poll(async () => (await findingRow(page, 'warn', SAME) || {}).count, { timeout: 15000 }).toBe(2);
+        const cells = await cellsOf(page);
+        expect(cells.filter((c) => c.ids.includes(ID)), 'no rel-multi-site').toEqual([]);
+        expect(cellWith(cells, 'discogs.com/release/7-').ids).toEqual([SAME]);
+    });
+
+    test('K8: with "Several links to one site" off, the column\'s late write still stamps rel-same-page', async ({ page }) => {
+        // _relWriteResult()'s re-stamp is gated by the ids it names: one of
+        // them must be on. With rel-multi-site off, only rel-same-page's own
+        // id lets the row be stamped after the column loaded.
+        await open(page, { sa_findings_rel_multi_discogs: false }, SAME_ANSWERS);
+        await expect.poll(async () => (await findingRow(page, 'warn', SAME) || {}).count, { timeout: 15000 }).toBe(2);
+        expect(await findingRow(page, 'warn', ID), 'rel-multi-site is off').toBeFalsy();
+    });
+
+    test('KEYS: every platform rule keys forms of one page alike and different pages apart', async ({ page }) => {
+        await loadUserscriptPage(page, { url: RG_URL, fixtureFile: RG_SHELL, testMode: true });
+        const SAME_PAIRS = [
+            ['https://music.apple.com/us/album/x/123', 'https://music.apple.com/gb/album/123'],
+            ['https://music.apple.com/us/album/x/123?i=456', 'https://music.apple.com/de/song/y/456'],
+            ['https://geo.music.apple.com/us/artist/id99', 'https://music.apple.com/artist/a/99'],
+            ['https://itunes.apple.com/us/album/x/id5', 'https://itunes.apple.com/gb/album/5'],
+            ['https://www.deezer.com/en/album/42', 'https://deezer.com/album/42/'],
+            ['https://tidal.com/browse/track/7', 'https://listen.tidal.com/track/7'],
+            ['https://open.spotify.com/intl-de/album/4uLU6hMCjMI75M1A2tKUQC', 'https://open.spotify.com/album/4uLU6hMCjMI75M1A2tKUQC'],
+            ['https://www.qobuz.com/de-de/album/some-title/abc123xyz', 'https://open.qobuz.com/album/abc123xyz'],
+            ['https://www.qobuz.com/gb-en/interpreter/some-artist/12345', 'https://www.qobuz.com/fr-fr/artist/x/12345'],
+            ['https://www.beatport.com/release/a-b/9', 'https://www.beatport.com/de/release/c/9'],
+            ['https://www.discogs.com/release/7-Title', 'https://www.discogs.com/fr/release/7'],
+            ['https://www.amazon.de/Some-Title/dp/B000000001/ref=x', 'https://www.amazon.de/gp/product/B000000001'],
+            ['https://www.youtube.com/watch?v=a', 'https://youtube.com/watch/'],
+        ];
+        const APART = [
+            ['https://music.apple.com/us/album/123', 'https://itunes.apple.com/us/album/123'],
+            ['https://music.apple.com/us/album/123', 'https://music.apple.com/us/artist/123'],
+            ['https://www.amazon.de/dp/B000000001', 'https://www.amazon.com/dp/B000000001'],
+            ['https://www.discogs.com/release/7', 'https://www.discogs.com/master/7'],
+            ['https://x.bandcamp.com/album/a', 'https://x.bandcamp.com/album/b'],
+            ['https://tidal.com/album/1', 'https://tidal.com/album/2'],
+        ];
+        const keys = await page.evaluate((pairs) => pairs.map(([a, b]) => {
+            const ka = window.__saTest.relPageKey(a);
+            const kb = window.__saTest.relPageKey(b);
+            return { a, b, same: ka.key === kb.key, sameSite: ka.site === kb.site };
+        }), [...SAME_PAIRS, ...APART]);
+        for (const k of keys.slice(0, SAME_PAIRS.length)) expect(k, `${k.a} = ${k.b}`).toMatchObject({ same: true, sameSite: true });
+        for (const k of keys.slice(SAME_PAIRS.length)) expect(k.same, `${k.a} ≠ ${k.b}`).toBe(false);
+        // The site: one per platform, but each Amazon store its own.
+        const sites = await page.evaluate(() => ['https://tidal.com/album/1', 'https://listen.tidal.com/album/2',
+            'https://www.amazon.de/dp/B000000001', 'https://www.amazon.com/dp/B000000001'].map((u) => window.__saTest.relPageKey(u).site));
+        expect(sites).toEqual(['tidal', 'tidal', 'amazon.de', 'amazon.com']);
     });
 });

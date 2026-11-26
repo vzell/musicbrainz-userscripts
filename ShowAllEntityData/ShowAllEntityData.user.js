@@ -3035,11 +3035,30 @@
             label: 'Find Relationships cells with more than one link to the same site',
             type: 'checkbox',
             default: true,
-            description: 'An entity whose Relationships column shows two or more different URLs on the same site ' +
-                         '(host without "www.": two Discogs pages, two amazon.de products, …) is a WARNING ' +
+            description: 'An entity whose Relationships column shows two or more different pages on the same site ' +
+                         '(host without "www.": two Discogs releases, two amazon.de products, …) is a WARNING ' +
                          '("Several links to one site in Relationships"). amazon.de and amazon.com, or en. and ' +
-                         'de.wikipedia, are different sites. Known once the column has loaded (the Relationships ' +
-                         'column must be on); the ⚠️ menu count grows while it loads.'
+                         'de.wikipedia, are different sites; two forms of ONE page (a storefront, a slug, another ' +
+                         'address of the platform) are the next setting\'s finding. Known once the column has loaded ' +
+                         '(the Relationships column must be on); the ⚠️ menu count grows while it loads.'
+        },
+
+        sa_findings_rel_same_page: {
+            label: 'Find Relationships cells that link the same page twice',
+            type: 'checkbox',
+            default: true,
+            description: 'An entity whose Relationships column links one page in two or more forms (Apple Music\'s ' +
+                         '/us/ and /gb/ storefront of one album, a Discogs release with and without its title in the ' +
+                         'address, tidal.com and listen.tidal.com) is a WARNING ("The same page linked twice in ' +
+                         'Relationships"). amazon.de and amazon.com are different stores, not one page. Known once the ' +
+                         'column has loaded (the Relationships column must be on).'
+        },
+
+        sa_findings_tint_rel_same_page: {
+            label: 'Highlight Relationships cells that link the same page twice as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the Relationships cell light yellow with a ⚠️ when it links one page in two or more forms.'
         },
 
         sa_findings_tint_rel_multi_discogs: {
@@ -21895,6 +21914,19 @@
             body.mb-sa-host-dg .mb-dg-mb-search[data-state="error"] { cursor: pointer; }
             body.mb-sa-host-dg .mb-dg-mb-search[data-state="error"]::before { content: '\\26A0'; color: #c62828; font-size: 13px; }
             body.mb-sa-host-dg .mb-dg-mb-n { font: 11px Arial, Helvetica, sans-serif; color: #777; margin-left: 1px; }
+            /* A barcode candidate (_dgBcCandHtml(), mockup look A): the
+               release icon in a dashed violet box with "≈", then ⧉. */
+            body.mb-sa-host-dg #mb-dg-root a.mb-dg-mb-cand {
+                display: inline-flex; align-items: center; gap: 1px; line-height: 0; padding: 0 3px 0 1px;
+                border: 1px dashed #b98ad6; border-radius: 3px; background: #f4ecfa; text-decoration: none;
+            }
+            body.mb-sa-host-dg a.mb-dg-mb-cand img { width: 16px; height: 16px; }
+            body.mb-sa-host-dg .mb-dg-mb-eq { font: bold 11px/16px Arial, Helvetica, sans-serif; color: #8a5aa8; }
+            body.mb-sa-host-dg #mb-dg-root .mb-dg-mb-copy {
+                border: 0; background: none; padding: 0 2px; cursor: pointer; color: #888; font: 12px/16px Arial, Helvetica, sans-serif;
+            }
+            body.mb-sa-host-dg #mb-dg-root .mb-dg-mb-copy:hover { color: #ba478f; }
+            body.mb-sa-host-dg #mb-dg-root .mb-dg-mb-copy[data-mb-dg-copied="1"] { color: #2e7d32; }
             /* dg-image-revisions: an image the revision removed (_dgImgRowHtml()). */
             body.mb-sa-host-dg tr.mb-dgir-gone > td { opacity: 0.5; }
             body.mb-sa-host-dg tr.mb-dgir-gone img { filter: grayscale(1); }
@@ -22674,8 +22706,9 @@
      * @param {{dgType: string, id: string, types: string[]}} spec
      * @param {string} name - The row's Discogs name, for the search boxes.
      * @param {boolean} failed - Its last lookup failed.
-     * @returns {{html: string, state: string, n: number}} `state`: 'done',
-     *   'pending' or 'error'.
+     * @returns {{html: string, state: string, n: number, cand: number}} `state`: 'done',
+     *   'pending' or 'error'; `cand` the barcode candidates of a release no
+     *   MusicBrainz release links (`_dgBcCandHtml()`).
      */
     function _dgMbCellInner(spec, name, failed) {
         const boxes = [];
@@ -22707,11 +22740,50 @@
         const link = (l) => `<a class="mb-dg-mb-link${l.ended ? ' mb-dg-mb-ended' : ''}" href="${_rgEsc(l.url)}"${_DG_NEW_TAB} data-mb-tip ` +
             `title="${_rgEsc(`See this ${words(l.type)} on MusicBrainz${l.ended ? ' (the link has ended)' : ''}`)}">` +
             `<img src="https://musicbrainz.org/static/images/entity/${l.type.replace(/-/g, '_')}.svg" alt="${words(l.type)}" width="16" height="16"></a>`;
-        const ids = links.map(l => `${l.type} ${l.url.slice(-36)}`).join(' ');
+        // A release no MusicBrainz release links: its barcode candidates, if any.
+        const bc = !open && !links.length && spec.dgType === 'release' && spec.types.includes('release') ? _dgBcRecord(spec.id) : null;
+        const cands = bc ? bc.cands : [];
+        const ids = links.map(l => `${l.type} ${l.url.slice(-36)}`)
+            .concat(cands.map(c => `candidate ${c.id}`)).join(' ');
         const html = `<span class="mb-dg-mb-row">${boxes.map(box).join('')}${links.map(link).join('')}` +
+            `${cands.length ? _dgBcCandHtml(spec, bc) : ''}` +
             `${links.length > 1 ? `<span class="mb-dg-mb-n">${links.length}</span>` : ''}</span>` +
             `${ids ? `<span class="mb-dg-mb-ids">${_rgEsc(ids)}</span>` : ''}`;
-        return { html, state: open ? (failed ? 'error' : 'pending') : 'done', n: links.length };
+        return { html, state: open ? (failed ? 'error' : 'pending') : 'done', n: links.length, cand: cands.length };
+    }
+
+    /**
+     * A release's barcode candidates in its MusicBrainz cell (mockup
+     * question 1, look A): the release icon in a dashed box with "≈" (and
+     * the count from two), a link to the MusicBrainz release (to the barcode
+     * search for several), its card (`data-mbtt`: what agreed, each
+     * candidate), and ⧉, which copies the Discogs address. Never
+     * `a.mb-dg-mb-link`: a candidate is not a link, and the Picard column
+     * and the counts read only links.
+     *
+     * @param {{dgType: string, id: string}} spec
+     * @param {Object} bc - `_dgBcRecord()`.
+     * @returns {string}
+     */
+    function _dgBcCandHtml(spec, bc) {
+        const n = bc.cands.length;
+        const href = n === 1 ? `https://musicbrainz.org/release/${bc.cands[0].id}`
+            : `https://musicbrainz.org/search?query=${encodeURIComponent(`barcode:${bc.barcode}`)}&type=release&method=advanced`;
+        const dgUrl = _dgMbResource(spec);
+        const esc = _mbttEscape;
+        const ok = (v) => `${esc(v)} ✓`;
+        const rows = bc.cands.map(c => `<div class="mb-tt-body"><b>${esc(c.title)}</b> <span class="mb-tt-dim">· ${esc(c.date || 'no date')} · ${esc(c.country || 'no country')}</span><br>` +
+            `Barcode ${ok(bc.barcode)} · Format ${bc.dg && bc.dg.kinds && c.format ? ok(c.format) : '<span class="mb-tt-dim">not compared</span>'} · ` +
+            `Tracks ${bc.dg && bc.dg.tracks && c.tracks ? ok(String(c.tracks)) : '<span class="mb-tt-dim">not compared</span>'}<br>` +
+            `<span class="mb-tt-dim">musicbrainz.org/release/${esc(c.id)}</span></div>`).join('');
+        const card = `<div class="mb-tt-title">≈ Barcode candidate${n > 1 ? `s (${n})` : ''}</div>` +
+            `<div class="mb-tt-body">MusicBrainz does not link this Discogs release yet. ${n > 1 ? 'These MusicBrainz releases agree' : 'This MusicBrainz release agrees'} with it:</div>` +
+            `${rows}<div class="mb-tt-rule"></div>` +
+            `<div class="mb-tt-foot">Click: ${n > 1 ? 'the barcode search' : 'the release'} on MusicBrainz · ⧉ copies ${esc(dgUrl.replace(/^https:\/\//, ''))} to paste into its relationships · checked ${esc(new Date(bc.ts).toISOString().slice(0, 10))}</div>`;
+        return `<a class="mb-dg-mb-cand" href="${_rgEsc(href)}"${_DG_NEW_TAB} data-mbtt="${_rgEsc(card)}">` +
+            `<img src="https://musicbrainz.org/static/images/entity/release.svg" alt="release candidate" width="16" height="16">` +
+            `<span class="mb-dg-mb-eq">≈${n > 1 ? n : ''}</span></a>` +
+            `<button type="button" class="mb-dg-mb-copy" data-mb-dg-url="${_rgEsc(dgUrl)}" data-mb-tip title="${_rgEsc(`Copy ${dgUrl}, to paste into the release's relationships on MusicBrainz`)}">⧉</button>`;
     }
 
     /**
@@ -22726,7 +22798,7 @@
         if (!spec) return '<td class="mb-dg-mb-cell"></td>';
         const c = _dgMbCellInner(spec, name, false);
         return `<td class="mb-dg-mb-cell" data-mb-dg-key="${spec.dgType}/${spec.id}" data-mb-dg-types="${spec.types.join(' ')}" ` +
-            `data-mb-dg-name="${_rgEsc(name)}" data-mb-dg-state="${c.state}" data-mb-dg-n="${c.n}">${c.html}</td>`;
+            `data-mb-dg-name="${_rgEsc(name)}" data-mb-dg-state="${c.state}" data-mb-dg-n="${c.n}"${c.cand ? ` data-mb-dg-cand="${c.cand}"` : ''}>${c.html}</td>`;
     }
 
     /**
@@ -22745,6 +22817,8 @@
         td.innerHTML = c.html;
         td.dataset.mbDgState = c.state;
         td.dataset.mbDgN = String(c.n);
+        if (c.cand) td.dataset.mbDgCand = String(c.cand);
+        else delete td.dataset.mbDgCand;
         const row = td.parentElement;
         const rc = row && _rowTextCache.get(row);
         if (rc) { rc.cols = []; rc.full = null; }
@@ -22860,6 +22934,11 @@
                 req.onsuccess = () => {
                     const now = Date.now();
                     (req.result || []).forEach(r => {
+                        // A barcode answer (_dgBcAsk()): 7 days, whatever it found.
+                        if (r && typeof r.key === 'string' && r.key.endsWith('/barcode') && Array.isArray(r.cands) && typeof r.ts === 'number') {
+                            if (now < r.ts + _DG_BC_TTL_MS && !_dgMbMem.has(r.key)) _dgMbMem.set(r.key, r);
+                            return;
+                        }
                         if (!r || typeof r.key !== 'string' || !Array.isArray(r.urls) || typeof r.ts !== 'number') return;
                         if (now >= r.ts + (r.urls.length ? _DG_MB_TTL_MS : _DG_MB_NONE_TTL_MS)) return;
                         if (!_dgMbMem.has(r.key)) _dgMbMem.set(r.key, r);
@@ -23113,6 +23192,276 @@
         _dgMbScheduleRefresh(true);
     }
 
+    // ── Barcode candidates (2026-11-26, feat/link-page-keys phase 2; mockup
+    //    https://claude.ai/artifact/NjNP8w1rWxkDfmfJteshY5, every
+    //    recommendation approved). A release row whose Discogs page no
+    //    MusicBrainz release links: on 🔎, its Discogs release (barcode,
+    //    formats, tracks), one MusicBrainz barcode search, and First
+    //    Contact's sameAlbum() check. A candidate is not a link.
+
+    /** Releases a press asks for, without and with a Discogs token (Discogs: ~25 and 60 requests a minute). */
+    const _DG_BC_PER_PRESS = 25;
+    const _DG_BC_PER_PRESS_TOKEN = 60;
+    /** How long a candidate, a "no match" or a "no barcode" is kept: a candidate can become a link at any time. */
+    const _DG_BC_TTL_MS = 7 * 86400000;
+    /** The barcode job's state, for its header button and the job popup. */
+    const _dgBc = { running: false, stop: false, stopped: false, total: 0, done: 0, failed: 0, found: 0, requests: 0 };
+
+    /**
+     * Our store's key of a release's barcode answer, beside the importer's
+     * `"release/<id>/release"` keys.
+     *
+     * @param {string} id - The Discogs release id.
+     * @returns {string}
+     */
+    function _dgBcKey(id) {
+        return `release/${id}/barcode`;
+    }
+
+    /**
+     * A release's barcode answer when it is younger than 7 days.
+     *
+     * @param {string} id
+     * @returns {?{key: string, ts: number, status: string, barcode: string,
+     *   cands: Array<{id: string, title: string, date: string, country: string, format: string, tracks: number}>}}
+     */
+    function _dgBcRecord(id) {
+        const r = _dgMbMem.get(_dgBcKey(id));
+        return r && Array.isArray(r.cands) && Date.now() < r.ts + _DG_BC_TTL_MS ? r : null;
+    }
+
+    /**
+     * A barcode's digits without leading zeros (First Contact's `bcCore`):
+     * an EAN-13 and its UPC-A agree.
+     *
+     * @param {string} b
+     * @returns {string}
+     */
+    function _dgBcCore(b) {
+        return String(b || '').replace(/\D/g, '').replace(/^0+/, '');
+    }
+
+    /**
+     * One medium's kind for the format check (First Contact's `fmtKind`):
+     * digital, cd, vinyl, cassette, else the name in lower case.
+     *
+     * @param {string} name - Discogs' format name ("CD", "Vinyl", "File") or MusicBrainz's ("12\" Vinyl", "Digital Media").
+     * @returns {string}
+     */
+    function _dgBcKind(name) {
+        const x = String(name || '').trim();
+        if (/digital|^file$/i.test(x)) return 'digital';
+        if (/\bcd\b|compact disc|hdcd|sacd/i.test(x)) return 'cd';
+        if (/vinyl|"|\blp\b/i.test(x)) return 'vinyl';
+        if (/cassette/i.test(x)) return 'cassette';
+        return x.toLowerCase();
+    }
+
+    /**
+     * Whether a MusicBrainz release is this Discogs release as far as both
+     * tell (First Contact's `sameAlbum()`): the barcode, the media kinds and
+     * the track count agree, each where both sides know it.
+     *
+     * @param {{barcode: string, kinds: string, tracks: number}} dg
+     * @param {Object} rel - A search hit (`barcode`, `media[].format`, `media[]['track-count']`).
+     * @returns {boolean}
+     */
+    function _dgBcSameAlbum(dg, rel) {
+        if (_dgBcCore(rel.barcode) !== _dgBcCore(dg.barcode)) return false;
+        const media = Array.isArray(rel.media) ? rel.media : [];
+        const kinds = media.map(m => _dgBcKind(m.format || 'Digital Media')).sort().join('+');
+        if (dg.kinds && kinds && !/unknown/.test(dg.kinds) && dg.kinds !== kinds) return false;
+        const tracks = media.reduce((n, m) => n + (Number(m['track-count']) || 0), 0);
+        if (dg.tracks && tracks && dg.tracks !== tracks) return false;
+        return true;
+    }
+
+    /**
+     * The release rows to try, in table order: a Discogs release whose
+     * MusicBrainz release lookup came back empty, with no barcode answer
+     * younger than 7 days.
+     *
+     * @param {Map<string, Set<HTMLTableCellElement>>} [index]
+     * @returns {string[]} Discogs release ids.
+     */
+    function _dgBcTodo(index = _dgMbCellIndex()) {
+        const out = [];
+        index.forEach((cells, key) => {
+            const [dgType, id] = key.split('/');
+            if (dgType !== 'release') return;
+            const td = cells.values().next().value;
+            if (!td || !(td.dataset.mbDgTypes || '').split(' ').includes('release')) return;
+            const known = _dgMbKnown({ dgType, id }, 'release');
+            if (!known || known.length || _dgBcRecord(id)) return;
+            out.push(id);
+        });
+        return out;
+    }
+
+    /**
+     * Asks for one release: its Discogs record, then (when it has a
+     * barcode) one MusicBrainz search by every form of the barcode, then
+     * the check. Records the answer (memory and our store); a request that
+     * fails records nothing.
+     *
+     * @param {string} id
+     * @returns {Promise<?Object>} The record, or `null` on a failure or a stop.
+     */
+    async function _dgBcAsk(id) {
+        const wanted = () => !_dgBc.stop;
+        const dgRes = await _extGet(`https://api.discogs.com/releases/${id}`, {
+            wanted, fetchOpts: { accept: /\bjson\b/i, headers: _extDiscogsHeaders() },
+        });
+        _dgBc.requests++;
+        if (dgRes.skipped || dgRes.error || dgRes.status !== 200) return null;
+        let d;
+        try { d = JSON.parse(String(dgRes.body || '') + String(dgRes.tail || '')); } catch (_) { return null; }
+        const idf = (d.identifiers || []).find(i => i && /^barcode$/i.test(String(i.type || '').trim()) && _dgBcCore(i.value));
+        const rec = { key: _dgBcKey(id), ts: Date.now(), status: 'nobarcode', barcode: '', cands: [] };
+        if (idf) {
+            const digits = String(idf.value).replace(/\D/g, '');
+            const core = _dgBcCore(digits);
+            rec.barcode = digits;
+            const kinds = (d.formats || []).flatMap(f => Array(Math.max(1, Number(f.qty) || 1)).fill(_dgBcKind(f.name))).sort().join('+');
+            const tracks = (d.tracklist || []).filter(t => !t.type_ || t.type_ === 'track').length;
+            const forms = [...new Set([digits, core, '0' + core, '00' + core])].filter(x => x.length >= 8 && x.length <= 14);
+            const url = `https://musicbrainz.org/ws/2/release?query=${encodeURIComponent(`barcode:(${forms.join(' OR ')})`)}&limit=10&fmt=json`;
+            await _relAwaitRateSlot();
+            if (_dgBc.stop) return null;
+            const mbRes = await _extGet(url, {
+                gate: false, wanted,
+                fetchOpts: { accept: /\bjson\b/i, headers: { 'User-Agent': _EXT_AGENT, Accept: 'application/json' } },
+            });
+            _dgBc.requests++;
+            if (mbRes.skipped || mbRes.error || mbRes.status !== 200) return null;
+            let j;
+            try { j = JSON.parse(String(mbRes.body || '') + String(mbRes.tail || '')); } catch (_) { return null; }
+            const dg = { barcode: digits, kinds, tracks };
+            rec.cands = (j.releases || []).filter(r => r && /^[0-9a-f-]{36}$/.test(r.id || '') && _dgBcSameAlbum(dg, r)).map(r => ({
+                id: r.id, title: r.title || '', date: r.date || '', country: r.country || '',
+                format: (r.media || []).map(m => m.format || 'Digital Media').join(' + '),
+                tracks: (r.media || []).reduce((n, m) => n + (Number(m['track-count']) || 0), 0),
+            }));
+            rec.status = rec.cands.length ? 'match' : 'nomatch';
+            rec.dg = dg;
+        }
+        _dgMbMem.set(rec.key, rec);
+        _dgMbPut([rec]);
+        return rec;
+    }
+
+    /**
+     * 🔎 Barcodes: asks for at most 25 releases of `_dgBcTodo()` (60 with a
+     * Discogs token), one after the other, each answer written into its
+     * cells at once; the progress in the job popup. Never automatic.
+     *
+     * @param {{anchor?: ?Element}} [opts]
+     * @returns {Promise<void>}
+     */
+    async function _dgBcRun({ anchor = null } = {}) {
+        if (!_dgMbOn() || _dgBc.running || _dgMb.running) return;
+        await _dgMbLoadOwn();
+        const cap = Lib.settings.sa_pop_ext_discogs_token ? _DG_BC_PER_PRESS_TOKEN : _DG_BC_PER_PRESS;
+        const todo = _dgBcTodo().slice(0, cap);
+        if (!todo.length) { _dgMbUpdateHdrBtns(); return; }
+        _dgBcRegisterProvider();
+        Object.assign(_dgBc, { running: true, stop: false, stopped: false, total: todo.length, done: 0, failed: 0, found: 0, requests: 0 });
+        _ajStart('dgbc', null, { user: true, anchor });
+        _ajLog('dgbc', null, `${todo.length} release${todo.length === 1 ? '' : 's'} without a MusicBrainz link`);
+        _dgMbUpdateHdrBtns();
+        for (const id of todo) {
+            if (_dgBc.stop) break;
+            const rec = await _dgBcAsk(id);
+            if (rec) {
+                _dgBc.done++;
+                if (rec.cands.length) _dgBc.found++;
+                const what = rec.status === 'nobarcode' ? 'Discogs lists no barcode'
+                    : rec.cands.length ? `barcode ${rec.barcode} · ${rec.cands.length} candidate${rec.cands.length === 1 ? '' : 's'}`
+                        : `barcode ${rec.barcode} · no MusicBrainz release agrees`;
+                _ajLog('dgbc', null, `release ${id}: ${what}`, rec.cands.length ? 'good' : '');
+                _dgMbRepaint(_dgMbCellIndex(), [`release/${id}`], false);
+            } else if (!_dgBc.stop) {
+                _dgBc.failed++;
+                _ajLog('dgbc', null, `release ${id}: the request failed`, 'bad');
+            }
+            _dgMbUpdateHdrBtns();
+            _ajChanged('dgbc', null);
+            _dgMbScheduleRefresh(false);
+        }
+        _dgBc.running = false;
+        const asked = _dgBc.done + _dgBc.failed;
+        if (_dgBc.stop && asked < _dgBc.total) {
+            // A click on "■ k / N" stops the run: say so, never "finished"
+            // (vzell's browser check, 2026-11-26: "4 / 60 … finished, DONE").
+            _dgBc.stopped = true;
+            const job = _ajJob('dgbc', null);
+            if (job) { job.phase = 'stopped'; job.t1 = Date.now(); }
+            _ajLog('dgbc', null, `stopped after ${asked} of ${_dgBc.total}; 🔎 asks for the rest`, 'bad');
+            _ajChanged('dgbc', null);
+        } else {
+            _ajFinish('dgbc', null, _dgBc.failed);
+        }
+        _dgMbUpdateHdrBtns();
+        _dgMbScheduleRefresh(true);
+    }
+
+    /**
+     * Registers the barcode job's provider of the async job popup.
+     *
+     * @returns {void}
+     */
+    function _dgBcRegisterProvider() {
+        _ajRegister('dgbc', {
+            glyph: '🔎',
+            label: 'MusicBrainz barcodes',
+            scopeOf: () => null,
+            snapshot: (scope, job) => {
+                const fmt = n => Number(n).toLocaleString('en-US');
+                const actions = _dgBc.running ? [{ id: 'stop', label: 'Stop', kind: 'danger' }] : [];
+                const facts = [
+                    ['Source', 'api.discogs.com/releases/<id>, then /ws/2/release?query=barcode:(…)'],
+                    ['Check', 'barcode, media kinds and track count agree where both sides know them'],
+                    ['Per press', `${_DG_BC_PER_PRESS} releases, ${_DG_BC_PER_PRESS_TOKEN} with a Discogs token`],
+                    ['Kept', '7 days, in IndexedDB ' + _DG_MB_IDB_NAME],
+                ];
+                if (!job) {
+                    const n = _dgBcTodo().length;
+                    return { phase: 'idle', summary: n ? `${fmt(n)} releases without a MusicBrainz link. Click 🔎 to look for them by barcode.` : 'No release left to look for by barcode.', facts, actions };
+                }
+                const asked = _dgBc.done + _dgBc.failed;
+                return {
+                    phase: !job.t1 ? 'running' : _dgBc.stopped ? 'stopped' : _dgBc.failed ? 'doneErr' : 'done',
+                    summary: _dgBc.stopped
+                        ? `Stopped after ${fmt(asked)} of ${fmt(_dgBc.total)} Discogs releases: ${fmt(_dgBc.found)} with a candidate`
+                        : `Barcodes for ${fmt(_dgBc.total)} Discogs release${_dgBc.total === 1 ? '' : 's'}: ${fmt(_dgBc.found)} with a candidate`,
+                    done: _dgBc.done, total: _dgBc.total, failed: _dgBc.failed,
+                    queued: Math.max(0, _dgBc.total - _dgBc.done - _dgBc.failed), unit: 'releases',
+                    facts: facts.concat([['Requests', fmt(_dgBc.requests)]]), actions,
+                };
+            },
+            act: (scope, id) => { if (id === 'stop') _dgBc.stop = true; },
+        });
+    }
+
+    /**
+     * Copies a Discogs release's address for the ⧉ beside a candidate, to
+     * paste into the release's relationships on MusicBrainz (SAED writes
+     * nothing to MusicBrainz). No GM_setClipboard: a new grant re-prompts
+     * every user.
+     *
+     * @param {HTMLElement} btn - The ⧉ button (`data-mb-dg-url`).
+     * @returns {void}
+     */
+    function _dgBcCopy(btn) {
+        const url = btn.dataset.mbDgUrl || '';
+        const done = (ok) => {
+            _setTip(btn, ok ? `Copied ${url}` : 'The browser refused to copy: select the address in the card instead');
+            btn.dataset.mbDgCopied = ok ? '1' : '0';
+        };
+        Promise.resolve(navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(url) : Promise.reject())
+            .then(() => done(true), () => done(false));
+    }
+
     /**
      * The render tail on discogs.com: the header toggles (a re-render
      * rebuilds every head from a clone), and — after a fresh render or a
@@ -23148,6 +23497,19 @@
             const flex = th.querySelector('.mb-col-hdr-flex');
             (flex || th).prepend(btn);
         });
+        // 🔎 Barcodes beside ▶ MB, on a table with release rows only
+        // (_dgBcRun(); never automatic).
+        document.querySelectorAll('#mb-dg-root table.tbl').forEach(t => {
+            const th = Array.from(t.querySelectorAll('thead th')).find(x => x.dataset.colName === _DG_MB_COL);
+            const mbBtn = th && th.querySelector('.mb-dgmb-col-hdr-btn');
+            if (!mbBtn || th.querySelector('.mb-dgbc-col-hdr-btn') || !t.querySelector('td.mb-dg-mb-cell[data-mb-dg-key^="release/"]')) return;
+            const bc = document.createElement('button');
+            bc.type = 'button';
+            bc.className = 'mb-dgbc-col-hdr-btn';
+            bc.dataset.mbAj = 'dgbc';
+            bc.dataset.mbAjName = '🔎 Barcodes';
+            mbBtn.after(bc);
+        });
         _dgMbUpdateHdrBtns();
     }
 
@@ -23158,6 +23520,7 @@
      * @returns {void}
      */
     function _dgMbUpdateHdrBtns() {
+        _dgBcUpdateHdrBtns();
         const btns = document.querySelectorAll('.mb-dgmb-col-hdr-btn');
         if (!btns.length) return;
         const pending = _dgMbPendingCount();
@@ -23167,6 +23530,34 @@
             else delete b.dataset.dgmbProgress;
             if (!_dgMb.running && _dgMb.failed) b.dataset.dgmbState = 'error';
             else delete b.dataset.dgmbState;
+        });
+    }
+
+    /**
+     * Repaints every 🔎 Barcodes button: "🔎 N", N the releases still to try
+     * (greyed out at 0), "■ k / N" while it runs (a click stops it).
+     *
+     * @returns {void}
+     */
+    function _dgBcUpdateHdrBtns() {
+        const btns = document.querySelectorAll('.mb-dgbc-col-hdr-btn');
+        if (!btns.length) return;
+        const n = _dgBc.running ? 0 : _dgBcTodo().length;
+        const cap = Lib.settings.sa_pop_ext_discogs_token ? _DG_BC_PER_PRESS_TOKEN : _DG_BC_PER_PRESS;
+        btns.forEach(b => {
+            if (_dgBc.running) {
+                b.textContent = `■ ${_dgBc.done + _dgBc.failed} / ${_dgBc.total}`;
+                b.disabled = false;
+                _setTip(b, 'Looking for MusicBrainz releases by barcode — click to stop');
+                return;
+            }
+            b.textContent = `🔎 ${n}`;
+            b.disabled = n === 0 || _dgMb.running;
+            _setTip(b, n
+                ? `Look for MusicBrainz releases by barcode: ${n} Discogs release${n === 1 ? '' : 's'} without a MusicBrainz link. ` +
+                  `Asks Discogs for each one's barcode, formats and tracks, then searches MusicBrainz; at most ${cap} a press ` +
+                  `(Discogs' request limit). A match is a candidate (≈), not a link.`
+                : 'No release left to look for by barcode (each answer is kept for 7 days).');
         });
     }
 
@@ -23182,6 +23573,16 @@
         _dgMbEnsureDelegates.done = true;
         document.addEventListener('click', (e) => {
             const t = e.target;
+            const bcBtn = t.closest && t.closest('.mb-dgbc-col-hdr-btn');
+            const copy = !bcBtn && t.closest && t.closest('td.mb-dg-mb-cell .mb-dg-mb-copy');
+            if (bcBtn || copy) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (copy) _dgBcCopy(copy);
+                else if (_dgBc.running) _dgBc.stop = true;
+                else _dgBcRun({ anchor: bcBtn });
+                return;
+            }
             const btn = t.closest && t.closest('.mb-dgmb-col-hdr-btn');
             const failed = !btn && t.closest && t.closest('td.mb-dg-mb-cell .mb-dg-mb-search[data-state="error"]');
             if (!btn && !failed) return;
@@ -77381,41 +77782,155 @@
     }
 
     /**
-     * The sites a Relationships cell (`td.mb-rel-cell`, the `rel-multi-site`
-     * finding) links to more than once: each icon's raw target URL from its
-     * hidden `.mb-rel-filter-key` (`_relAppendIcon()`), grouped by host
-     * without "www.", each URL as host + path without a trailing slash, so a
-     * `?…`/`#…` or "/" variant of one URL counts once. The HOST is the site,
-     * not the site kind (`_siteFamilyOf()`): en. and de.wikipedia, amazon.de
-     * and amazon.com are one link each to different sites, which is how
-     * MusicBrainz expects them. Hosts listed in
-     * `sa_findings_rel_multi_site_ignore` never count. The spans are written
+     * The platform pages `_relPageKey()` knows by their id, whatever form
+     * the address takes: `[platform, host test, path → [kind, id] | null]`.
+     * Taken from majkinetor's First Contact (`linkKey()`), Falcon
+     * (`platformPageKey()`, #671) and ISRC Scout (`normalizeProviderUrl()`,
+     * MusicBrainz's URLCleanup rules), at `8384078`. itunes.apple.com is a
+     * platform of its own (MusicBrainz takes a music.apple.com link beside
+     * the legacy one, Falcon); an Amazon store keeps its domain in the
+     * platform (vzell 2026-11-26: amazon.de and amazon.com are different
+     * sites, one link each, as MusicBrainz expects).
+     * @type {Array<Array<*>>}
+     */
+    const _REL_PAGE_RULES = [
+        ['apple', h => /^(?:geo\.|classical\.)?music\.apple\.com$/.test(h),
+            (p, q) => {
+                const m = /^\/(?:[a-z]{2}\/)?(album|artist|label|song|music-video|playlist)\/(?:[^/]+\/)?(?:id)?([0-9]+|pl\.[A-Za-z0-9-]+)\/?$/.exec(p);
+                if (!m) return null;
+                const i = m[1] === 'album' && /^[0-9]+$/.test(q.get('i') || '') ? q.get('i') : null;
+                return i ? ['song', i] : [m[1], m[2]];
+            }],
+        ['itunes', h => h === 'itunes.apple.com',
+            p => { const m = /^\/(?:[a-z]{2}\/)?(album|artist|label|song|music-video|playlist)\/(?:[^/]+\/)?(?:id)?([0-9]+)\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+        ['deezer', h => /^deezer\.com$/.test(h),
+            p => { const m = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(album|artist|label|track|playlist)\/([0-9]+)\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+        ['tidal', h => /^(?:listen\.)?tidal\.com$/.test(h),
+            p => { const m = /^\/(?:[a-z]{2}\/)?(?:browse\/|store\/)?(album|artist|track|video|playlist)\/([0-9a-f-]+)\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+        ['spotify', h => h === 'open.spotify.com',
+            p => { const m = /^\/(?:intl-[a-z-]+\/)?(album|artist|track|playlist)\/([A-Za-z0-9]{22})\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+        ['qobuz', h => /^(?:open\.|play\.)?qobuz\.com$/.test(h),
+            p => {
+                let m = /^\/(?:[a-z]{2}-[a-z]{2}\/)?album\/(?:[^/]+\/)?([A-Za-z0-9]+)\/?$/.exec(p);
+                if (m) return ['album', m[1]];
+                m = /^\/(?:[a-z]{2}-[a-z]{2}\/)?(interpreter|artist|label)\/(?:.*\/)?([0-9]+)\/?$/.exec(p);
+                return m ? [m[1] === 'label' ? 'label' : 'artist', m[2]] : null;
+            }],
+        ['beatport', h => h === 'beatport.com',
+            p => { const m = /^\/(?:[a-z]{2}\/)?(release|artist|label|track)\/[^/]+\/([0-9]+)\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+        ['discogs', h => h === 'discogs.com',
+            p => { const m = /^\/(?:[a-z]{2}(?:_[A-Za-z]{2})?\/)?(release|master|artist|label)\/([0-9]+)(?:-[^/]*)?\/?$/.exec(p); return m ? [m[1], m[2]] : null; }],
+    ];
+
+    /**
+     * One Relationships link as a PAGE: the same page in another form (a
+     * storefront, a locale, a slug, another host of the platform) gets the
+     * same `key`.
+     *
+     * - `form`: the URL as host (no "www.") + path without a trailing slash,
+     *   what the finding details list and the hovered icon is matched by;
+     * - `site`: the platform for the pages of `_REL_PAGE_RULES` (so
+     *   tidal.com and listen.tidal.com are one site), an Amazon store's own
+     *   domain, else the host;
+     * - `key`: `<platform>:<kind>:<id>` for a known page, `<store>:<ASIN>`
+     *   for an Amazon product, else the `form`.
+     *
+     * @param {string} url
+     * @returns {?{site: string, key: string, form: string}} `null` when not
+     *   an http(s) URL.
+     */
+    function _relPageKey(url) {
+        let u;
+        try { u = new URL(String(url || '')); } catch (_) { return null; }
+        if (!/^https?:$/.test(u.protocol)) return null;
+        const host = u.hostname.toLowerCase().replace(/^www\./, '');
+        const path = u.pathname.replace(/\/+$/, '');
+        const form = `https://${host}${path}`;
+        for (const [platform, onHost, read] of _REL_PAGE_RULES) {
+            if (!onHost(host)) continue;
+            const hit = read(u.pathname, u.searchParams);
+            // Spotify's ids are case-sensitive base 62; the others are not.
+            if (hit) return { site: platform, key: `${platform}:${hit[0]}:${platform === 'spotify' ? hit[1] : hit[1].toLowerCase()}`, form };
+            return { site: platform, key: form, form };
+        }
+        const am = /^(music\.)?amazon\.[a-z.]+$/.test(host)
+            && (/^\/albums\/([A-Z0-9]{10})(?:[/?#]|$)/i.exec(u.pathname) || /\/(?:dp|gp\/product)\/([A-Z0-9]{10})(?:[/?#]|$)/i.exec(u.pathname));
+        if (am) return { site: host, key: `${host}:${am[1].toUpperCase()}`, form };
+        return { site: host, key: form, form };
+    }
+
+    /**
+     * A Relationships cell's links as pages per site (`_relPageKey()`): each
+     * icon's raw target URL from its hidden `.mb-rel-filter-key`
+     * (`_relAppendIcon()`), grouped by site and, within a site, by page; a
+     * `?…`/`#…` or "/" variant of one URL is one form. The spans are written
      * into the live cells AND mirrored onto the master rows by
      * `_relWriteResult()`, so this reads source-row data.
      *
      * @param   {?HTMLTableCellElement} cell
-     * @returns {Array<{host: string, name: string, urls: string[]}>} One entry
-     *   per site with 2+ distinct URLs, in cell order; `name` from
+     * @returns {Array<{site: string, host: string, name: string, pages: Array<{key: string, forms: string[]}>}>}
+     *   In cell order; `host` is the site's first link's host, `name` from
      *   `_relSiteName()`.
      */
-    function _findCellRelSiteDupes(cell) {
+    function _relCellPages(cell) {
         if (!cell || !cell.classList.contains('mb-rel-cell')) return [];
+        const bySite = new Map();
+        cell.querySelectorAll('.mb-rel-filter-key').forEach(k => {
+            const pk = _relPageKey(k.textContent);
+            if (!pk) return;
+            let s = bySite.get(pk.site);
+            if (!s) {
+                const host = pk.form.slice(8).split('/')[0];
+                s = { site: pk.site, host, name: _relSiteName(host), pages: new Map() };
+                bySite.set(pk.site, s);
+            }
+            let forms = s.pages.get(pk.key);
+            if (!forms) { forms = []; s.pages.set(pk.key, forms); }
+            if (!forms.includes(pk.form)) forms.push(pk.form);
+        });
+        return Array.from(bySite.values(), s => ({ ...s, pages: Array.from(s.pages, ([key, forms]) => ({ key, forms })) }));
+    }
+
+    /**
+     * The sites a Relationships cell (`td.mb-rel-cell`, the `rel-multi-site`
+     * finding) links to with more than one PAGE (`_relCellPages()`): two
+     * forms of one page (a storefront, a slug, another host of the platform)
+     * are the other finding, `rel-same-page`. A site is the host without
+     * "www.", or the platform of a known page (`_REL_PAGE_RULES`), not the
+     * site kind (`_siteFamilyOf()`): en. and de.wikipedia, amazon.de and
+     * amazon.com are one link each to different sites, which is how
+     * MusicBrainz expects them. Hosts listed in
+     * `sa_findings_rel_multi_site_ignore` never count.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {Array<{host: string, name: string, urls: string[]}>} One entry
+     *   per site with 2+ pages, in cell order, `urls` one form per page.
+     */
+    function _findCellRelSiteDupes(cell) {
         const ignore = String(Lib.settings.sa_findings_rel_multi_site_ignore || '').toLowerCase()
             .split(/[\s,]+/).map(h => h.replace(/^www\./, '')).filter(Boolean);
-        const byHost = new Map();
-        cell.querySelectorAll('.mb-rel-filter-key').forEach(k => {
-            let u;
-            try { u = new URL(k.textContent); } catch (_) { return; }
-            if (!/^https?:$/.test(u.protocol)) return;
-            const host = u.hostname.toLowerCase().replace(/^www\./, '');
-            if (ignore.includes(host)) return;
-            const key = `https://${host}${u.pathname.replace(/\/+$/, '')}`;
-            if (!byHost.has(host)) byHost.set(host, []);
-            const urls = byHost.get(host);
-            if (!urls.includes(key)) urls.push(key);
-        });
-        return Array.from(byHost, ([host, urls]) => ({ host, name: _relSiteName(host), urls }))
-            .filter(d => d.urls.length >= 2);
+        return _relCellPages(cell)
+            .filter(s => s.pages.length >= 2 && !ignore.includes(s.host) && !ignore.includes(s.site))
+            .map(s => ({ host: s.host, name: s.name, urls: s.pages.map(p => p.forms[0]) }));
+    }
+
+    /**
+     * The pages a Relationships cell (the `rel-same-page` finding) links in
+     * more than one form (`_relCellPages()`): Apple Music's /us/ and /gb/
+     * storefront of one album, a Discogs release with and without its slug,
+     * tidal.com and listen.tidal.com. Always a duplicate, so the ignore list
+     * of `rel-multi-site` does not apply.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {Array<{host: string, name: string, urls: string[]}>} One entry
+     *   per such page, `urls` its forms.
+     */
+    function _findCellRelSamePages(cell) {
+        const out = [];
+        _relCellPages(cell).forEach(s => s.pages.forEach(p => {
+            if (p.forms.length >= 2) out.push({ host: s.host, name: s.name, urls: p.forms });
+        }));
+        return out;
     }
 
     /**
@@ -77427,6 +77942,17 @@
      */
     function _relSiteDupesDetail(cell) {
         return _findCellRelSiteDupes(cell).map(d => `${d.name} (${d.host}): ${d.urls.join(', ')}`).join('\n');
+    }
+
+    /**
+     * The `rel-same-page` finding's detail for one cell: one line per page
+     * linked in more than one form, "Apple Music (music.apple.com): url, url".
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {string}
+     */
+    function _relSamePagesDetail(cell) {
+        return _findCellRelSamePages(cell).map(d => `${d.name} (${d.host}): ${d.urls.join(', ')}`).join('\n');
     }
 
     /**
@@ -80888,13 +81414,27 @@
         {
             id: 'rel-multi-site', level: 'warn', glyph: '🔗', scope: 'cell',
             label: 'Several links to one site in Relationships',
-            tip: 'The Relationships column shows more than one URL on the same site for this entity (two Discogs pages, two amazon.de products, …). One release, release group, artist or label usually has ONE page per site; two are often a duplicate or a link to the wrong kind of page (a release linked from a release group). The cell\'s tooltip names every site involved. Known once the column has loaded, so the count grows while it loads.',
+            tip: 'The Relationships column shows more than one page on the same site for this entity (two Discogs releases, two amazon.de products, …). One release, release group, artist or label usually has ONE page per site; two are often a duplicate or a link to the wrong kind of page (a release linked from a release group). Two forms of ONE page (another storefront or locale, a slug, another address of the same platform) are the other finding, "The same page linked twice". The cell\'s tooltip names every site involved. Known once the column has loaded, so the count grows while it loads.',
             enabled: () => Lib.settings.sa_findings_rel_multi_discogs !== false && !!Lib.settings.sa_enable_relationships_column,
             cols: name => name === 'Relationships',
             rowGate: row => !!row.querySelector('td.mb-rel-cell .mb-rel-filter-key'),
             test: cell => _findCellRelSiteDupes(cell).length > 0,
             detail: cell => _relSiteDupesDetail(cell),
             tint: _findingTintSetting('sa_findings_tint_rel_multi_discogs'),
+        },
+        // One page linked in two forms (2026-11-26, majkinetor's linkKey /
+        // platformPageKey): late data like rel-multi-site, re-stamped by
+        // _relWriteResult() with it, read from the same filter-key spans.
+        {
+            id: 'rel-same-page', level: 'warn', glyph: '🔗', scope: 'cell',
+            label: 'The same page linked twice in Relationships',
+            tip: 'The Relationships column links the same page more than once, in different forms: Apple Music\'s /us/ and /gb/ storefront of one album, a Discogs release with and without its title in the address, tidal.com and listen.tidal.com, a Qobuz page in two locales. MusicBrainz needs it once; the other link is a duplicate to remove. amazon.de and amazon.com are different stores, not forms of one page. The cell\'s tooltip names every form. Known once the column has loaded, so the count grows while it loads.',
+            enabled: () => Lib.settings.sa_findings_rel_same_page !== false && !!Lib.settings.sa_enable_relationships_column,
+            cols: name => name === 'Relationships',
+            rowGate: row => !!row.querySelector('td.mb-rel-cell .mb-rel-filter-key'),
+            test: cell => _findCellRelSamePages(cell).length > 0,
+            detail: cell => _relSamePagesDetail(cell),
+            tint: _findingTintSetting('sa_findings_tint_rel_same_page'),
         },
         // An Annotation cell (report/AnnotationsWorks and the other
         // annotation reports, an annotation search) linking springsteenlyrics.com
@@ -106486,7 +107026,10 @@
         if (!cell || !cell.classList || !cell.classList.contains('mb-dg-mb-cell') || !cell.dataset.mbDgKey) return null;
         const st = cell.dataset.mbDgState;
         if (st === 'pending' || st === 'error') return st;
-        return String(parseInt(cell.dataset.mbDgN, 10) || 0);
+        const n = parseInt(cell.dataset.mbDgN, 10) || 0;
+        // No link, but a barcode candidate (_dgBcCandHtml()): its own entry.
+        if (!n && parseInt(cell.dataset.mbDgCand, 10) > 0) return 'candidate';
+        return String(n);
     }
 
     /**
@@ -127120,6 +127663,7 @@ a { color: #1565c0; }`;
         .mb-recof-col-hdr-btn,
         .mb-wsug-col-hdr-btn,
         .mb-dgmb-col-hdr-btn,
+        .mb-dgbc-col-hdr-btn,
         .mb-bbmbev-col-hdr-btn,
         .mb-bbevp-col-hdr-btn,
         .mb-re-col-hdr-btn,
@@ -127151,6 +127695,7 @@ a { color: #1565c0; }`;
         .mb-recof-col-hdr-btn:hover,
         .mb-wsug-col-hdr-btn:hover,
         .mb-dgmb-col-hdr-btn:hover,
+        .mb-dgbc-col-hdr-btn:hover:not(:disabled),
         .mb-bbmbev-col-hdr-btn:hover,
         .mb-bbevp-col-hdr-btn:hover,
         .mb-re-col-hdr-btn:hover,
@@ -127168,6 +127713,7 @@ a { color: #1565c0; }`;
         .mb-recof-col-hdr-btn:focus-visible,
         .mb-wsug-col-hdr-btn:focus-visible,
         .mb-dgmb-col-hdr-btn:focus-visible,
+        .mb-dgbc-col-hdr-btn:focus-visible,
         .mb-bbmbev-col-hdr-btn:focus-visible,
         .mb-bbevp-col-hdr-btn:focus-visible,
         .mb-re-col-hdr-btn:focus-visible,
@@ -127237,6 +127783,8 @@ a { color: #1565c0; }`;
         .mb-dgmb-col-hdr-btn::before { content: "▶ MB"; }
         .mb-dgmb-col-hdr-btn[aria-pressed="true"]::before { content: "▼ MB"; }
         .mb-dgmb-col-hdr-btn[data-dgmb-progress]::after { content: " " attr(data-dgmb-progress); font-variant-numeric: tabular-nums; }
+        .mb-dgbc-col-hdr-btn { font-variant-numeric: tabular-nums; margin-left: 2px; }
+        .mb-dgbc-col-hdr-btn:disabled { opacity: 0.45; cursor: default; }
         .mb-dgmb-col-hdr-btn[data-dgmb-state="error"] { background: rgba(255, 193, 7, 0.55); border-color: rgba(190, 140, 0, 0.70); }
         /* Brucebase MB-Event column toggle (_bbMbevInitColHeaderToggles). */
         .mb-bbmbev-col-hdr-btn::before { content: "▶ MB"; }
@@ -133004,6 +133552,7 @@ a { color: #1565c0; }`;
         paused:  ['Paused', 'warn'],
         done:    ['Done', 'ok'],
         doneErr: ['Done with errors', 'err'],
+        stopped: ['Stopped', 'warn'],
         error:   ['Failed', 'err']
     };
 
@@ -134432,7 +134981,7 @@ a { color: #1565c0; }`;
         // discogs.com's MusicBrainz column (_dgMbCellHtml()): a search box's
         // "R?" and the link count badge are decoration; the column's text is
         // the hidden .mb-dg-mb-ids ("release <mbid> …"), which stays.
-        '.mb-dg-mb-search,.mb-dg-mb-n,' +
+        '.mb-dg-mb-search,.mb-dg-mb-n,.mb-dg-mb-eq,.mb-dg-mb-copy,' +
         // .mb-yt-tile: a YouTube link's "Play here" tile (_ytTileHtml(),
         // org/youtube.org) — its title and "Play here · 4:30" repeat or
         // describe the link beside it, so a filter for "play" or the 📊
@@ -139099,6 +139648,10 @@ a { color: #1565c0; }`;
      */
     function _highlightDgMbCountMatch(cell, mode) {
         if (!cell || _findCellDgMbCount(cell) !== mode.slice(10)) return;
+        if (mode.slice(10) === 'candidate') {
+            cell.querySelectorAll('a.mb-dg-mb-cand').forEach(el => el.classList.add('mb-rel-icon-match'));
+            return;
+        }
         const links = cell.querySelectorAll('a.mb-dg-mb-link');
         (links.length ? links : cell.querySelectorAll('.mb-dg-mb-search')).forEach(el => el.classList.add('mb-rel-icon-match'));
     }
@@ -160715,7 +161268,7 @@ a { color: #1565c0; }`;
         // Numeric sort (not lexicographic) so "2" sorts before "10".
         const _sortedTagCountValues = Array.from(entityTagCountValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         // Counts in order, then "pending", then "error".
-        const _dgMbRank = (v) => (v === 'pending' ? 1e9 : v === 'error' ? 1e9 + 1 : parseInt(v, 10));
+        const _dgMbRank = (v) => (v === 'candidate' ? 1e8 : v === 'pending' ? 1e9 : v === 'error' ? 1e9 + 1 : parseInt(v, 10));
         const _sortedDgMbCountValues = Array.from(dgMbCountValueCounts.keys()).sort((a, b) => _dgMbRank(a) - _dgMbRank(b));
         const _sortedEventCancelledValues = Array.from(eventCancelledValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedJoinPhraseValues = Array.from(joinPhraseValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -162267,7 +162820,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('instrument:')) return 'The instrument type credited in one of this cell\'s items.';
         if (mode.startsWith('altname:')) return 'MusicBrainz\'s own credited-as alternate instrument/vocal-type name (the trailing "[…]" bracket).';
         if (mode.startsWith('dgrole:')) return 'A Discogs credit role of one of this cell\'s credits ("Guitar", "Producer"); its "[…]" modifiers are attributes.';
-        if (mode.startsWith('dgmbcount:')) return 'How many MusicBrainz entities are linked to this row\'s Discogs page; "pending" while it is still looked up, "error" when the lookup failed.';
+        if (mode.startsWith('dgmbcount:')) return 'How many MusicBrainz entities are linked to this row\'s Discogs page; "candidate" for a release no MusicBrainz release links but one agrees with by barcode (🔎), "pending" while it is still looked up, "error" when the lookup failed.';
         if (mode.startsWith('name:')) return 'An entity\'s own anchored/linked name — matches every row containing this entity, regardless of its disambiguation comment.';
         if (mode.startsWith('namehref:')) return 'This exact entity (by its own MusicBrainz identity), disambiguated because another, different entity shares the same display name — see the plain "» name:" entry for the broader, name-only match.';
         if (mode.startsWith('comment:')) return 'An entity\'s disambiguation comment text, excluding any primary alias.';
@@ -171780,7 +172333,7 @@ a { color: #1565c0; }`;
         // stampFindings() saw empty: re-stamp each live row written (its
         // master with it), batched. A write to master rows only (the row is
         // filtered out) waits for the next fetch or disk load.
-        const _restamp = () => cells.forEach(td => _queueFindingsRestamp(td.closest('tr'), ['rel-multi-site']));
+        const _restamp = () => cells.forEach(td => _queueFindingsRestamp(td.closest('tr'), ['rel-multi-site', 'rel-same-page']));
         if (!data) {
             _dbg(`_relWriteResult: no data for ${mbid}`);
             rest.forEach(_markDone);
@@ -172066,6 +172619,7 @@ a { color: #1565c0; }`;
         if (ids.length) {
             const details = {};
             if (ids.includes('rel-multi-site')) details['rel-multi-site'] = _relSiteDupesDetail(td);
+            if (ids.includes('rel-same-page')) details['rel-same-page'] = _relSamePagesDetail(td);
             const { text, cmp } = _findingTitle(ids, details);
             _title = `${text}\n\n${_title}`;
             if (td.title !== _title) _setTipCmp(td, _title, cmp);
@@ -173486,8 +174040,10 @@ a { color: #1565c0; }`;
     /**
      * The box that says which findings a Relationships cell carries
      * (`data-mb-findings`): each finding's ⚠️/❌ and label, and for
-     * `rel-multi-site` every site linked more than once with its URLs, the
-     * hovered icon's URL marked "◂ this icon". Built from `_FINDING_BY_ID`
+     * `rel-multi-site` every site linked more than once with its URLs (for
+     * `rel-same-page` every page linked in more than one form, with its
+     * forms), the hovered icon's URL marked "◂ this icon" (its `form`,
+     * `_relPageKey()`). Built from `_FINDING_BY_ID`
      * and the cell's icons, never from the cell's title (the reload hint may
      * be there).
      *
@@ -173502,17 +174058,18 @@ a { color: #1565c0; }`;
         let hereUrl = '';
         const hereKey = here && here.querySelector('.mb-rel-filter-key');
         if (hereKey) {
-            try {
-                const u = new URL(hereKey.textContent);
-                hereUrl = `https://${u.hostname.toLowerCase().replace(/^www\./, '')}${u.pathname.replace(/\/+$/, '')}`;
-            } catch (_) { /* not a URL: nothing to mark */ }
+            const pk = _relPageKey(hereKey.textContent);
+            if (pk) hereUrl = pk.form;
         }
         return ids.map((id) => {
             const f = _FINDING_BY_ID.get(id);
             const head = `<div class="mb-tt-title">${f.level === 'error' ? '❌' : '⚠️'} ${_mbttEscape(f.label)}</div>`;
-            if (id !== 'rel-multi-site') return head;
-            return head + _findCellRelSiteDupes(cell).map(d =>
-                `<div class="mb-rel-fd-site"><b>${_mbttEscape(d.name)}</b> <span class="mb-tt-dim">${_mbttEscape(d.host)} · ${d.urls.length} links</span></div>` +
+            const list = id === 'rel-multi-site' ? _findCellRelSiteDupes(cell)
+                : id === 'rel-same-page' ? _findCellRelSamePages(cell) : null;
+            if (!list) return head;
+            const unit = id === 'rel-same-page' ? 'forms of one page' : 'links';
+            return head + list.map(d =>
+                `<div class="mb-rel-fd-site"><b>${_mbttEscape(d.name)}</b> <span class="mb-tt-dim">${_mbttEscape(d.host)} · ${d.urls.length} ${unit}</span></div>` +
                 d.urls.map(u => `<div class="mb-rel-fd-url${u === hereUrl ? ' mb-rel-here' : ''}">${_mbttEscape(u)}` +
                     `${u === hereUrl ? '<span class="mb-rel-here-tag">◂ this icon</span>' : ''}</div>`).join('')
             ).join('');
@@ -192215,7 +192772,7 @@ a { color: #1565c0; }`;
      * `_recDupRegroupSoon()`). Each is re-stamped per row
      * through `_queueFindingsRestamp()`.
      */
-    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'rec-dup', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS, ..._BB_TAG_IDS];
+    const _LATE_FINDING_IDS = [..._ART_FINDING_IDS, 'rel-multi-site', 'rel-same-page', 'rec-dup', 'bb-mbev-link-mismatch', 'bb-mbev-link-missing', 'sl-double-utf8', 'bb-onstage-tab', 'bb-venue-mismatch', ..._BB_EVENT_CHECK_LATE_IDS, ..._BB_LIST_CHECK_IDS, ..._BB_UNLISTED_IDS, ..._BB_SETLIST_IDS, ..._BB_TAG_IDS];
 
     /**
      * Queues a re-stamp of a row whose late data (`_LATE_FINDING_IDS`) has
@@ -198813,11 +199370,12 @@ a { color: #1565c0; }`;
                 return Math.max(0, _relNextSlotAt - _steadyNow());
             },
             /**
-             * The shared cross-tab request gate (`mbu:mb-gate`, `_mbGate*`),
-             * for the formula checks a behavioural spec cannot reach in
-             * reasonable time (the 30 s quiet reset, the 60 s cap). The
-             * functions are the shipping ones.
+             * A Relationships link as a page (`_relPageKey()`): the key the
+             * `rel-multi-site` and `rel-same-page` findings group by.
+             * @param {string} url
+             * @returns {?{site: string, key: string, form: string}}
              */
+            relPageKey: (url) => _relPageKey(url),
             /**
              * MusicBrainz's browser check on page fetches (`fetchHtml()`,
              * `_mbReverify()`).
@@ -198834,6 +199392,12 @@ a { color: #1565c0; }`;
                  */
                 timeoutMs: (ms) => { _MB_CHECK_TIMEOUT_MS = ms; _mbgCheck.failedAt = 0; },
             },
+            /**
+             * The shared cross-tab request gate (`mbu:mb-gate`, `_mbGate*`),
+             * for the formula checks a behavioural spec cannot reach in
+             * reasonable time (the 30 s quiet reset, the 60 s cap). The
+             * functions are the shipping ones.
+             */
             mbGate: {
                 /** @returns {boolean} `_mbGateActive()`. */
                 active: () => _mbGateActive(),

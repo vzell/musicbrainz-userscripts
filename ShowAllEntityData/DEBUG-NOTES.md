@@ -31870,3 +31870,76 @@ not be forced: with `__meb_verified` deleted (logged in), MusicBrainz kept
 serving the real pages (page 18 of 747 of the recordings), so it does not
 answer a missing cookie alone with the check. Both paths rest on spec B1/B2.
 Merged as 9.99.1701 without a second `test:full` (vzell's call).
+
+## 2026-11-26 — Canonical page keys in the Relationships column: the new finding rel-same-page (feat/link-page-keys, WIP.1)
+
+Env: 2026-11-26T12:20–12:58+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · browser check pending
+
+`rel-multi-site` grouped a Relationships cell's links by host and called
+host + path one page. So Apple Music's /us/ and /gb/ storefront of one
+album, or a Discogs release with and without its slug, were "two pages on
+one site", while tidal.com and listen.tidal.com, or open. and www.qobuz.com,
+were never compared (two hosts). Ported majkinetor's canonical keys (First
+Contact `linkKey()`, Falcon `platformPageKey()` #671, ISRC Scout
+`normalizeProviderUrl()`, at `8384078`) as `_relPageKey()` over
+`_REL_PAGE_RULES`, with vzell's choices: a separate finding, Amazon stores
+stay sites (an Amazon product is store + ASIN), iTunes its own platform as
+Falcon has it.
+
+`rel-multi-site` now counts PAGES per site; `rel-same-page` flags a page in
+2+ forms and ignores the ignore list. A mutant lived at first: leaving
+`rel-same-page` out of `_relWriteResult()`'s re-stamp list changed nothing,
+because `_queueFindingsRestamp()`'s list only gates (one enabled id is
+enough) and the row is re-stamped for every finding; it matters only with
+`rel-multi-site` off, which K8 now pins. Five finds of two older mutation
+lists (`link-site-uvd.json`, `rel-multi-site-and-ip.json`) were re-pointed
+to the new grouping and still fail as they should. Spec 10/10, mutations
+17/17, the relationships/findings/settings specs 302/302, lint at
+baseline.
+
+## 2026-11-26 — Barcode candidates in the Discogs MusicBrainz column (feat/link-page-keys, WIP.2)
+
+Env: 2026-11-26T13:00–13:55+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · browser check pending
+
+Phase 2 of the links item, to the approved mockup
+(https://claude.ai/artifact/NjNP8w1rWxkDfmfJteshY5). A Discogs release no
+MusicBrainz release links: 🔎 asks `api.discogs.com/releases/<id>` (the
+rows carry no barcode), then one `/ws/2/release?query=barcode:(…)` with
+every 8–14-digit form, and keeps a hit First Contact's `sameAlbum()` passes
+(barcode core, media kinds, track count, each where both sides know it).
+Two deviations from the mockup: ⧉ sits beside the candidate (a hover card
+cannot be clicked), and the search uses the column's own pacing
+(`_relAwaitRateSlot()` + `_extGet()`), since the shared gate's storage
+belongs to musicbrainz.org, not discogs.com.
+
+Two lessons from the run: the spec's first expectation listed a 15-digit
+form ("005099751969227") that the code rightly drops (8–14 digits); and a
+mutation `grep` of "BC1 + BC5: …" selected no test, because Playwright
+reads `--grep` as a regular expression and "+" is a quantifier; the
+grep is now a plain phrase. Spec 4/4 with the column's spec 26/26,
+mutations 13/13 (the per-press cap `expect: pass`), two finds of
+`discogs-mb-column.json` re-pointed (the strip selector and the 📊 value
+function changed shape).
+
+Live probe for the browser check (`scripts/probe-rel-page-keys.py`, the
+same rules in Python; 2026-11-26T13:56:54–13:58:47+01:00, NB-3641, n/a
+browser; MusicBrainz answered many `503 global`, the probe retries): of
+Bruce Springsteen's first 500 releases, ONE links a page twice —
+release `c9c1961b-43ce-4609-9ebc-975d6adbe1e0` (Darkness on the Edge of
+Town, XW 1978-06-02; release group `b613123b-a234-3f48-9c45-e05bf4e6b9e7`)
+has `play.qobuz.com/album/0884977798753` and
+`qobuz.com/us-en/album/darkness-…/0884977798753`: two hosts, which the old
+host grouping never compared. Three releases link two different Discogs
+releases (rel-multi-site, unchanged). Of his first 300 release groups none
+links a page twice. Output `debug/probe-rel-page-keys-bruce-*.json` (not in
+git). `test:full` on `d58b3ef8`: 3587/3587 (tests/MEASUREMENTS.org).
+
+Browser check (vzell, 2026-11-26, his browser, versions unknown;
+`debug/link-page-keys-*.png`, not in git): rel-same-page shows on the
+Darkness release (`c9c1961b…`), naming both Qobuz forms and marking the
+hovered icon; rel-multi-site unchanged; the barcode run works on Born To
+Run's master (🔎 242; no candidates among the four asked: Discogs lists no
+barcode for them). He stopped the run for a screenshot, and the popup
+read "4 / 60 … finished, DONE", which looked like a complete run. Now a
+stopped run says "Stopped after k of N" with a Stopped badge (a `stopped`
+phase in `_AJ_PHASES`) and 🔎 counts the rest; BC6 and a mutation pin it.

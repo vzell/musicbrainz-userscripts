@@ -960,6 +960,7 @@ back).
 | ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
 | ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
 | ⚠️     | Several links to one site in Relationships (once loaded)        | Relationships                               |
+| ⚠️     | The same page linked twice in Relationships (once loaded)       | Relationships                               |
 | ⚠️     | Old springsteenlyrics.com address in the annotation             | Annotation                                  |
 | ⚠️     | MB-Event: no Brucebase link (once looked up)                    | Brucebase year: MB-Event                    |
 | ⚠️     | Brucebase entry with a comma after its date                     | Brucebase detail pages: Date                |
@@ -5304,6 +5305,22 @@ tab). Its links open in the window and show their cards as on MusicBrainz —
 a genre's tag, an edit, an editor, a documentation page. If the window says
 MusicBrainz asked the browser to verify itself, open the page once in a tab
 (↗), then press **⟳**.
+
+**Barcode candidates.** A Discogs release that no MusicBrainz release links
+yet keeps its search box. On a table of releases, **🔎 N** beside ▶ MB
+counts them; a press asks Discogs for each one's barcode, formats and tracks
+and searches MusicBrainz by the barcode. A MusicBrainz release whose
+barcode, kind of media (CD, vinyl, cassette, digital) and track count agree
+with it, where both sides know them, shows as a **candidate**: the release
+icon in a dashed box with **≈** (**≈2** for two). It is not a link; its card
+says what agreed, a click opens the release (for several, the barcode
+search) on MusicBrainz, and **⧉** copies the Discogs address so you can add
+it to the release's relationships yourself. A press asks for at most 25
+releases (60 with your Discogs token), because Discogs limits its requests;
+press again for the next ones. Each answer is kept for 7 days, so nothing
+is asked twice, and 📊 "» MB links: candidate" keeps only the candidates.
+Nothing is asked until you press.
+
 Switch it off, or only the automatic lookups (then ▶ MB asks), in ⚙️
 Settings → 💿 Discogs. Without that userscript the column never appears.
 

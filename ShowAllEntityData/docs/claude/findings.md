@@ -225,12 +225,16 @@ was "Several Discogs links in Relationships", Discogs only:
 
 - `test()` reads `_findCellRelSiteDupes()`: the icons' hidden
   `.mb-rel-filter-key` spans, which `_relWriteResult()` writes into the live
-  cells AND copies onto the master rows — source-row data. Grouped by HOST
-  without "www." — never by site kind (`_siteFamilyOf()`): amazon.de and
+  cells AND copies onto the master rows — source-row data. Grouped by SITE
+  and, since 2026-11-26, by PAGE (`_relCellPages()`, `_relPageKey()`): a
+  site is the host without "www.", or the platform of a known page
+  (`_REL_PAGE_RULES`: Apple Music, iTunes, Deezer, Tidal, Spotify, Qobuz,
+  Beatport, Discogs), never the site kind (`_siteFamilyOf()`): amazon.de and
   amazon.com, music. and itunes.apple.com are different sites, one link each
-  is what MusicBrainz expects. Distinct by host + path, so a `?…` variant of
-  one page is one URL (which also makes two YouTube `watch?v=` links ONE);
-  a host with 2+ flags. Hosts in `sa_findings_rel_multi_site_ignore` never
+  is what MusicBrainz expects. A page is its platform key, or host + path,
+  so a `?…` variant of one page is one URL (which also makes two YouTube
+  `watch?v=` links ONE); a site with 2+ PAGES flags. Two forms of one page
+  are `rel-same-page` (below). Hosts in `sa_findings_rel_multi_site_ignore` never
   count. Only icons that are drawn count (a link type with no icon class —
   wikipedia by default — never reaches the cell).
 - `detail()` (`_relSiteDupesDetail()`) names EVERY site involved, one line
@@ -238,7 +242,9 @@ was "Several Discogs links in Relationships", Discogs only:
   and the icon's popup finding box (`_relFindingNoteHtml()`) all show it.
 - `_relWriteResult()` queues each live row it wrote (both the answer and
   the "no relationships" branch, so a ⟳ reload can also CLEAR a stamp)
-  through `_queueFindingsRestamp(tr, ['rel-multi-site'])`.
+  through `_queueFindingsRestamp(tr, ['rel-multi-site', 'rel-same-page'])`.
+  The list only GATES the re-stamp (one id must be on); the row is then
+  stamped for every finding.
 - The filter re-run condition is `_LATE_FINDING_IDS` (artwork + this one).
   No loop: a re-rendered clone never reaches `_relWriteResult()` again
   (`relDone`).
@@ -257,6 +263,35 @@ was "Several Discogs links in Relationships", Discogs only:
   survival), `rel-multi-site-finding.spec.js` (every site, ignore list,
   glyphs on hover, popup stack); mutations
   `scripts/mutations/link-site-uvd.json`, `scripts/mutations/rel-multi-site-and-ip.json`.
+
+### The same page twice in Relationships: `rel-same-page` (2026-11-26)
+
+"The same page linked twice in Relationships" (⚠️, cell scope, column
+"Relationships"), from majkinetor's canonical page keys (First Contact's
+`linkKey()`, Falcon's `platformPageKey()` #671, ISRC Scout's
+`normalizeProviderUrl()` with MusicBrainz's URLCleanup rules, at `8384078`):
+
+- `_relPageKey(url)` → `{site, key, form}`. `_REL_PAGE_RULES` key a page by
+  platform, kind and id whatever the form: Apple's storefront and slug (an
+  album with `?i=N` is the song N), Deezer's and Qobuz's locales, Tidal's
+  `listen.` host and `/browse/`, Spotify's `intl-xx/`, Beatport's locale,
+  Discogs' locale and slug. itunes.apple.com is its own platform (MusicBrainz
+  takes it beside music.apple.com, Falcon). An Amazon product is keyed by
+  store + ASIN, so amazon.de and amazon.com stay different sites (vzell
+  2026-11-26), while the slug and `/gp/product` vs `/dp` collapse. Spotify's
+  ids keep their case (base 62); the others are lowercased.
+- `test()` reads `_findCellRelSamePages()`: a page with 2+ forms. The ignore
+  list of `rel-multi-site` does NOT apply: a duplicate stays a duplicate. A
+  cell can carry both findings (two Discogs releases, one of them twice).
+- `detail()` (`_relSamePagesDetail()`) one line per page: "Apple Music
+  (music.apple.com): form, form". The popup box (`_relFindingNoteHtml()`)
+  lists the forms ("N forms of one page") and marks the hovered icon by its
+  `form`.
+- Settings `sa_findings_rel_same_page` and `sa_findings_tint_rel_same_page`
+  (both on), beside the `rel_multi` keys.
+- Spec `rel-multi-site-finding.spec.js`, describe "The same page linked
+  twice" (K1–K8, KEYS: every rule through `__saTest.relPageKey()`);
+  mutations `scripts/mutations/rel-page-keys.json`.
 
 ### Old springsteenlyrics.com addresses: `sl-old-address`
 

@@ -1,0 +1,184 @@
+[
+  {
+    "name": "the track count is not compared",
+    "why": "B (8 tracks against 10) would become a candidate: a wrong release offered for linking.",
+    "edits": [
+      {
+        "find": "        if (dg.tracks && tracks && dg.tracks !== tracks) return false;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "the button counts what to try",
+    "expect": "fail"
+  },
+  {
+    "name": "the barcode is compared as written",
+    "why": "An EAN-13 and its UPC-A (a leading 0) are one barcode; D's second release would be lost.",
+    "edits": [
+      {
+        "find": "        if (_dgBcCore(rel.barcode) !== _dgBcCore(dg.barcode)) return false;\n",
+        "replace": "        if (String(rel.barcode) !== dg.barcode) return false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "the button counts what to try",
+    "expect": "fail"
+  },
+  {
+    "name": "any identifier is taken for the barcode",
+    "why": "C's matrix number would be searched as a barcode.",
+    "edits": [
+      {
+        "find": "        const idf = (d.identifiers || []).find(i => i && /^barcode$/i.test(String(i.type || '').trim()) && _dgBcCore(i.value));\n",
+        "replace": "        const idf = (d.identifiers || []).find(i => i && _dgBcCore(i.value));\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "the button counts what to try",
+    "expect": "fail"
+  },
+  {
+    "name": "only the barcode as written is searched",
+    "why": "MusicBrainz stores some barcodes with the leading zero, some without.",
+    "edits": [
+      {
+        "find": "            const forms = [...new Set([digits, core, '0' + core, '00' + core])].filter(x => x.length >= 8 && x.length <= 14);\n",
+        "replace": "            const forms = [digits];\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "the button counts what to try",
+    "expect": "fail"
+  },
+  {
+    "name": "a candidate counts as a link",
+    "why": "A candidate is not a link: the Picard column, the counts and the link filters read a.mb-dg-mb-link.",
+    "edits": [
+      {
+        "find": "        return `<a class=\"mb-dg-mb-cand\" href=\"${_rgEsc(href)}\"${_DG_NEW_TAB} data-mbtt=\"${_rgEsc(card)}\">` +\n",
+        "replace": "        return `<a class=\"mb-dg-mb-link mb-dg-mb-cand\" href=\"${_rgEsc(href)}\"${_DG_NEW_TAB} data-mbtt=\"${_rgEsc(card)}\">` +\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "the button counts what to try",
+    "expect": "fail"
+  },
+  {
+    "name": "a candidate is never fresh",
+    "why": "Every press would ask for the same releases again; the button would never reach 0.",
+    "edits": [
+      {
+        "find": "        return r && Array.isArray(r.cands) && Date.now() < r.ts + _DG_BC_TTL_MS ? r : null;\n",
+        "replace": "        return r && Array.isArray(r.cands) && Date.now() < r.ts ? r : null;\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "the button counts what to try",
+    "expect": "fail"
+  },
+  {
+    "name": "the barcodes are asked after every lookup",
+    "why": "Your decision: never automatic, two requests a release against Discogs' limit.",
+    "edits": [
+      {
+        "find": "        _ajFinish('dgmb', null, _dgMb.failed);\n",
+        "replace": "        _ajFinish('dgmb', null, _dgMb.failed);\n        _dgBcRun();\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "the button counts what to try",
+    "expect": "fail"
+  },
+  {
+    "name": "⧉ copies nothing",
+    "why": "The card's 'paste into its relationships' needs the Discogs address on the clipboard.",
+    "edits": [
+      {
+        "find": "        const url = btn.dataset.mbDgUrl || '';\n",
+        "replace": "        const url = '';\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "BC2: the card names what agreed",
+    "expect": "fail"
+  },
+  {
+    "name": "📊 has no candidate entry",
+    "why": "A candidate row would read '» MB links: 0' and could not be filtered on its own.",
+    "edits": [
+      {
+        "find": "        if (!n && parseInt(cell.dataset.mbDgCand, 10) > 0) return 'candidate';\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "BC3: 📊 \"» MB links: candidate\"",
+    "expect": "fail"
+  },
+  {
+    "name": "the ticked candidate entry rings nothing",
+    "why": "The ring shows what a ticked entry matched.",
+    "edits": [
+      {
+        "find": "        if (mode.slice(10) === 'candidate') {\n",
+        "replace": "        if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "BC3: 📊 \"» MB links: candidate\"",
+    "expect": "fail"
+  },
+  {
+    "name": "≈ and ⧉ leak into the cell's text",
+    "why": "Filters and sorting read 'candidate <mbid>' only, as the links' MBIDs.",
+    "edits": [
+      {
+        "find": "        '.mb-dg-mb-search,.mb-dg-mb-n,.mb-dg-mb-eq,.mb-dg-mb-copy,' +\n",
+        "replace": "        '.mb-dg-mb-search,.mb-dg-mb-n,' +\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "BC3: 📊 \"» MB links: candidate\"",
+    "expect": "fail"
+  },
+  {
+    "name": "the store forgets barcode answers",
+    "why": "A second visit would ask Discogs and MusicBrainz again.",
+    "edits": [
+      {
+        "find": "                            if (now < r.ts + _DG_BC_TTL_MS && !_dgMbMem.has(r.key)) _dgMbMem.set(r.key, r);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "BC4: a second visit asks nothing",
+    "expect": "fail"
+  },
+  {
+    "name": "no cap per press",
+    "why": "Only the fixture's four releases are open: 25 or more would cost 25 s of Discogs' spacing per test run; the cap is a one-line slice.",
+    "edits": [
+      {
+        "find": "        const todo = _dgBcTodo().slice(0, cap);\n",
+        "replace": "        const todo = _dgBcTodo();\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "the button counts what to try",
+    "expect": "pass"
+  },
+  {
+    "name": "a stopped run says finished",
+    "why": "vzell's browser check: a run stopped after 4 of 60 read 'finished' and DONE, as if every release had been asked.",
+    "edits": [
+      {
+        "find": "        if (_dgBc.stop && asked < _dgBc.total) {\n",
+        "replace": "        if (false) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/discogs-mb-barcodes.spec.js",
+    "grep": "BC6: a click on",
+    "expect": "fail"
+  }
+]
