@@ -6212,7 +6212,7 @@
         },
 
         sa_pop_mb_image: {
-            label: 'Pictures in artist, label, place and area previews',
+            label: 'Pictures in artist, label, place, area, series and instrument previews',
             type: 'checkbox',
             default: true,
             description: 'On by default. When Space opens the window on an artist, a label or a place, it shows ' +
@@ -6220,8 +6220,10 @@
                          'logo, else the one its Wikidata item names (one or two small requests to Wikidata). ' +
                          'An area\'s window shows its locator map with the flag on its corner, then the flag, ' +
                          'coat of arms, seal and image its Wikidata item names (five small requests). ' +
+                         'A series\' window shows its own picture link, else its Wikidata image (one small ' +
+                         'request); an instrument\'s window shows MusicBrainz\'s own IROMBOOK drawing (no request). ' +
                          'Click it for the viewer. Asked only on Space, never on a hover; afterwards the card ' +
-                         'and an area\'s own page show it too, from this browser\'s storage.'
+                         'and the own page of an area, a place or a series show it too, from this browser\'s storage.'
         },
 
         sa_pop_mb_eh_images: {
@@ -87121,6 +87123,10 @@
     const _MB_POP_IMG_PROPS = {
         artist: ['P18', 'P154'], label: ['P154', 'P18'], place: ['P18', 'P154'],
         area: ['P242', 'P41', 'P94', 'P158', 'P18'],
+        // 2026-11-26 (vzell): a series' own picture link, else Wikidata's
+        // image; an instrument's own links only, which hold MusicBrainz's
+        // IROMBOOK drawing (Event Horizon's insHero shows the same).
+        series: ['P18'], instrument: [],
     };
 
     /**
@@ -87535,6 +87541,7 @@
         if (im.via === 'eh') return `${im.from} · via Event Horizon`;
         if (im.prop) return `Wikidata ${im.prop} (${_MB_WD_IMG_LABEL[im.prop] || 'image'})`;
         if (im.file) return 'Wikimedia Commons';
+        if (_sbIrombookFile(im.src)) return 'IROMBOOK';
         return `${im.type} link · ${im.host.replace(/^www\./, '')}`;
     }
 
@@ -91195,7 +91202,8 @@
         // One lookup for card and window. The Web Service has no
         // instrument description (R1, guitar): the Live page shows it.
         instrument: Object.assign({ title: 'Instrument', wide: false }, _mbPopLookupKind({
-            cardInc: 'instrument-rels+aliases',
+            // url-rels since 2026-11-26: the IROMBOOK drawing and the links table.
+            cardInc: 'instrument-rels+aliases+url-rels',
             cardHtml(d) {
                 return `<div class="mb-tt-title">${_rgEsc(d.name)}` +
                     `${d.disambiguation ? ` <span class="mb-rg-dim">(${_rgEsc(d.disambiguation)})</span>` : ''}</div>` +
@@ -91209,7 +91217,7 @@
             },
             windowHtml(d, t) {
                 return `<div class="mb-dp-x"><div class="mb-dp-col"><div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
-                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>` +
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>${_mbPopWindowPicture(t)}` +
                     (d.description ? `<div class="mb-dp-section">${_rgEsc(d.description)}</div>`
                         : '<div class="mb-dp-xsub">The description is on the instrument\'s page (Live page).</div>') +
                     `<h4>Aliases · ${(d.aliases || []).length}</h4>${(d.aliases || []).length ? _dpCompactTableHtml(t, 'aliases', [
@@ -91219,7 +91227,13 @@
                         { key: 'primary', label: 'Primary', val: a => (a.primary ? 'primary' : ''), html: a => (a.primary ? '✓' : '') },
                     ], d.aliases, { initial: 'as MusicBrainz lists them', what: 'aliases' }) : '<div class="mb-dp-xsub">None.</div>'}</div>` +
                     `<div class="mb-dp-col"><h4>Related instruments</h4>${_mbPopRelTableHtml(t, 'instruments',
-                    _mbPopRelTableRows(d.relations, 'instrument'), 'Instrument', 'instruments')}</div></div>`;
+                    _mbPopRelTableRows(d.relations, 'instrument'), 'Instrument', 'instruments')}` +
+                    `${_mbPopUrlLinksTableHtml(t, 'links', d.relations)}</div></div>`;
+            },
+            cardAside: _mbPopCardPicture,
+            pin(t, d, again, repaint) {
+                // The instrument's own lookup carries its url-rels (IROMBOOK).
+                _mbPopImageLoad(t, d.relations || [], again, repaint);
             },
         })),
         // A genre (2026-10-26): read from its page (`_mbParseGenrePage()`),
@@ -91457,7 +91471,8 @@
         // which one a series uses follows its type); the items in order, with
         // their numbers.
         series: Object.assign({ title: 'Series', wide: true }, _mbPopLookupKind({
-            cardInc: 'release-rels+release-group-rels+recording-rels+work-rels+event-rels+artist-rels',
+            // url-rels since 2026-11-26: its picture (a link, else Wikidata P18) and the links table.
+            cardInc: 'release-rels+release-group-rels+recording-rels+work-rels+event-rels+artist-rels+url-rels',
             cardHtml(d) {
                 const items = _mbPopSeriesItems(d);
                 const more = items.length - _MB_POP_CARD_ITEMS;
@@ -91470,11 +91485,12 @@
                         .join('') + '</ol>' + (more > 0 ? `<div class="mb-tt-dim">+ ${more} more</div>` : '')
                     : '<div class="mb-tt-comment">No items yet.</div>');
             },
-            windowHtml(d) {
+            windowHtml(d, t) {
                 const items = _mbPopSeriesItems(d);
                 const left = `<div class="mb-dp-xtitle">${_rgEsc(d.name)}</div>` +
                     (d.disambiguation ? `<div class="mb-dp-xsub">${_rgEsc(d.disambiguation)}</div>` : '') +
-                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>`;
+                    `<div class="mb-rg-pills">${_mbPopPillsHtml([d.type])}</div>${_mbPopWindowPicture(t)}` +
+                    _mbPopUrlLinksTableHtml(t, 'links', d.relations);
                 const right = `<h4>Items · ${items.length}</h4>` + (items.length ? _mbPopTableHtml(['#', 'Item', 'Date'], items.map(x => [
                     _rgEsc(x.num || '—'),
                     // MusicBrainz's own glyph of the item's kind first (Phase 3e), in a fixed box.
@@ -91485,6 +91501,11 @@
                     _rgEsc(x.e.date || x.e['first-release-date'] || (x.e['life-span'] || {}).begin || '—'),
                 ]), [0]) : '<div class="mb-dp-xsub">No items yet.</div>');
                 return `<div class="mb-dp-x"><div class="mb-dp-col">${left}</div><div class="mb-dp-col">${right}</div></div>`;
+            },
+            cardAside: _mbPopCardPicture,
+            pin(t, d, again, repaint) {
+                // A picture link first, else Wikidata P18 (Space only).
+                _mbPopImageLoad(t, d.relations || [], again, repaint);
             },
         })),
         // The codes (WIP.5): one lookup each, the card and the window from
@@ -155883,11 +155904,27 @@ a { color: #1565c0; }`;
      * MusicBrainz rate gate).
      * @param {{type: string, id: string}} ent
      * @param {HTMLElement} sidebar
+     * @param {boolean} [linksOnly] - A place or series page whose window
+     *   record knew no picture: its own links, as for every other kind.
      * @returns {void}
      */
-    function _eiStart(ent, sidebar) {
+    function _eiStart(ent, sidebar, linksOnly = false) {
         if (_MB_POP_IMG_ALL.has(ent.type)) {
             _eiStartKnown(ent, sidebar);
+            return;
+        }
+        // A place's or a series' page (2026-11-26): the picture its preview
+        // window found (Wikidata P18 too), when one is in memory or
+        // IndexedDB; never asked from here (first contact is on Space).
+        if (!linksOnly && _EI_KNOWN_FIRST.has(ent.type) && _mbPopImgOn(ent)) {
+            _eiKnownImages(ent).then((images) => {
+                if (images.length) {
+                    _eiDecided(sidebar, 'known');
+                    _eiShow(ent, images);
+                } else {
+                    _eiStart(ent, sidebar, true);
+                }
+            });
             return;
         }
         const lookup = _mbPopLookup(ent, 'url-rels');
@@ -155933,6 +155970,29 @@ a { color: #1565c0; }`;
                 _mbWsLoad(lookup.key, lookup.url, { repaint: fromRels });
             }, _EI_ZABE_WAIT_MS);
         });
+    }
+
+    /**
+     * The kinds whose page first shows the picture record their preview
+     * window keeps (`_mbPopImageRecordFor()`: links, then Wikidata), and
+     * only without one their own links: a place, a series (2026-11-26,
+     * vzell). An area always shows the record (`_eiStartKnown()`).
+     * @type {Set<string>}
+     */
+    const _EI_KNOWN_FIRST = new Set(['place', 'series']);
+
+    /**
+     * An entity's pictures as its preview window last found them, from
+     * memory or IndexedDB; asks nobody.
+     * @param {{type: string, id: string}} ent
+     * @returns {Promise<Array<Object>>} Empty when none is known.
+     */
+    function _eiKnownImages(ent) {
+        const key = _mbPopImgKey(ent);
+        const st = _mbPop.get(key);
+        if (st && st.status === 'done') return Promise.resolve((st.data && st.data.images) || []);
+        return Promise.resolve(_rgIdbGet(key, _MB_POP_IMG_VERSION)).catch(() => null)
+            .then(rec => (rec && rec.data && rec.data.images) || []);
     }
 
     /**

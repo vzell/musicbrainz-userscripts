@@ -2207,7 +2207,7 @@ test.describe('MusicBrainz link previews: event, place, series (WIP.4)', () => {
         // The lookup lists them by ordering key 1, 2, 10, 7, …: shown in order.
         await expect(rows.locator('td:first-child')).toHaveText(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']);
         await expect(rows.first().locator('a')).toHaveAttribute('href', /^\/release\/[0-9a-f-]{36}$/);
-        expect(log.ws2).toEqual([expect.stringContaining('inc=release-rels+release-group-rels+recording-rels+work-rels+event-rels+artist-rels')]);
+        expect(log.ws2).toEqual([expect.stringContaining('inc=release-rels+release-group-rels+recording-rels+work-rels+event-rels+artist-rels+url-rels')]);
     });
 
     // org/MB-POH-sync-withDiscogs.org Phase 3a: a release-group series' items

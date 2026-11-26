@@ -1,0 +1,132 @@
+[
+  {
+    "name": "instruments get no pictures",
+    "why": "The instrument kind would stay outside _MB_POP_IMG_PROPS: no drawing in its window or card.",
+    "edits": [
+      {
+        "find": "        series: ['P18'], instrument: [],\n",
+        "replace": "        series: ['P18'],\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P1: an instrument window shows its IROMBOOK drawing",
+    "expect": "fail"
+  },
+  {
+    "name": "a series never asks Wikidata",
+    "why": "vzell chose Wikidata P18 for a series without a picture link.",
+    "edits": [
+      {
+        "find": "        series: ['P18'], instrument: [],\n",
+        "replace": "        series: [], instrument: [],\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P3: a series with only its Wikidata link",
+    "expect": "fail"
+  },
+  {
+    "name": "the instrument lookup has no url-rels",
+    "why": "The IROMBOOK drawing is an url-rel: without it there is nothing to show.",
+    "edits": [
+      {
+        "find": "            cardInc: 'instrument-rels+aliases+url-rels',\n",
+        "replace": "            cardInc: 'instrument-rels+aliases',\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P1: an instrument window shows its IROMBOOK drawing",
+    "expect": "fail"
+  },
+  {
+    "name": "the series lookup has no url-rels",
+    "why": "A series' picture link and its Wikidata link are url-rels.",
+    "edits": [
+      {
+        "find": "            cardInc: 'release-rels+release-group-rels+recording-rels+work-rels+event-rels+artist-rels+url-rels',\n",
+        "replace": "            cardInc: 'release-rels+release-group-rels+recording-rels+work-rels+event-rels+artist-rels',\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P2: a series with a Commons link",
+    "expect": "fail"
+  },
+  {
+    "name": "the instrument window never looks for its picture",
+    "why": "pin() starts the picture record.",
+    "edits": [
+      {
+        "find": "                // The instrument's own lookup carries its url-rels (IROMBOOK).\n                _mbPopImageLoad(t, d.relations || [], again, repaint);\n",
+        "replace": "                // The instrument's own lookup carries its url-rels (IROMBOOK).\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P1: an instrument window shows its IROMBOOK drawing",
+    "expect": "fail"
+  },
+  {
+    "name": "the series window never looks for its picture",
+    "why": "pin() starts the picture record (and the P18 request).",
+    "edits": [
+      {
+        "find": "                // A picture link first, else Wikidata P18 (Space only).\n                _mbPopImageLoad(t, d.relations || [], again, repaint);\n",
+        "replace": "                // A picture link first, else Wikidata P18 (Space only).\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P3: a series with only its Wikidata link",
+    "expect": "fail"
+  },
+  {
+    "name": "an IROMBOOK drawing is credited as a link",
+    "why": "The window's caption names IROMBOOK, as the sidebar card does.",
+    "edits": [
+      {
+        "find": "        if (_sbIrombookFile(im.src)) return 'IROMBOOK';\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P1: an instrument window shows its IROMBOOK drawing",
+    "expect": "fail"
+  },
+  {
+    "name": "the instrument window has no links table",
+    "why": "The links table came with the url-rels.",
+    "edits": [
+      {
+        "find": "                    `${_mbPopUrlLinksTableHtml(t, 'links', d.relations)}</div></div>`;\n",
+        "replace": "                    '</div></div>';\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P1: an instrument window shows its IROMBOOK drawing",
+    "expect": "fail"
+  },
+  {
+    "name": "the series window has no links table",
+    "why": "A series without a picture still shows its links.",
+    "edits": [
+      {
+        "find": "                    _mbPopUrlLinksTableHtml(t, 'links', d.relations);\n",
+        "replace": "                    '';\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P4: a series with no picture",
+    "expect": "fail"
+  },
+  {
+    "name": "a place page uses its own links only",
+    "why": "A place's Wikidata picture, found by its window, would never show on its page.",
+    "edits": [
+      {
+        "find": "        if (!linksOnly && _EI_KNOWN_FIRST.has(ent.type) && _mbPopImgOn(ent)) {\n",
+        "replace": "        if (false && !linksOnly && _EI_KNOWN_FIRST.has(ent.type) && _mbPopImgOn(ent)) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/pop-mb-image.spec.js",
+    "grep": "P5: a place page shows the picture its window found",
+    "expect": "fail"
+  }
+]

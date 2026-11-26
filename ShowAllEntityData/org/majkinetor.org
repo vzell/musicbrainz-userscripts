@@ -144,7 +144,7 @@ PART (partly done, the rest left out by decision), NOT (not done, with the reaso
 | In-page log window (=mbuLog=)                                  | DONE  | 9.99.1689     | Adoptions     |
 | In-page log: past sessions (mbuLog's history)                  | TODO  | —             | Adoptions     |
 | Switch between SAED's view and the original page (EH's V)      | DONE  | 9.99.1695–98  | Adoptions     |
-| Entity pictures: EH's providers done, area map left            | PART  | 9.99.1683     | Adoptions     |
+| Entity pictures: EH's providers done, area map left            | NEXT  | WIP.1         | Adoptions     |
 | Title style: guess-case lists, title-difference classes        | DONE  | 9.99.1678     | Adoptions     |
 | Links: canonical page keys; Discogs MB column barcode          | DONE  | 9.99.1702–03  | Adoptions     |
 | Browser check on SAED's page fetches (=mbnIsCheck=)            | DONE  | 9.99.1701     | Adoptions     |
@@ -1118,6 +1118,14 @@ CLOSED: [2026-11-20 Fri]
   =eh-area-chain=, =eh-flag-i=, =saed-area-chain=. =test:full= 3478/3480 on the branch (the two: a Discogs spec's
   page log counting =/ws/js=, fixed); vzell's browser check OK (2026-11-23). Still open: pictures for
   place/series/instrument beyond what they have.
+- *The rest built* (2026-11-26, =feat/entity-pictures-rest=, WIP.1; vzell chose instrument previews, the place page's
+  known picture, series previews and Wikidata P18 for a series): =_MB_POP_IMG_PROPS.instrument = []= (the IROMBOOK
+  drawing from its =image= url-rel, as EH's =insHero=; credited "IROMBOOK" by =_eiOrigin()=) and =series = ['P18']=;
+  both lookups took =url-rels=, both kinds got =pin()=, =cardAside= and a links table; a place's or a series' page
+  shows its window's record first (=_EI_KNOWN_FIRST=, =_eiKnownImages()=). Spec =pop-mb-image.spec.js= P1–P5, the
+  picture and preview specs 204/204; mutations =entity-pictures-rest.json= 10/10 (two lived at first: the fixture
+  route answered url-rels whatever was asked, so P1/P2 now pin the lookup's =inc=), =area-pictures.json= one find
+  re-pointed.
 
 ** DONE Title style: guess-case word lists, title-difference classes
 

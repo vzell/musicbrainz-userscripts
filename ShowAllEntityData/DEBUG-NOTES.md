@@ -31943,3 +31943,24 @@ barcode for them). He stopped the run for a screenshot, and the popup
 read "4 / 60 … finished, DONE", which looked like a complete run. Now a
 stopped run says "Stopped after k of N" with a Stopped badge (a `stopped`
 phase in `_AJ_PHASES`) and 🔎 counts the rest; BC6 and a mutation pin it.
+
+## 2026-11-26 — Instrument and series pictures in the link previews; a place page's known picture (feat/entity-pictures-rest, WIP.1)
+
+Env: 2026-11-26T14:50–15:30+01:00 · NB-3641 · WSL2 Ubuntu 24.04.4 LTS (Linux 6.18.58.1) · Playwright 1.62.1, Chromium 151.0.7922.34 · no Tampermonkey (GM stubs) · browser check pending
+
+The last open part of the entity-pictures item, to vzell's choices:
+`_MB_POP_IMG_PROPS` gains `instrument: []` (its links only: MusicBrainz's
+IROMBOOK drawing, an `image` url-rel on static.metabrainz.org, which
+`_eiImagesFrom()` already took; credited "IROMBOOK") and `series: ['P18']`.
+Both lookups take `url-rels` (their `cardInc`), both kinds get `pin()`,
+`cardAside` and a links table. A place's or a series' page shows the
+window's picture record first (`_EI_KNOWN_FIRST`), falling back to its own
+links.
+
+Two mutants lived at first: dropping `url-rels` from either lookup changed
+nothing, because the spec's route serves the fixture whatever the query
+asks. P1 and P2 now pin the request's `inc`. No place page fixture had a
+sidebar; P5 adds an empty `#sidebar` to `place-events-lineup.html` in a
+temporary copy at run time. Spec P1–P5; the picture and preview specs
+204/204; mutations 10/10; `area-pictures.json` one find re-pointed (the
+props object grew).

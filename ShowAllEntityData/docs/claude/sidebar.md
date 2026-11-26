@@ -285,6 +285,12 @@ drop-down; show the same pictures where this script already shows one.
   instead of sleeping. **The page never writes the window's picture
   RECORD** (`pop:img:…`): a heading that found nothing in the links must not
   stand in for the window's Wikidata answer.
+- **A place's or a series' page reads that record first** (2026-11-26,
+  `_EI_KNOWN_FIRST`, `_eiKnownImages()`): when its window found pictures
+  (Wikidata P18 too), memory or IndexedDB, the heading shows them (`known`)
+  and asks nothing; without one, `_eiStart(ent, sidebar, true)` goes the links
+  path above. An area always shows the record only (`_eiStartKnown()`).
+  Spec `pop-mb-image.spec.js` P5.
 - **zabe's pictures** (`_eiFromZabe()`): a Commons thumbnail (its
   api.wikimedia.org answer) becomes that file; the kind comes from its
   select's option text ("logo relationship").
@@ -465,9 +471,20 @@ do, and only on Space.
 `_MB_POP_IMG_VERSION`, `_mbTtlMs()`. "No picture" is kept too, so a second
 Space asks nothing. A failure is retried only by ⟳ or "Try again".
 
-**When.** Only from the kinds' `pin()` (artist, label, place, area), once their
-url-rels answer is there: the artist's and label's window lookups, the place's
-own card lookup. `relations` is null before that; a ⟳ that comes while the
+**When.** Only from the kinds' `pin()` (artist, label, place, area, and since
+2026-11-26 series and instrument), once their url-rels answer is there: the
+artist's and label's window lookups, the place's, series' and instrument's own
+card lookup (both took `url-rels` into their `cardInc` for it, with a links
+table in their windows).
+
+**Series and instrument (2026-11-26, vzell).** `_MB_POP_IMG_PROPS.series =
+['P18']`: a picture link first, else Wikidata's image, on Space only.
+`_MB_POP_IMG_PROPS.instrument = []`: the links only, which hold MusicBrainz's
+own IROMBOOK drawing (an `image` url-rel on `static.metabrainz.org`, shown as
+an `<img>`, never fetched; Event Horizon's `insHero` shows the same); no
+Wikidata. `_eiOrigin()` credits such a drawing "IROMBOOK"
+(`_sbIrombookFile()`). Spec `pop-mb-image.spec.js` P1–P4, mutations
+`scripts/mutations/entity-pictures-rest.json`. `relations` is null before that; a ⟳ that comes while the
 url-rels reload is remembered in `_mbPopImgAgain`, so the next start skips the
 caches. Not event (event art). Areas since feat/area-pictures, below.
 

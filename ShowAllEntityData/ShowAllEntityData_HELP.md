@@ -3037,8 +3037,13 @@ userscript lists that host, so Tampermonkey does not ask first).
   small requests, "2 of 5 asked" while they come), and its links (Wikidata,
   GeoNames) in a table under the facts, as a place window does; the card
   then shows the map with a small flag. When Wikidata says too many requests,
-  the window waits for it instead of failing, in every tab.
-  Switch: *Pictures in artist, label, place and area previews*. With majkinetor's
+  the window waits for it instead of failing, in every tab. A **series**
+  window shows its own picture link, else the image its Wikidata item names
+  (one small request), with its links in a table; an **instrument** window
+  shows MusicBrainz's own IROMBOOK drawing (no request) and its links. A
+  place's or a series' own page shows the picture its window found, beside
+  the name, from this browser's storage.
+  Switch: *Pictures in artist, label, place, area, series and instrument previews*. With majkinetor's
   *Event Horizon* installed, an artist's or a label's window also shows the
   pictures Event Horizon finds (Discogs, Deezer, Tidal, Apple Music,
   SoundCloud, Bandcamp, YouTube Music, Wikipedia), after this script's own,
